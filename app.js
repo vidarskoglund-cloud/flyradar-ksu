@@ -1161,7 +1161,6 @@ function check50NmNotifications(list){
   });
   notified50=current;
 }
-
 async function loadFlightAwareStatus(){
   const box=$('fa-usage');
   if(!box)return;
@@ -1171,10 +1170,12 @@ async function loadFlightAwareStatus(){
     const j=await r.json();
     const calls=Number(j.calls||0);
     const spent=Number(j.spent||0);
-    const actual=Number(j.actual_cost);
+    const actualRaw=Number(j.actual_cost);
+    const actual=Number.isFinite(actualRaw)?actualRaw:null;
     const budget=Number(j.budget||4.5);
     const guardOk=j.usage_guard_ok!==false && j.allowed!==false;
-    const pct=budget>0?Math.max(0,Math.min(100,(Math.max(spent,Number.isFinite(actual)?actual:0)/budget)*100)):0;
+    const used=Math.max(spent,actual===null?0:actual);
+    const pct=budget>0?Math.max(0,Math.min(100,(used/budget)*100)):0;
     $('fa-state').textContent=guardOk?'Aktiv':'Stoppet';
     $('fa-state').className=guardOk?'fa-ok':'fa-warn';
     $('fa-calls').textContent=String(calls);
@@ -1437,7 +1438,7 @@ setInterval(()=>{
 },20000);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 +spent.toFixed(3);
-    $('fa-actual').textContent=Number.isFinite(actual)?('
+    $('fa-actual').textContent=actual===null?'venter':'
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
   home.setLatLng([s.lat,s.lon]);
@@ -1695,7 +1696,7 @@ setInterval(()=>{
   if(nearest && nm(nearest.d)>50)focusIdleCandidate(sorted,true);
 },20000);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
-+actual.toFixed(3)):'venter';
++actual.toFixed(3);
     $('fa-budget').textContent='
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -1956,8 +1957,7 @@ setInterval(()=>{
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 +budget.toFixed(2);
     if($('fa-progress'))$('fa-progress').style.width=pct.toFixed(1)+'%';
-    if($('fa-note'))$('fa-note').textContent=
-      'Bruk: '+pct.toFixed(1)+' % av intern grense · FlightAware kan ligge 10–20 min etter.';
+    if($('fa-note'))$('fa-note').textContent='Bruk: '+pct.toFixed(1)+' % av intern grense · FlightAware kan ligge 10–20 min etter.';
   }catch(e){
     $('fa-state').textContent='Ukjent';
     $('fa-state').className='fa-warn';
