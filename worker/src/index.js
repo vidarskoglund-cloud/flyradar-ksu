@@ -1,4 +1,7 @@
+import { DurableObject } from "cloudflare:workers";
+
 const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
+const TRACK_KEEP_MS = 20 * 60 * 1000;
 
 function corsHeaders() {
   return {
@@ -40,6 +43,61 @@ function mergeAircraft(primary, secondary) {
   primary.forEach((a) => add(a, "adsb.lol"));
   secondary.forEach((a) => add(a, "airplanes.live"));
   return [...byKey.values()];
+}
+
+export class TrackStore extends DurableObject {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method === "POST" && url.pathname === "/update") {
+      const payload = await request.json();
+      const ac = Array.isArray(payload?.ac) ? payload.ac : [];
+      const now = Date.now();
+      const tracks = (await this.ctx.storage.get("tracks")) || {};
+
+      for (const a of ac) {
+        const key = keyFor(a);
+        const lat = Number(a?.lat);
+        const lon = Number(a?.lon);
+        if (!key || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+
+        const arr = Array.isArray(tracks[key]) ? tracks[key] : [];
+        const last = arr[arr.length - 1];
+        const moved =
+          !last ||
+          Math.abs(last.lat - lat) > 0.0005 ||
+          Math.abs(last.lon - lon) > 0.0005;
+        const oldEnough = !last || now - last.t >= 12000;
+
+        if (!last || (moved && oldEnough)) {
+          arr.push({ lat, lon, t: now });
+        }
+
+        tracks[key] = arr.filter((p) => now - p.t <= TRACK_KEEP_MS);
+      }
+
+      for (const key of Object.keys(tracks)) {
+        const fresh = tracks[key].filter((p) => now - p.t <= TRACK_KEEP_MS);
+        if (fresh.length) tracks[key] = fresh;
+        else delete tracks[key];
+      }
+
+      await this.ctx.storage.put("tracks", tracks);
+
+      return new Response(JSON.stringify({ ok: true, tracks }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/tracks") {
+      const tracks = (await this.ctx.storage.get("tracks")) || {};
+      return new Response(JSON.stringify({ ok: true, tracks }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
+    return new Response("Not found", { status: 404 });
+  }
 }
 
 async function getSource(name, url) {
@@ -196,12 +254,30 @@ export default {
 
     const ac = mergeAircraft(adsb.ac, airplanes.ac);
 
+    let tracks = {};
+    try {
+      const id = env.TRACK_STORE.idFromName("ksu");
+      const stub = env.TRACK_STORE.get(id);
+      const trackResponse = await stub.fetch("https://track-store/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ac }),
+      });
+      if (trackResponse.ok) {
+        const trackJson = await trackResponse.json();
+        tracks = trackJson?.tracks || {};
+      }
+    } catch (error) {
+      tracks = {};
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,
         generated_at: new Date().toISOString(),
         center: KSU,
         count: ac.length,
+        tracks,
         sources: {
           "adsb.lol": {
             ok: adsb.ok,
