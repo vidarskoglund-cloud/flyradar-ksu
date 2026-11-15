@@ -137,31 +137,33 @@ function routeText(r){
   }
   return'Rute ikke tilgjengelig';
 }
-async function enrichRoutes(list){
-  const wanted=list.filter(p=>p.flight && !routeCache.has(p.flight));
-  if(wanted.length){
-    try{
-      const resp=await fetch('https://api.adsb.lol/api/0/routeset',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({planes:wanted.slice(0,100).map(p=>({callsign:p.flight,lat:p.lat,lng:p.lon}))})
-      });
-      if(resp.ok){
-        const rows=await resp.json();
-        if(Array.isArray(rows)){
-          rows.forEach(r=>{if(r&&r.callsign)routeCache.set(String(r.callsign).trim(),r)});
-        }
-      }
-    }catch(e){}
-  }
-  let changed=false;
-  list.forEach(p=>{
-    const r=p.flight?routeCache.get(p.flight):null;
-    const t=routeText(r);
+async function enrichRoute(p){
+  if(!p||!p.flight)return;
+  const key=p.flight.trim();
+  if(routeCache.has(key)){
+    const r=routeCache.get(key);
     p.routeData=r||null;
-    if(p.route!==t){p.route=t;changed=true}
-  });
-  if(changed)render(false);
+    p.route=routeText(r);
+    select(p);
+    return;
+  }
+  try{
+    const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
+    u.searchParams.set('callsign',key);
+    u.searchParams.set('lat',p.lat);
+    u.searchParams.set('lon',p.lon);
+    const resp=await fetch(u,{cache:'no-store',credentials:'omit'});
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const j=await resp.json();
+    const r=j?.route||null;
+    routeCache.set(key,r);
+    p.routeData=r;
+    p.route=routeText(r);
+    select(p);
+  }catch(e){
+    p.route='Rute ikke tilgjengelig';
+    select(p);
+  }
 }
 function mergeAircraft(primary,secondary){
   const byKey=new Map();
@@ -296,7 +298,7 @@ async function refresh(){
     $('status').className='ok';
     document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
     render(true);
-    enrichRoutes(planes);
+    if(selected)enrichRoute(selected);
     loadAvinor();
   }catch(e){
     if(lastGoodPlanes.length){
@@ -345,6 +347,7 @@ function drawRoute(p){
 function select(p){
   if(!p)return;
   selected=p;
+  if(p.flight && !p.routeData && !routeCache.has(p.flight.trim())) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
