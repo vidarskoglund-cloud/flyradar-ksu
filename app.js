@@ -154,6 +154,53 @@ async function fetchRemoteCallsign(callsign){
     return null;
   }
 }
+async function routeForCallsign(callsign,lat,lon){
+  try{
+    const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
+    u.searchParams.set('callsign',callsign);
+    if(Number.isFinite(Number(lat)))u.searchParams.set('lat',lat);
+    if(Number.isFinite(Number(lon)))u.searchParams.set('lon',lon);
+    const r=await fetch(u,{cache:'no-store',credentials:'omit'});
+    if(!r.ok)return null;
+    const j=await r.json();
+    return j?.route||null;
+  }catch(e){
+    return null;
+  }
+}
+function routeContainsAirport(route,code){
+  const c=String(code||'').toUpperCase();
+  const raw=String(route?.airport_codes||'').toUpperCase();
+  if(raw.includes(c))return true;
+  const aps=Array.isArray(route?._airports)?route._airports:[];
+  return aps.some(a=>[a.iata,a.icao,a.code].some(x=>String(x||'').toUpperCase()===c));
+}
+async function discoverKsuAircraftFromDeparture(f){
+  const origin=airportByCode(f?.airport);
+  if(!origin)return null;
+  try{
+    const url=`https://api.airplanes.live/v2/point/${origin.lat}/${origin.lon}/25`;
+    const j=await fetchJson(url);
+    const rows=(Array.isArray(j?.ac)?j.ac:[]).filter(a=>{
+      const cs=compactFlightId(a.flight);
+      if(!cs)return false;
+      const airline=compactFlightId(f.airline||'');
+      if(/^WF/.test(compactFlightId(f.flight_id||'')))return cs.startsWith('WIF');
+      if(/^SK/.test(compactFlightId(f.flight_id||'')))return cs.startsWith('SAS');
+      return airline?cs.startsWith(airline):true;
+    }).slice(0,8);
+
+    for(const a of rows){
+      const callsign=String(a.flight||'').trim();
+      const route=await routeForCallsign(callsign,a.lat,a.lon);
+      if(routeContainsAirport(route,'KSU')&&routeContainsAirport(route,origin.code)){
+        a._matchedRoute=route;
+        return a;
+      }
+    }
+  }catch(e){}
+  return null;
+}
 async function updateRemoteKsuTracking(){
   if(!avinorFlights.length)return;
   const s=settings();
@@ -162,11 +209,16 @@ async function updateRemoteKsuTracking(){
   for(let i=0;i<candidates.length;i++){
     const f=candidates[i];
     const callsign=trackingCallsign(f.flight_id);
-    const raw=await fetchRemoteCallsign(callsign);
+    let raw=await fetchRemoteCallsign(callsign);
+    if(!raw)raw=await discoverKsuAircraftFromDeparture(f);
     if(raw&&raw.lat!=null&&raw.lon!=null){
       const p=normalize({...raw,_source:'airplanes.live · KSU fjernsporing'},s);
       p.remoteTracked=true;
       p.ksuFlight=f;
+      if(raw._matchedRoute){
+        p.routeData=raw._matchedRoute;
+        p.route=routeText(raw._matchedRoute);
+      }
       found.push(p);
     }
     if(i<candidates.length-1)await new Promise(resolve=>setTimeout(resolve,1100));
