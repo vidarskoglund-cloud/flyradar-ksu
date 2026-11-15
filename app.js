@@ -10,6 +10,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).a
 let layer=L.layerGroup().addTo(map);
 let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
+let routeLayer=L.layerGroup().addTo(map);
 let home=L.circleMarker([63.1118,7.8245],{radius:7,color:'#6ee7ff',weight:3,fillColor:'#08111f',fillOpacity:1}).bindTooltip('KSU / Kvernberget').addTo(map);
 
 const rad=x=>x*Math.PI/180;
@@ -31,7 +32,7 @@ function normalize(a,s){
     hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:a.alt_baro??a.alt_geom,gs:a.gs,track:a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,source:a._source||'adsb.lol'
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol'
   }
 }
 function planeIcon(p){
@@ -156,6 +157,7 @@ async function enrichRoutes(list){
   list.forEach(p=>{
     const r=p.flight?routeCache.get(p.flight):null;
     const t=routeText(r);
+    p.routeData=r||null;
     if(p.route!==t){p.route=t;changed=true}
   });
   if(changed)render(false);
@@ -291,9 +293,40 @@ async function refresh(){
     }
   }
 }
+function airportCoords(a){
+  if(!a)return null;
+  const lat=+(a.lat??a.latitude??a.position?.lat);
+  const lon=+(a.lon??a.lng??a.longitude??a.position?.lon??a.position?.lng);
+  return Number.isFinite(lat)&&Number.isFinite(lon)?[lat,lon]:null;
+}
+function drawRoute(p){
+  routeLayer.clearLayers();
+  if(!p)return;
+  const r=p.routeData;
+  const aps=Array.isArray(r?._airports)?r._airports:[];
+  if(aps.length<2)return;
+
+  const from=airportCoords(aps[0]);
+  const to=airportCoords(aps[aps.length-1]);
+  const plane=[p.lat,p.lon];
+
+  if(from){
+    L.polyline([from,plane],{weight:2,opacity:.65,dashArray:'6 8'}).addTo(routeLayer);
+    L.circleMarker(from,{radius:5,weight:2,fillOpacity:1})
+      .bindTooltip('Fra: '+airportLabel(aps[0]),{direction:'top'})
+      .addTo(routeLayer);
+  }
+  if(to){
+    L.polyline([plane,to],{weight:3,opacity:.9}).addTo(routeLayer);
+    L.circleMarker(to,{radius:6,weight:2,fillOpacity:1})
+      .bindTooltip('Til: '+airportLabel(aps[aps.length-1]),{direction:'top'})
+      .addTo(routeLayer);
+  }
+}
 function select(p){
   if(!p)return;
   selected=p;
+  drawRoute(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
   $('hroute').textContent=p.route||'Henter rute…';
@@ -333,6 +366,7 @@ function render(autoFit=false){
   document.querySelectorAll('[data-h]').forEach(e=>e.onclick=()=>select(list.find(p=>p.hex===e.dataset.h)));
   if(list.length && (!selected || !list.some(p=>p.hex===selected.hex))) select(list.find(localRelevant)||list[0]);
   else if(selected){const current=list.find(p=>p.hex===selected.hex);if(current)select(current)}
+  if(!list.length)routeLayer.clearLayers();
   if(autoFit) fitMap(list,s);
 }
 function toggleDisplay(){
