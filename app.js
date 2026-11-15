@@ -43,9 +43,10 @@ function normalize(a,s){
 }
 function planeIcon(p){
   const tr=Number.isFinite(+p.track)?+p.track:0;
+  const iconOffset=-45;
   return L.divIcon({
     className:'plane-wrap',
-    html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr}deg)">✈</div>`,
+    html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr+iconOffset}deg)">✈</div>`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
 }
