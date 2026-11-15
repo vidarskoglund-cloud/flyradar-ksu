@@ -460,6 +460,12 @@ function render(autoFit=false){
   if($('fs-closest'))$('fs-closest').textContent=closestText;
   if($('fs-updated'))$('fs-updated').textContent=updatedText;
   if($('fs-status'))$('fs-status').textContent=$('status')?.textContent||'';
+  if($('fs-aircraft')){
+    const p=list[0]||null;
+    $('fs-aircraft').innerHTML=p
+      ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,displayRoute(p),f(p.alt,' ft'),f(p.gs,' kt')].filter(Boolean).join(' · ')}</span>`
+      : '<b>Ingen fly</b><span>–</span>';
+  }
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
