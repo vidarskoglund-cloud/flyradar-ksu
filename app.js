@@ -1,7 +1,6 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
 const trackHistory=new Map();
-let trackLayer=L.layerGroup().addTo(map);
 const routeCache=new Map();
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
@@ -15,6 +14,7 @@ let layer=L.layerGroup().addTo(map);
 let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
+let trackLayer=L.layerGroup().addTo(map);
 let home=L.circleMarker([63.1118,7.8245],{radius:7,color:'#6ee7ff',weight:3,fillColor:'#08111f',fillOpacity:1}).bindTooltip('KSU / Kvernberget').addTo(map);
 map.on('zoomend',()=>{try{updateRangeRings(settings())}catch(e){}});
 
