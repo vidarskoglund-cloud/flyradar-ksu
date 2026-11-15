@@ -1,5 +1,5 @@
 const $=x=>document.getElementById(x);
-let planes=[], localPlanes=[], remoteKsuPlanes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
+let planes=[], localPlanes=[], remoteKsuPlanes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent',fi:'ukjent'};
 let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
@@ -1062,6 +1062,7 @@ async function refresh(){
       sharedTracks=w.tracks||null;
       sourceState.adsb=w.sources?.['adsb.lol']?.ok?'OK':'feil';
       sourceState.apl=w.sources?.['airplanes.live']?.ok?'OK':'feil';
+      sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
     }catch(workerError){
       const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
