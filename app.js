@@ -238,16 +238,17 @@ function renderAvinor(){
   }
   const now=Date.now();
   const rows=avinorFlights
-    .filter(f=>{const t=Date.parse(f.schedule_time||'');return !Number.isFinite(t)||t>=now-60*60*1000})
-    .slice(0,12);
+    .filter(f=>{const t=Date.parse(f.schedule_time||'');return !Number.isFinite(t)||t>=now-30*60*1000})
+    .slice(0,5);
   el.innerHTML=rows.map(f=>{
     const t=f.schedule_time?new Date(f.schedule_time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
     const dep=f.arr_dep==='D';
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
     const status=f.status_code?(' · '+f.status_code):'';
+    const route=dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`;
     return `<div class="schedule-row ${heli?'heli':''}">
-      <div><b>${f.flight_id||'Ukjent'}</b><span>${heli?'Helikopter · ':''}${dep?'Fra KSU':'Til KSU'} ${dep?'→':'←'} ${f.airport||'–'}</span></div>
-      <div class="schedule-time">${t}${status}</div>
+      <div class="schedule-main"><b>${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b><span>${route}</span></div>
+      <div class="schedule-time">${t}</div>
     </div>`;
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
