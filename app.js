@@ -14,6 +14,7 @@ let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
 let home=L.circleMarker([63.1118,7.8245],{radius:7,color:'#6ee7ff',weight:3,fillColor:'#08111f',fillOpacity:1}).bindTooltip('KSU / Kvernberget').addTo(map);
+map.on('zoomend',()=>{try{updateRangeRings(settings())}catch(e){}});
 
 const rad=x=>x*Math.PI/180;
 const nm=km=>km/1.852;
@@ -53,8 +54,9 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 }
 function updateRangeRings(s){
   rangeLayer.clearLayers();
-  const overview=+s.r>=75;
-  const rings=overview?[50]:[10,25,50];
+  const zoom=map.getZoom();
+  const rings=zoom<8?[50]:zoom<10?[25,50]:[10,25,50];
+
   rings.forEach(n=>{
     const active=+s.r===n;
     L.circle([s.lat,s.lon],{
@@ -66,14 +68,13 @@ function updateRangeRings(s){
       dashArray:active?null:'6 8',
       interactive:false
     }).addTo(rangeLayer);
-    if(!overview){
-      const pos=destinationPoint(s.lat,s.lon,n,0);
-      L.marker(pos,{interactive:false,icon:L.divIcon({
-        className:'range-label-wrap',
-        html:`<div class="range-label ${active?'active':''}">${n} NM</div>`,
-        iconSize:[58,20],iconAnchor:[29,10]
-      })}).addTo(rangeLayer);
-    }
+
+    const pos=destinationPoint(s.lat,s.lon,n,0);
+    L.marker(pos,{interactive:false,icon:L.divIcon({
+      className:'range-label-wrap',
+      html:`<div class="range-label ${active?'active':''}">${n} NM</div>`,
+      iconSize:[58,20],iconAnchor:[29,10]
+    })}).addTo(rangeLayer);
   });
 }
 function areaBounds(lat,lon,radiusNm){
