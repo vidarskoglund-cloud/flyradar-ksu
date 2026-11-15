@@ -269,7 +269,7 @@ async function refresh(){
       if(lastGoodPlanes.length){
         planes=lastGoodPlanes.map(p=>({...p}));
         const localCount=planes.filter(localRelevant).length;
-        $('status').textContent=`${localCount} lokale / ${planes.length} totalt · cache · adsb.lol: ${sourceState.adsb} · Airplanes.live: ${sourceState.apl}`;
+        $('status').textContent=`${localCount} fly i området · viser sist kjente data`;
         $('status').className='muted';
         render(false);
         loadAvinor();
@@ -281,7 +281,9 @@ async function refresh(){
     planes=merged.filter(a=>a.lat!=null&&a.lon!=null).map(a=>normalize(a,s)).sort((a,b)=>a.d-b.d);
     lastGoodPlanes=planes.map(p=>({...p}));
     const localCount=planes.filter(localRelevant).length;
-    $('status').textContent=`${localCount} lokale / ${planes.length} totalt · adsb.lol: ${sourceState.adsb} · Airplanes.live: ${sourceState.apl}`;
+    const followed=planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
+    const followText=followed?' · følger '+(followed.flight||followed.reg||followed.hex):'';
+    $('status').textContent=`${localCount} fly i området${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     render(true);
     enrichRoutes(planes);
@@ -338,7 +340,7 @@ function select(p){
 }
 function render(autoFit=false){
   const s=settings();
-  let q=$('filter').value.toLowerCase();
+  let q=($('filter')?.value||'').toLowerCase();
   let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc,p.route].join(' ').toLowerCase().includes(q));
   $('count').textContent=list.filter(localRelevant).length;
   $('closest').textContent=list[0]?fNm(list[0].d):'–';
@@ -380,11 +382,11 @@ function toggleDisplay(){
   if(display && selected)select(selected);
   if(!display)setTimeout(()=>map.invalidateSize(),50);
 }
-$('refresh').onclick=refresh;
-$('filter').oninput=()=>render(false);
-$('radius').onchange=()=>{save();applyMapLevel(settings());refresh();};
-$('area').onchange=()=>{save();applyMapLevel(settings());};
-$('save').onclick=refresh;
-$('mode').onclick=toggleDisplay;
+if($('refresh'))$('refresh').onclick=refresh;
+if($('filter'))$('filter').oninput=()=>render(false);
+if($('radius'))$('radius').onchange=()=>{save();applyMapLevel(settings());refresh();};
+if($('area'))$('area').onchange=()=>{save();applyMapLevel(settings());};
+if($('save'))$('save').onclick=refresh;
+if($('mode'))$('mode').onclick=toggleDisplay;
 load();loadOffshore();refresh();setInterval(refresh,30000);setInterval(loadAvinor,600000);
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
