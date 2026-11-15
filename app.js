@@ -5,6 +5,7 @@ let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
 let layer=L.layerGroup().addTo(map);
 let rangeLayer=L.layerGroup().addTo(map);
+let offshoreLayer=L.layerGroup().addTo(map);
 let home=L.circleMarker([63.1118,7.8245],{radius:7,color:'#6ee7ff',weight:3,fillColor:'#08111f',fillOpacity:1}).bindTooltip('KSU / Kvernberget').addTo(map);
 
 const rad=x=>x*Math.PI/180;
@@ -145,6 +146,31 @@ async function fetchJson(url){
     return await r.json();
   }
 }
+async function loadOffshore(){
+  try{
+    const url='https://factmaps.sodir.no/api/rest/services/Factmaps/FactMapsWGS84/FeatureServer/304/query?where=1%3D1&outFields=fclName,fclKind,fclSurface,fclStatus&returnGeometry=true&f=geojson';
+    const r=await fetch(url);
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const gj=await r.json();
+    offshoreLayer.clearLayers();
+    (gj.features||[]).forEach(f=>{
+      const c=f.geometry&&f.geometry.coordinates;
+      if(!c||c.length<2)return;
+      const p=f.properties||{};
+      const name=p.fclName||'Offshore-installasjon';
+      const kind=p.fclKind||p.fclSurface||'';
+      const icon=L.divIcon({
+        className:'offshore-wrap',
+        html:'<div class="offshore-marker">◆</div>',
+        iconSize:[18,18],iconAnchor:[9,9]
+      });
+      L.marker([c[1],c[0]],{icon})
+        .bindTooltip(name,{direction:'top'})
+        .bindPopup('<b>'+name+'</b><br>'+[kind,p.fclStatus].filter(Boolean).join(' · '))
+        .addTo(offshoreLayer);
+    });
+  }catch(e){}
+}
 async function loadAvinor(){
   try{
     const bucket=Math.floor(Date.now()/600000);
@@ -262,5 +288,5 @@ $('filter').oninput=()=>render(false);
 $('radius').onchange=refresh;
 $('save').onclick=refresh;
 $('mode').onclick=toggleDisplay;
-load();refresh();setInterval(refresh,180000);setInterval(loadAvinor,600000);
+load();loadOffshore();refresh();setInterval(refresh,180000);setInterval(loadAvinor,600000);
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
