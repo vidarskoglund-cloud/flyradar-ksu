@@ -832,21 +832,56 @@ function findKsuFlight(p){
   const aliases=flightAliases(p.flight);
   if(!aliases.size)return null;
   const now=Date.now();
-  const candidates=avinorFlights.filter(f=>{
+
+  const exact=avinorFlights.filter(f=>{
     const avAliases=flightAliases(f.flight_id);
     const same=[...aliases].some(x=>avAliases.has(x));
     if(!same)return false;
     const t=Date.parse(f.schedule_time||'');
     return !Number.isFinite(t)||Math.abs(t-now)<=8*60*60*1000;
   });
-  if(!candidates.length)return null;
-  candidates.sort((a,b)=>{
-    const ta=Date.parse(a.schedule_time||''),tb=Date.parse(b.schedule_time||'');
-    const da=Number.isFinite(ta)?Math.abs(ta-now):Number.MAX_SAFE_INTEGER;
-    const db=Number.isFinite(tb)?Math.abs(tb-now):Number.MAX_SAFE_INTEGER;
-    return da-db;
+  if(exact.length){
+    exact.sort((a,b)=>{
+      const ta=Date.parse(a.schedule_time||''),tb=Date.parse(b.schedule_time||'');
+      const da=Number.isFinite(ta)?Math.abs(ta-now):Number.MAX_SAFE_INTEGER;
+      const db=Number.isFinite(tb)?Math.abs(tb-now):Number.MAX_SAFE_INTEGER;
+      return da-db;
+    });
+    return exact[0];
+  }
+
+  const callsign=compactFlightId(p.flight);
+  const carrier=callsign.startsWith('WIF')?'WF':callsign.startsWith('SAS')?'SK':'';
+  if(!carrier)return null;
+
+  const movement=ksuMovementStatus(p).label;
+  const approaching=['Ser ut til å være på innflyging','Nærmer seg KSU'].includes(movement);
+  const leaving=movement==='Forlater KSU';
+  const dNm=nm(p.d);
+
+  const fallback=avinorFlights.filter(f=>{
+    if(!compactFlightId(f.flight_id).startsWith(carrier))return false;
+    if(String(f.status_code||'').toUpperCase()==='C')return false;
+    const t=Date.parse(f.schedule_time||'');
+    if(!Number.isFinite(t))return false;
+
+    if(f.arr_dep!=='D'){
+      if(dNm>150)return false;
+      if(!approaching && dNm>35)return false;
+      return t>=now-120*60*1000 && t<=now+90*60*1000;
+    }
+
+    if(dNm>75)return false;
+    if(!leaving && dNm>20)return false;
+    return t>=now-60*60*1000 && t<=now+90*60*1000;
   });
-  return candidates[0];
+
+  if(!fallback.length)return null;
+  fallback.sort((a,b)=>{
+    const ta=Date.parse(a.schedule_time||''),tb=Date.parse(b.schedule_time||'');
+    return Math.abs(ta-now)-Math.abs(tb-now);
+  });
+  return fallback[0];
 }
 function attachAvinorMatches(){
   planes.forEach(p=>{p.ksuFlight=findKsuFlight(p);});
