@@ -58,7 +58,23 @@ function planeIcon(p){
     iconSize:[34,34],iconAnchor:[17,17]
   });
 }
-function planeKey(p){return p.hex||p.reg||p.flight||''}
+function planeKey(p){return String(p.hex||p.reg||p.flight||'').trim().toLowerCase()}
+function ingestSharedTracks(shared){
+  if(!shared||typeof shared!=='object')return false;
+  const cutoff=Date.now()-5*60*1000;
+  let used=false;
+  for(const [key,points] of Object.entries(shared)){
+    if(!Array.isArray(points))continue;
+    const fresh=points
+      .map(x=>({lat:Number(x.lat),lon:Number(x.lon),t:Number(x.t)}))
+      .filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon)&&Number.isFinite(x.t)&&x.t>=cutoff);
+    if(fresh.length){
+      trackHistory.set(String(key).toLowerCase(),fresh);
+      used=true;
+    }
+  }
+  return used;
+}
 function updateTrackHistory(list){
   const now=Date.now();
   const keepMs=5*60*1000;
@@ -448,13 +464,14 @@ async function refresh(){
   home.setLatLng([s.lat,s.lon]);
   updateRangeRings(s);
   try{
-    let merged=[], workerOk=false;
+    let merged=[], workerOk=false, sharedTracks=null;
     try{
       const wr=await fetch(WORKER_URL,{cache:'no-store',credentials:'omit'});
       if(!wr.ok)throw new Error('Worker HTTP '+wr.status);
       const w=await wr.json();
       if(!w||w.ok!==true||!Array.isArray(w.ac))throw new Error('Ugyldig Worker-svar');
       merged=w.ac;
+      sharedTracks=w.tracks||null;
       sourceState.adsb=w.sources?.['adsb.lol']?.ok?'OK':'feil';
       sourceState.apl=w.sources?.['airplanes.live']?.ok?'OK':'feil';
       workerOk=true;
@@ -478,7 +495,7 @@ async function refresh(){
       .sort((a,b)=>a.d-b.d);
 
     lastGoodPlanes=planes.map(p=>({...p}));
-    updateTrackHistory(planes);
+    if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
     check50NmNotifications(planes);
     const localCount=planes.filter(localRelevant).length;
     const followed=planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
