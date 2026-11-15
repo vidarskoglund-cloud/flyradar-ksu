@@ -112,8 +112,8 @@ function followNearest(list,s){
     return;
   }
 
-  if(nearestNm<=30){
-    const nearby=sorted.filter(p=>nm(p.d)<=30);
+  if(nearestNm<=25){
+    const nearby=sorted.filter(p=>nm(p.d)<=25);
     const points=[airport,...nearby.map(p=>[p.lat,p.lon])];
     map.fitBounds(L.latLngBounds(points),{
       padding:[60,60],
