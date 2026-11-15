@@ -96,6 +96,32 @@ export class TrackStore extends DurableObject {
       });
     }
 
+    if (request.method === "POST" && url.pathname === "/subscriptions") {
+      const subscription = await request.json();
+      if (!subscription?.endpoint) {
+        return new Response(JSON.stringify({ ok: false, error: "Invalid subscription" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        });
+      }
+      const subscriptions = (await this.ctx.storage.get("subscriptions")) || {};
+      subscriptions[subscription.endpoint] = {
+        subscription,
+        updated_at: Date.now(),
+      };
+      await this.ctx.storage.put("subscriptions", subscriptions);
+      return new Response(JSON.stringify({ ok: true, count: Object.keys(subscriptions).length }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/subscriptions/status") {
+      const subscriptions = (await this.ctx.storage.get("subscriptions")) || {};
+      return new Response(JSON.stringify({ ok: true, count: Object.keys(subscriptions).length }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
     return new Response("Not found", { status: 404 });
   }
 }
@@ -193,6 +219,63 @@ export default {
       } catch (error) {
         return new Response(JSON.stringify({ error: "Route lookup error" }), {
           status: 502,
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      }
+    }
+
+    if (url.pathname === "/push/public-key") {
+      if (!env.VAPID_PUBLIC_KEY) {
+        return new Response(JSON.stringify({ ok: false, enabled: false }), {
+          status: 503,
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      }
+      return new Response(JSON.stringify({ ok: true, enabled: true, publicKey: env.VAPID_PUBLIC_KEY }), {
+        status: 200,
+        headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+      });
+    }
+
+    if (url.pathname === "/push/subscribe" && request.method === "POST") {
+      try {
+        const subscription = await request.json();
+        const id = env.TRACK_STORE.idFromName("ksu");
+        const stub = env.TRACK_STORE.get(id);
+        const r = await stub.fetch("https://track-store/subscriptions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(subscription),
+        });
+        const body = await r.text();
+        return new Response(body, {
+          status: r.status,
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ ok: false, error: "Subscription failed" }), {
+          status: 500,
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      }
+    }
+
+    if (url.pathname === "/push/status") {
+      try {
+        const id = env.TRACK_STORE.idFromName("ksu");
+        const stub = env.TRACK_STORE.get(id);
+        const r = await stub.fetch("https://track-store/subscriptions/status");
+        const data = await r.json();
+        return new Response(JSON.stringify({
+          ok: true,
+          enabled: Boolean(env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY && env.VAPID_SUBJECT),
+          subscriptions: data?.count || 0,
+        }), {
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ ok: false }), {
+          status: 500,
           headers: { ...corsHeaders(), "Cache-Control": "no-store" },
         });
       }
