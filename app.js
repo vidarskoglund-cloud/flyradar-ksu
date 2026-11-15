@@ -99,7 +99,13 @@ let home=L.marker([63.1118,7.8245],{
   zIndexOffset:900
 }).bindTooltip('KSU / Kvernberget',{direction:'top'}).addTo(map);
 function updateHomeAirportMarker(){
-  const compact=map.getZoom()>=11;
+  const zoom=map.getZoom();
+  if(zoom>=13){
+    if(map.hasLayer(home))map.removeLayer(home);
+    return;
+  }
+  if(!map.hasLayer(home))home.addTo(map);
+  const compact=zoom>=11;
   home.setIcon(airportIcon('KSU','Kvernberget','home',compact));
 }
 map.on('zoomend',()=>{try{updateRangeRings(settings());renderNorwayAirports();updateHomeAirportMarker()}catch(e){}});
