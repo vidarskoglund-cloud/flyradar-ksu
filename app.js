@@ -265,6 +265,25 @@ function routeText(r){
   }
   return'Rute ikke tilgjengelig';
 }
+function routeCardParts(p){
+  const r=p?.routeData;
+  const aps=Array.isArray(r?._airports)?r._airports:[];
+  if(aps.length>=2){
+    const from=aps[0],to=aps[aps.length-1];
+    return {
+      fromCode:from.iata||from.icao||from.code||'–',
+      fromPlace:from.city||from.name||'',
+      toCode:to.iata||to.icao||to.code||'–',
+      toPlace:to.city||to.name||''
+    };
+  }
+  const txt=displayRoute(p);
+  const parts=txt.split('→').map(x=>x.trim());
+  if(parts.length===2){
+    return {fromCode:parts[0],fromPlace:'',toCode:parts[1],toPlace:''};
+  }
+  return null;
+}
 function specialService(p){
   const f=(p.flight||'').toUpperCase();
   const op=(p.operator||'').toLowerCase();
@@ -635,19 +654,39 @@ function render(autoFit=false){
   const shown=current||nearest;
   if(shown){
     selected=shown;
-    $('cards').innerHTML=`<div class="card ${localRelevant(shown)?'local-card':''}">
-      <div class="top"><div>
-        <div class="call">${shown.flight||shown.reg||shown.hex||'Ukjent'}</div>
-        <div class="muted">${[shown.operator,shown.reg,shown.type,shown.desc].filter(Boolean).join(' · ')||shown.hex}</div><div class="source">${shown.source||''}</div>
-        <div class="route">${displayRoute(shown)}</div>
-        <div class="muted" style="margin-top:5px">${movementText(shown)}</div>
-      </div><div class="dist">${fNm(shown.d)}</div></div>
-      <div class="grid">
+    const rp=routeCardParts(shown);
+    const service=specialService(shown);
+    const routeBlock=rp
+      ? `<div class="flight-route">
+          <div class="route-end"><b>${rp.fromCode}</b><span>${rp.fromPlace}</span></div>
+          <div class="route-arrow"><span>✈</span><i></i></div>
+          <div class="route-end"><b>${rp.toCode}</b><span>${rp.toPlace}</span></div>
+        </div>`
+      : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div></div>`;
+    $('cards').innerHTML=`<div class="card aircraft-card ${localRelevant(shown)?'local-card':''}">
+      <div class="aircraft-head">
+        <div>
+          <div class="aircraft-title">
+            <span class="call">${shown.flight||shown.reg||shown.hex||'Ukjent'}</span>
+            ${shown.type?`<span class="type-pill">${shown.type}</span>`:''}
+          </div>
+          <div class="operator">${shown.operator||service||shown.desc||''}</div>
+        </div>
+        <div class="dist">${fNm(shown.d)}</div>
+      </div>
+      ${routeBlock}
+      <div class="aircraft-metrics">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
         <div><span>FART</span><b>${f(shown.gs,' kt')}</b></div>
         <div><span>KURS</span><b>${f(shown.track,'°')}</b></div>
         <div><span>VERT.</span><b>${f(shown.vr,' ft/min')}</b></div>
       </div>
+      <div class="aircraft-foot">
+        <span>${shown.desc||shown.type||'Fly'}</span>
+        <span>${shown.reg?('REG. '+shown.reg):''}</span>
+      </div>
+      <div class="movement">${movementText(shown)}</div>
+      <div class="source">${shown.source||''}</div>
     </div>`;
     select(shown,false);
   }else{
