@@ -285,7 +285,7 @@ async function refresh(){
     planes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
       .map(a=>normalize(a,s))
-      .filter(p=>nm(p.d)<=s.r)
+      .filter(p=>nm(p.d)<=150)
       .sort((a,b)=>a.d-b.d);
 
     lastGoodPlanes=planes.map(p=>({...p}));
