@@ -1,5 +1,7 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
+const trackHistory=new Map();
+let trackLayer=L.layerGroup().addTo(map);
 const routeCache=new Map();
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
@@ -45,6 +47,70 @@ function planeIcon(p){
     html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr}deg)">✈</div>`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
+}
+function planeKey(p){return p.hex||p.reg||p.flight||''}
+function updateTrackHistory(list){
+  const now=Date.now();
+  const keepMs=20*60*1000;
+  const active=new Set();
+  list.forEach(p=>{
+    const key=planeKey(p);
+    if(!key||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;
+    active.add(key);
+    const arr=trackHistory.get(key)||[];
+    const last=arr[arr.length-1];
+    if(!last || dist(last.lat,last.lon,p.lat,p.lon)>0.05 || now-last.t>15000){
+      arr.push({lat:p.lat,lon:p.lon,t:now});
+    }
+    const fresh=arr.filter(x=>now-x.t<=keepMs);
+    trackHistory.set(key,fresh);
+  });
+  for(const [key,arr] of trackHistory){
+    const fresh=arr.filter(x=>now-x.t<=keepMs);
+    if(fresh.length)trackHistory.set(key,fresh); else trackHistory.delete(key);
+  }
+}
+function courseLabel(track){
+  if(!Number.isFinite(+track))return'ukjent retning';
+  const dirs=['nord','nordøst','øst','sørøst','sør','sørvest','vest','nordvest'];
+  return dirs[Math.round(((+track%360)+360)%360/45)%8];
+}
+function predictedPoints(p){
+  const gs=Number(p.gs), tr=Number(p.track);
+  if(!Number.isFinite(gs)||!Number.isFinite(tr)||gs<=0)return[];
+  return [5,10].map(min=>{
+    const nmAhead=gs*(min/60);
+    const pos=destinationPoint(p.lat,p.lon,nmAhead,tr);
+    return {min,nmAhead,pos};
+  });
+}
+function drawTrackAndPrediction(p){
+  trackLayer.clearLayers();
+  if(!p)return;
+  const key=planeKey(p);
+  const hist=trackHistory.get(key)||[];
+  if(hist.length>=2){
+    L.polyline(hist.map(x=>[x.lat,x.lon]),{
+      weight:3,opacity:.7
+    }).addTo(trackLayer);
+  }
+  const preds=predictedPoints(p);
+  if(preds.length){
+    L.polyline([[p.lat,p.lon],...preds.map(x=>x.pos)],{
+      weight:2,opacity:.75,dashArray:'7 8'
+    }).addTo(trackLayer);
+    preds.forEach(x=>{
+      L.circleMarker(x.pos,{radius:4,weight:1,fillOpacity:1})
+        .bindTooltip(`Estimert +${x.min} min`,{direction:'top'})
+        .addTo(trackLayer);
+    });
+  }
+}
+function movementText(p){
+  const preds=predictedPoints(p);
+  const dir=courseLabel(p.track);
+  if(!preds.length)return `Retning: ${dir}`;
+  return `Retning: ${dir} · +5 min ca. ${preds[0].nmAhead.toFixed(0)} NM · +10 min ca. ${preds[1].nmAhead.toFixed(0)} NM`;
 }
 function destinationPoint(lat,lon,distanceNm,bearingDeg){
   const R=6371, d=distanceNm*1.852/R, br=rad(bearingDeg), p1=rad(lat), l1=rad(lon);
@@ -378,6 +444,7 @@ async function refresh(){
       .sort((a,b)=>a.d-b.d);
 
     lastGoodPlanes=planes.map(p=>({...p}));
+    updateTrackHistory(planes);
     check50NmNotifications(planes);
     const localCount=planes.filter(localRelevant).length;
     const followed=planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
@@ -437,6 +504,7 @@ function select(p,lookupRoute=true){
   selected=p;
   if(lookupRoute && p.flight && !p.routeData && !routeCache.has(p.flight.trim())) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
+  drawTrackAndPrediction(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
   $('hroute').textContent=displayRoute(p);
@@ -463,7 +531,7 @@ function render(autoFit=false){
   if($('fs-aircraft')){
     const p=list[0]||null;
     $('fs-aircraft').innerHTML=p
-      ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,displayRoute(p),f(p.alt,' ft'),f(p.gs,' kt')].filter(Boolean).join(' · ')}</span>`
+      ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,displayRoute(p),f(p.alt,' ft'),f(p.gs,' kt'),movementText(p)].filter(Boolean).join(' · ')}</span>`
       : '<b>Ingen fly</b><span>–</span>';
   }
   layer.clearLayers();
@@ -483,6 +551,7 @@ function render(autoFit=false){
         <div class="call">${shown.flight||shown.reg||shown.hex||'Ukjent'}</div>
         <div class="muted">${[shown.operator,shown.reg,shown.type,shown.desc].filter(Boolean).join(' · ')||shown.hex}</div><div class="source">${shown.source||''}</div>
         <div class="route">${displayRoute(shown)}</div>
+        <div class="muted" style="margin-top:5px">${movementText(shown)}</div>
       </div><div class="dist">${fNm(shown.d)}</div></div>
       <div class="grid">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
