@@ -1,0 +1,1 @@
+const C='ksu-fly-v1',A=['./','index.html','app.js','manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(A))));self.addEventListener('fetch',e=>{if(e.request.url.includes('api.adsb.lol'))return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)))})
