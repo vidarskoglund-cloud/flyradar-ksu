@@ -1,5 +1,5 @@
 const $=x=>document.getElementById(x);
-let planes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
+let planes=[], localPlanes=[], remoteKsuPlanes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
 let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
@@ -110,6 +110,96 @@ function localRelevant(p){
   const alt=Number(p.alt);
   return distanceNm<=30 && Number.isFinite(alt) && alt<=25000;
 }
+
+function mergeTrackedPlanes(local,remote){
+  const byKey=new Map();
+  [...local,...remote].forEach(p=>{
+    const key=planeKey(p);
+    if(!key)return;
+    if(!byKey.has(key))byKey.set(key,p);
+    else{
+      const old=byKey.get(key);
+      byKey.set(key,{...p,...old,remoteTracked:Boolean(old.remoteTracked||p.remoteTracked),ksuFlight:old.ksuFlight||p.ksuFlight||null});
+    }
+  });
+  return [...byKey.values()].sort((a,b)=>a.d-b.d);
+}
+function trackingCallsign(flightId){
+  const id=compactFlightId(flightId);
+  const m=id.match(/^([A-Z]{2,3})(\d+[A-Z]?)$/);
+  if(!m)return id;
+  const map={SK:'SAS',WF:'WIF'};
+  return (map[m[1]]||m[1])+m[2];
+}
+function remoteArrivalCandidates(){
+  const now=Date.now();
+  return avinorFlights
+    .filter(f=>{
+      if(f.arr_dep==='D')return false;
+      if(String(f.status_code||'').toUpperCase()==='C')return false;
+      const t=Date.parse(f.schedule_time||'');
+      return Number.isFinite(t)&&t>=now-25*60*1000&&t<=now+120*60*1000;
+    })
+    .sort((a,b)=>Date.parse(a.schedule_time)-Date.parse(b.schedule_time))
+    .slice(0,2);
+}
+async function fetchRemoteCallsign(callsign){
+  if(!callsign)return null;
+  try{
+    const url='https://api.airplanes.live/v2/callsign/'+encodeURIComponent(callsign);
+    const j=await fetchJson(url);
+    const rows=Array.isArray(j?.ac)?j.ac:[];
+    return rows.find(a=>compactFlightId(a.flight)===compactFlightId(callsign))||rows[0]||null;
+  }catch(e){
+    return null;
+  }
+}
+async function updateRemoteKsuTracking(){
+  if(!avinorFlights.length)return;
+  const s=settings();
+  const found=[];
+  const candidates=remoteArrivalCandidates();
+  for(let i=0;i<candidates.length;i++){
+    const f=candidates[i];
+    const callsign=trackingCallsign(f.flight_id);
+    const raw=await fetchRemoteCallsign(callsign);
+    if(raw&&raw.lat!=null&&raw.lon!=null){
+      const p=normalize({...raw,_source:'airplanes.live · KSU fjernsporing'},s);
+      p.remoteTracked=true;
+      p.ksuFlight=f;
+      found.push(p);
+    }
+    if(i<candidates.length-1)await new Promise(resolve=>setTimeout(resolve,1100));
+  }
+  remoteKsuPlanes=found;
+  planes=mergeTrackedPlanes(localPlanes,remoteKsuPlanes);
+  attachAvinorMatches();
+}
+function ksuPriorityScore(p){
+  const info=ksuFlightInfo(p);
+  if(!info)return 0;
+  const d=nm(p.d);
+  const alt=Number(p.alt);
+  if(info.direction==='Ankomst KSU'){
+    if(info.status==='Landet')return 0;
+    if(d<=20)return 1000;
+    if(d<=50)return 950;
+    if(d<=150)return 900;
+    return p.remoteTracked?850:0;
+  }
+  if(info.direction==='Avgang KSU'){
+    if(info.status==='Innstilt')return 0;
+    if(d<=75&&(!Number.isFinite(alt)||alt<=20000))return 925;
+  }
+  return 0;
+}
+function priorityKsuAircraft(list){
+  return list
+    .map(p=>({p,score:ksuPriorityScore(p)}))
+    .filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score||a.p.d-b.p.d)[0]?.p||null;
+}
+
 function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value,area:$('area')?.value||'airport'}}
 function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
 function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r;if(s.area&&$('area'))$('area').value=s.area}catch(e){}}
@@ -346,11 +436,24 @@ function focusIdleCandidate(list,advance=false){
 }
 function followNearest(list,s){
   const sorted=list.slice().sort((a,b)=>a.d-b.d);
-  const nearest=sorted[0];
+  const priority=priorityKsuAircraft(sorted);
+  const nearest=priority||sorted[0];
   if(!nearest){ applyMapLevel(s); return; }
 
   const airport=[63.1118,7.8245];
   const nearestNm=nm(nearest.d);
+
+  if(priority && nearestNm>50){
+    idleFocusIndex=0;
+    map.fitBounds(L.latLngBounds([airport,[priority.lat,priority.lon]]),{
+      padding:[55,55],
+      maxZoom:7
+    });
+    selected=priority;
+    select(priority,false);
+    if($('fs-status'))$('fs-status').textContent='følger KSU-rute · '+(priority.flight||priority.reg||priority.hex);
+    return;
+  }
 
   if(nearestNm<=10){
     idleFocusIndex=0;
@@ -528,9 +631,10 @@ async function loadAvinor(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
     avinorFlights=Array.isArray(j.flights)?j.flights:[];
+    await updateRemoteKsuTracking();
     attachAvinorMatches();
     renderAvinor();
-    render(false);
+    render(true);
   }catch(e){
     avinorFlights=[];
     attachAvinorMatches();
@@ -759,19 +863,21 @@ async function refresh(){
       merged=mergeAircraft(adsbData,aplData);
     }
 
-    planes=merged
+    localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
       .map(a=>normalize(a,s))
       .filter(p=>nm(p.d)<=150)
       .sort((a,b)=>a.d-b.d);
 
+    planes=mergeTrackedPlanes(localPlanes,remoteKsuPlanes);
     attachAvinorMatches();
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
     check50NmNotifications(planes);
     const localCount=planes.filter(localRelevant).length;
-    const followed=planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
-    const followText=followed?' · følger '+(followed.flight||followed.reg||followed.hex):'';
+    const priority=priorityKsuAircraft(planes);
+    const followed=priority||planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
+    const followText=followed?' · følger '+(priority?'KSU ':'')+(followed.flight||followed.reg||followed.hex):'';
     $('status').textContent=`${localCount} fly i området${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
@@ -865,10 +971,12 @@ function render(autoFit=false){
       ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,ksuFlightInfo(p)?.route||displayRoute(p),ksuOperationalStatus(p),f(p.alt,' ft'),f(p.gs,' kt')].filter(Boolean).join(' · ')}</span>`
       : '<b>Ingen fly</b><span>–</span>';
   }
+  const priority=priorityKsuAircraft(list);
+  if(priority && (!selected || ksuPriorityScore(priority)>ksuPriorityScore(selected)))selected=priority;
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
-      .bindTooltip(`${p.ksuFlight?'KSU · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
+      .bindTooltip(`${p.ksuFlight?'KSU · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}${p.remoteTracked?' · fjernsporing':''}`,{direction:'top',offset:[0,-15]})
       .on('click',()=>{select(p);render(false)})
       .addTo(layer);
   });
