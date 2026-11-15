@@ -157,6 +157,8 @@ async function loadOffshore(){
       const c=f.geometry&&f.geometry.coordinates;
       if(!c||c.length<2)return;
       const p=f.properties||{};
+      const dNm=nm(dist(63.1118,7.8245,c[1],c[0]));
+      if(dNm>150)return;
       const name=p.fclName||'Offshore-installasjon';
       const kind=p.fclKind||p.fclSurface||'';
       const icon=L.divIcon({
@@ -166,7 +168,7 @@ async function loadOffshore(){
       });
       L.marker([c[1],c[0]],{icon})
         .bindTooltip(name,{direction:'top'})
-        .bindPopup('<b>'+name+'</b><br>'+[kind,p.fclStatus].filter(Boolean).join(' · '))
+        .bindPopup('<b>'+name+'</b><br>'+[kind,p.fclStatus].filter(Boolean).join(' · ')+'<br>'+dNm.toFixed(0)+' NM fra KSU')
         .addTo(offshoreLayer);
     });
   }catch(e){}
