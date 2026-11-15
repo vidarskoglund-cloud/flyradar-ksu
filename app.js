@@ -147,6 +147,24 @@ function routeText(r){
   }
   return'Rute ikke tilgjengelig';
 }
+function specialService(p){
+  const f=(p.flight||'').toUpperCase();
+  const op=(p.operator||'').toLowerCase();
+  const desc=(p.desc||'').toLowerCase();
+  const type=(p.type||'').toUpperCase();
+
+  if(f==='BNOV' || /babcock|luftambulanse|air ambulance|ambulance/.test(op+' '+desc)) return 'Ambulansefly';
+  if(/politi|police/.test(op+' '+desc) || /^POL/.test(f)) return 'Politi';
+  if(/redning|rescue|sar/.test(op+' '+desc) || /^SAR/.test(f)) return 'Redning';
+  if(/military|air force|forsvaret/.test(op+' '+desc)) return 'Militær';
+  if(/helicopter|helikopter|chc/.test(op+' '+desc) || /^HK[SM]/.test(f) || type.startsWith('S92')) return 'Offshorehelikopter';
+  return '';
+}
+function displayRoute(p){
+  const service=specialService(p);
+  if(service)return service;
+  return displayRoute(p);
+}
 async function enrichRoute(p){
   if(!p||!p.flight)return;
   const key=p.flight.trim();
@@ -363,7 +381,7 @@ function select(p){
   drawRoute(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
-  $('hroute').textContent=p.route||'Henter rute…';
+  $('hroute').textContent=displayRoute(p);
   $('hdist').textContent=fNm(p.d);
   $('halt').textContent=f(p.alt,' ft');
   $('hspd').textContent=f(p.gs,' kt');
@@ -393,7 +411,7 @@ function render(autoFit=false){
       <div class="top"><div>
         <div class="call">${shown.flight||shown.reg||shown.hex||'Ukjent'}</div>
         <div class="muted">${[shown.operator,shown.reg,shown.type,shown.desc].filter(Boolean).join(' · ')||shown.hex}</div><div class="source">${shown.source||''}</div>
-        <div class="route">${shown.route||'Henter rute…'}</div>
+        <div class="route">${displayRoute(shown)}</div>
       </div><div class="dist">${fNm(shown.d)}</div></div>
       <div class="grid">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
