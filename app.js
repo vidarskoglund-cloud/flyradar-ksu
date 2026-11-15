@@ -12,6 +12,11 @@ const nm=km=>km/1.852;
 function dist(a,b,c,d){let R=6371,x=rad(c-a),y=rad(d-b),q=Math.sin(x/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(y/2)**2;return 2*R*Math.atan2(Math.sqrt(q),Math.sqrt(1-q))}
 function f(v,u=''){return(v===undefined||v===null||v==='ground')?'–':Math.round(+v)+u}
 function fNm(km){return km==null?'–':nm(km).toFixed(1)+' NM'}
+function localRelevant(p){
+  const distanceNm=nm(p.d);
+  const alt=typeof p.alt==='number'?p.alt:99999;
+  return distanceNm<=25 && alt<=20000;
+}
 function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value}}
 function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
 function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r}catch(e){}}
@@ -28,7 +33,7 @@ function planeIcon(p){
   const tr=Number.isFinite(+p.track)?+p.track:0;
   return L.divIcon({
     className:'plane-wrap',
-    html:`<div class="plane-marker" style="transform:rotate(${tr}deg)">✈</div>`,
+    html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr}deg)">✈</div>`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
 }
@@ -40,8 +45,8 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 }
 function updateRangeRings(s){
   rangeLayer.clearLayers();
-  [50,100,150].forEach(n=>{
-    const active=+s.r===n;
+  [10,25,50].forEach(n=>{
+    const active=n===25;
     L.circle([s.lat,s.lon],{
       radius:n*1852,
       color:active?'#6ee7ff':'#6b8198',
@@ -60,9 +65,13 @@ function updateRangeRings(s){
   });
 }
 function fitMap(list,s){
-  const pts=[[s.lat,s.lon],...list.map(p=>[p.lat,p.lon])];
-  if(pts.length>1) map.fitBounds(L.latLngBounds(pts),{padding:[45,45],maxZoom:9});
-  else map.setView([s.lat,s.lon],7);
+  const bounds=L.latLngBounds([
+    destinationPoint(s.lat,s.lon,30,0),
+    destinationPoint(s.lat,s.lon,30,90),
+    destinationPoint(s.lat,s.lon,30,180),
+    destinationPoint(s.lat,s.lon,30,270)
+  ]);
+  map.fitBounds(bounds,{padding:[28,28]});
 }
 function airportLabel(a){
   if(!a)return'';
@@ -120,7 +129,7 @@ async function refresh(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     let j=await r.json();
     planes=(j.ac||[]).filter(a=>a.lat!=null&&a.lon!=null).map(a=>normalize(a,s)).sort((a,b)=>a.d-b.d);
-    $('status').textContent=planes.length+' fly';$('status').className='ok';
+    const localCount=planes.filter(localRelevant).length;$('status').textContent=`${localCount} lokale / ${planes.length} totalt`;$('status').className='ok';
     render(true);
     enrichRoutes(planes);
   }catch(e){
@@ -144,17 +153,17 @@ function render(autoFit=false){
   const s=settings();
   let q=$('filter').value.toLowerCase();
   let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc,p.route].join(' ').toLowerCase().includes(q));
-  $('count').textContent=list.length;
+  $('count').textContent=list.filter(localRelevant).length;
   $('closest').textContent=list[0]?fNm(list[0].d):'–';
   $('updated').textContent=new Date().toLocaleTimeString('no-NO');
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
-      .bindTooltip(`${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
+      .bindTooltip(`${localRelevant(p)?'LOKAL · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
       .on('click',()=>select(p))
       .addTo(layer);
   });
-  $('cards').innerHTML=list.map(p=>`<div class="card" data-h="${p.hex}">
+  $('cards').innerHTML=list.map(p=>`<div class="card ${localRelevant(p)?'local-card':''}" data-h="${p.hex}">
     <div class="top"><div>
       <div class="call">${p.flight||p.reg||p.hex||'Ukjent'}</div>
       <div class="muted">${[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex}</div>
@@ -168,7 +177,7 @@ function render(autoFit=false){
     </div>
   </div>`).join('');
   document.querySelectorAll('[data-h]').forEach(e=>e.onclick=()=>select(list.find(p=>p.hex===e.dataset.h)));
-  if(list.length && (!selected || !list.some(p=>p.hex===selected.hex))) select(list[0]);
+  if(list.length && (!selected || !list.some(p=>p.hex===selected.hex))) select(list.find(localRelevant)||list[0]);
   else if(selected){const current=list.find(p=>p.hex===selected.hex);if(current)select(current)}
   if(autoFit) fitMap(list,s);
 }
