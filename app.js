@@ -51,10 +51,13 @@ function getTrackDeg(p){
 }
 function planeIcon(p){
   const tr=getTrackDeg(p)??0;
-  const iconOffset=-45;
   return L.divIcon({
     className:'plane-wrap',
-    html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr+iconOffset}deg)">✈</div>`,
+    html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr}deg)">
+      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+        <path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>
+      </svg>
+    </div>`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
 }
