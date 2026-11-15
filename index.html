@@ -41,5 +41,11 @@ footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}
 </main>
 <footer>Flydata: adsb.lol (ODbL 1.0), hentet via cors.dev. Kart © OpenStreetMap-bidragsytere.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="app.js"></script>
+<script>
+window.addEventListener('error',e=>{
+  const s=document.getElementById('status');
+  if(s){s.textContent='JS-feil: '+e.message;s.className='err'}
+});
+</script>
+<script src="app.js?v=4"></script>
 </body></html>
