@@ -322,10 +322,10 @@ function applyMapLevel(s){
   const viewRadius=+s.r;
   document.body.classList.toggle('overview-map',viewRadius>=150);
   const a=mapAreas[s.area]||mapAreas.airport;
-  const allowed=areaBounds(63.1118,7.8245,170);
-  map.setMaxBounds(allowed.pad(0.05));
-  map.options.maxBoundsViscosity=1.0;
-  map.setMinZoom(5);
+  const allowed=L.latLngBounds([[57.5,3.5],[72.0,32.5]]);
+  map.setMaxBounds(allowed);
+  map.options.maxBoundsViscosity=0.8;
+  map.setMinZoom(4);
   const pad=viewRadius<=10?[18,18]:[28,28];
   map.fitBounds(areaBounds(a.lat,a.lon,viewRadius),{padding:pad});
 }
