@@ -163,7 +163,7 @@ function specialService(p){
 function displayRoute(p){
   const service=specialService(p);
   if(service)return service;
-  return displayRoute(p);
+  return p.route||'Henter rute…';
 }
 async function enrichRoute(p){
   if(!p||!p.flight)return;
@@ -398,7 +398,7 @@ function render(autoFit=false){
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
-      .bindTooltip(`${localRelevant(p)?'LOKAL · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
+      .bindTooltip(`${localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
       .on('click',()=>{select(p);render(false)})
       .addTo(layer);
   });
