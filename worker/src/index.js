@@ -5,6 +5,7 @@ const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
 const TRACK_KEEP_MS = 20 * 60 * 1000;
 const FLIGHTAWARE_QUERY_COST_USD = 0.005;
 const FLIGHTAWARE_MONTHLY_BUDGET_USD = 4.50;
+const FLIGHTAWARE_USAGE_CACHE_MS = 10 * 60 * 1000;
 
 function corsHeaders() {
   return {
@@ -179,6 +180,24 @@ export class TrackStore extends DurableObject {
       });
     }
 
+    if ((request.method === "GET" || request.method === "POST") && url.pathname === "/flightaware-usage-cache") {
+      if (request.method === "POST") {
+        const payload = await request.json().catch(() => ({}));
+        await this.ctx.storage.put("flightawareActualUsage", {
+          ...payload,
+          cached_at: Date.now(),
+        });
+        return new Response(JSON.stringify({ ok: true }), {
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        });
+      }
+
+      const state = (await this.ctx.storage.get("flightawareActualUsage")) || null;
+      return new Response(JSON.stringify({ ok: true, usage: state }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
     if ((request.method === "GET" || request.method === "POST") && url.pathname === "/flightaware-budget") {
       const month = new Date().toISOString().slice(0, 7);
       let state = (await this.ctx.storage.get("flightawareBudget")) || { month, spent: 0, calls: 0 };
@@ -270,8 +289,79 @@ function flightTimeScore(f) {
   return Math.min(...times.map((t) => Math.abs(t - now)));
 }
 
+async function flightAwareUsage(env, force = false) {
+  if (!env.FLIGHTAWARE_API_KEY) return null;
+
+  const id = env.TRACK_STORE.idFromName("ksu");
+  const stub = env.TRACK_STORE.get(id);
+
+  if (!force) {
+    try {
+      const cachedResponse = await stub.fetch("https://track-store/flightaware-usage-cache");
+      if (cachedResponse.ok) {
+        const cached = await cachedResponse.json();
+        const usage = cached?.usage || null;
+        if (usage && Number.isFinite(Number(usage.cached_at)) &&
+            Date.now() - Number(usage.cached_at) < FLIGHTAWARE_USAGE_CACHE_MS) {
+          return usage;
+        }
+      }
+    } catch (error) {}
+  }
+
+  const start = new Date();
+  start.setUTCDate(1);
+  start.setUTCHours(0, 0, 0, 0);
+
+  const u = new URL("https://aeroapi.flightaware.com/aeroapi/account/usage");
+  u.searchParams.set("start", start.toISOString());
+  u.searchParams.set("all_keys", "true");
+
+  try {
+    const r = await fetch(u.toString(), {
+      headers: {
+        "Accept": "application/json",
+        "x-apikey": env.FLIGHTAWARE_API_KEY,
+        "User-Agent": "Flyradar-KSU/1.0",
+      },
+    });
+    if (!r.ok) return null;
+
+    const j = await r.json();
+    const usage = {
+      total_calls: Number(j?.total_calls || 0),
+      total_pages: Number(j?.total_pages || 0),
+      total_cost: Number(j?.total_cost || 0),
+      total_discount_cost: Number(j?.total_discount_cost || 0),
+      total_successful_calls: Number(j?.total_successful_calls || 0),
+      total_failed_calls: Number(j?.total_failed_calls || 0),
+      resource_details: Array.isArray(j?.resource_details) ? j.resource_details : [],
+      source: "flightaware",
+      fetched_at: new Date().toISOString(),
+    };
+
+    await stub.fetch("https://track-store/flightaware-usage-cache", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(usage),
+    }).catch(() => null);
+
+    return usage;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function flightAwareRoute(env, callsign) {
   if (!env.FLIGHTAWARE_API_KEY) return null;
+
+  const actualUsage = await flightAwareUsage(env);
+  if (!actualUsage) return null;
+  const actualCost = Number(actualUsage.total_cost || 0);
+  if (!Number.isFinite(actualCost) ||
+      actualCost + FLIGHTAWARE_QUERY_COST_USD > FLIGHTAWARE_MONTHLY_BUDGET_USD) {
+    return null;
+  }
 
   const id = env.TRACK_STORE.idFromName("ksu");
   const stub = env.TRACK_STORE.get(id);
@@ -437,12 +527,28 @@ export default {
       try {
         const id = env.TRACK_STORE.idFromName("ksu");
         const stub = env.TRACK_STORE.get(id);
-        const r = await stub.fetch("https://track-store/flightaware-budget");
+        const [r, actualUsage] = await Promise.all([
+          stub.fetch("https://track-store/flightaware-budget"),
+          flightAwareUsage(env, true),
+        ]);
         const budget = await r.json();
+        const actualCost = Number(actualUsage?.total_cost);
+        const actualAllowed = Boolean(
+          actualUsage &&
+          Number.isFinite(actualCost) &&
+          actualCost + FLIGHTAWARE_QUERY_COST_USD <= FLIGHTAWARE_MONTHLY_BUDGET_USD
+        );
         return new Response(JSON.stringify({
           ok: true,
           enabled: Boolean(env.FLIGHTAWARE_API_KEY),
           ...budget,
+          allowed: Boolean(budget?.allowed && actualAllowed),
+          actual_usage: actualUsage,
+          actual_cost: Number.isFinite(actualCost) ? actualCost : null,
+          usage_guard_ok: actualAllowed,
+          usage_note: actualUsage
+            ? "FlightAware usage can lag by about 10-20 minutes; internal budget is enforced in parallel."
+            : "FlightAware usage unavailable; paid fallback is fail-closed.",
         }), {
           headers: { ...corsHeaders(), "Cache-Control": "no-store" },
         });
