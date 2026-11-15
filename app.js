@@ -305,6 +305,82 @@ function isGroundOrTaxi(p){
   if(Number.isFinite(alt)&&alt<=1200&&Number.isFinite(gs)&&gs<=80)return true;
   return false;
 }
+function nearestKnownAirport(p,maxNm=6){
+  if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return null;
+  let best=null;
+  for(const a of norwayAirports){
+    const dNm=nm(dist(p.lat,p.lon,a.lat,a.lon));
+    if(dNm<=maxNm && (!best||dNm<best.dNm))best={airport:a,dNm};
+  }
+  return best;
+}
+function genericAirportFocus(p){
+  if(!p)return null;
+  const gs=Number(p.gs);
+  const altRaw=p.alt;
+  const alt=Number(altRaw);
+  const vr=Number(p.vr);
+  const near=nearestKnownAirport(p,6);
+
+  // På bakken / taxi ved kjent flyplass. Fart er viktigere enn barometrisk høyde,
+  // siden enkelte mottakere ikke rapporterer "ground" konsekvent.
+  if(near && (
+    String(altRaw||'').toLowerCase()==='ground' ||
+    (Number.isFinite(gs)&&gs<=60&&near.dNm<=3.5) ||
+    (Number.isFinite(alt)&&alt<=2500&&Number.isFinite(gs)&&gs<=80&&near.dNm<=2)
+  )){
+    return {airport:near.airport,dNm:near.dNm,mode:'ground',label:`På bakken ved ${near.airport.code}`};
+  }
+
+  // Bekreftet eller sannsynlig destinasjon for siste del av innflygingen.
+  let target=null;
+  const info=ksuFlightInfo(p);
+  if(info?.direction==='Ankomst KSU'){
+    target=airportByCode('KSU');
+  }else{
+    const aps=Array.isArray(p.routeData?._airports)?p.routeData._airports:[];
+    const last=aps.length?aps[aps.length-1]:null;
+    const code=last?.iata||last?.code||'';
+    target=airportByCode(code);
+    if(!target){
+      const inferred=inferredRouteLabel(p);
+      if(inferred)target=airportByCode(inferred.code);
+    }
+  }
+  if(!target)return null;
+
+  const dNm=nm(dist(p.lat,p.lon,target.lat,target.lon));
+  const descending=Number.isFinite(vr)&&vr<-100;
+  const low=Number.isFinite(alt)&&alt<=7000;
+  if(dNm<=12&&(descending||low)){
+    return {airport:target,dNm,mode:'approach',label:`Innflyging mot ${target.code}`};
+  }
+  return null;
+}
+function focusAirportArrival(p,ctx){
+  if(!p||!ctx)return false;
+  const airportPos=[ctx.airport.lat,ctx.airport.lon];
+  const planePos=[p.lat,p.lon];
+
+  if(ctx.mode==='ground'){
+    // Omtrent samme utsnitt som manuelt nærzoom på HOV/TRD.
+    map.setView(planePos,15);
+  }else{
+    let zoom=11;
+    if(ctx.dNm<=8)zoom=12;
+    if(ctx.dNm<=5)zoom=13;
+    if(ctx.dNm<=2.5)zoom=14;
+    if(ctx.dNm<=1)zoom=15;
+    map.fitBounds(L.latLngBounds([airportPos,planePos]),{padding:[70,70],maxZoom:zoom});
+    if(map.getZoom()<Math.min(zoom,12))map.setZoom(Math.min(zoom,12));
+  }
+
+  selected=p;
+  select(p,false);
+  if($('fs-status'))$('fs-status').textContent=ctx.label+' · '+(p.flight||p.reg||p.hex);
+  return true;
+}
+
 function ksuGroundContext(p){
   const info=ksuFlightInfo(p);
   const f=p?.ksuFlight;
@@ -634,6 +710,14 @@ function followNearest(list,s){
   const airport=[63.1118,7.8245];
   const nearestNm=nm(nearest.d);
   const ground=priority?ksuGroundContext(priority):null;
+  const airportFocus=genericAirportFocus(nearest);
+
+  // KSU-prioritet beholdes. For andre fly får siste del av innflyging / bakken
+  // tett flyplassutsnitt i stedet for vanlig oversiktszoom.
+  if(!priority && airportFocus && focusAirportArrival(nearest,airportFocus)){
+    idleFocusIndex=0;
+    return;
+  }
 
   if(priority && ground){
     idleFocusIndex=0;
