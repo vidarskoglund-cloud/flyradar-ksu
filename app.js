@@ -366,26 +366,33 @@ function render(autoFit=false){
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
       .bindTooltip(`${localRelevant(p)?'LOKAL · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
-      .on('click',()=>select(p))
+      .on('click',()=>{select(p);render(false)})
       .addTo(layer);
   });
-  $('cards').innerHTML=list.map(p=>`<div class="card ${localRelevant(p)?'local-card':''}" data-h="${p.hex}">
-    <div class="top"><div>
-      <div class="call">${p.flight||p.reg||p.hex||'Ukjent'}</div>
-      <div class="muted">${[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex}</div><div class="source">${p.source||''}</div>
-      <div class="route">${p.route||'Henter rute…'}</div>
-    </div><div class="dist">${fNm(p.d)}</div></div>
-    <div class="grid">
-      <div><span>HØYDE</span><b>${f(p.alt,' ft')}</b></div>
-      <div><span>FART</span><b>${f(p.gs,' kt')}</b></div>
-      <div><span>KURS</span><b>${f(p.track,'°')}</b></div>
-      <div><span>VERT.</span><b>${f(p.vr,' ft/min')}</b></div>
-    </div>
-  </div>`).join('');
-  document.querySelectorAll('[data-h]').forEach(e=>e.onclick=()=>select(list.find(p=>p.hex===e.dataset.h)));
-  if(list.length && (!selected || !list.some(p=>p.hex===selected.hex))) select(list.find(localRelevant)||list[0]);
-  else if(selected){const current=list.find(p=>p.hex===selected.hex);if(current)select(current)}
-  if(!list.length)routeLayer.clearLayers();
+  const nearest=list[0]||null;
+  const current=selected&&list.find(p=>p.hex===selected.hex);
+  const shown=current||nearest;
+  if(shown){
+    selected=shown;
+    $('cards').innerHTML=`<div class="card ${localRelevant(shown)?'local-card':''}">
+      <div class="top"><div>
+        <div class="call">${shown.flight||shown.reg||shown.hex||'Ukjent'}</div>
+        <div class="muted">${[shown.operator,shown.reg,shown.type,shown.desc].filter(Boolean).join(' · ')||shown.hex}</div><div class="source">${shown.source||''}</div>
+        <div class="route">${shown.route||'Henter rute…'}</div>
+      </div><div class="dist">${fNm(shown.d)}</div></div>
+      <div class="grid">
+        <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
+        <div><span>FART</span><b>${f(shown.gs,' kt')}</b></div>
+        <div><span>KURS</span><b>${f(shown.track,'°')}</b></div>
+        <div><span>VERT.</span><b>${f(shown.vr,' ft/min')}</b></div>
+      </div>
+    </div>`;
+    select(shown);
+  }else{
+    selected=null;
+    $('cards').innerHTML='';
+    routeLayer.clearLayers();
+  }
   if(autoFit) fitMap(list,s);
 }
 function toggleDisplay(){
