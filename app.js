@@ -407,6 +407,21 @@ function drawTrackAndPrediction(p){
       opacity:.85
     }).bindTooltip('Faktisk spor · siste 5 min',{sticky:true}).addTo(trackLayer);
   }
+
+  const info=ksuFlightInfo(p);
+  if(info?.direction==='Ankomst KSU'){
+    const ksu=[63.1118,7.8245];
+    L.polyline([[p.lat,p.lon],ksu],{
+      weight:3,
+      opacity:.9,
+      dashArray:'7 8'
+    }).bindTooltip('Forventet videre mot Kvernberget',{sticky:true}).addTo(trackLayer);
+    L.circleMarker(ksu,{radius:6,weight:2,fillOpacity:1})
+      .bindTooltip('KSU · Kvernberget',{direction:'top'})
+      .addTo(trackLayer);
+    return;
+  }
+
   const preds=predictedPoints(p);
   if(preds.length){
     L.polyline([[p.lat,p.lon],...preds.map(x=>x.pos)],{
@@ -1119,13 +1134,19 @@ function render(autoFit=false){
     const rp=routeCardParts(shown);
     const service=specialService(shown);
     const ksuInfo=ksuFlightInfo(shown);
-    const routeBlock=rp
+    const routeBlock=ksuInfo
       ? `<div class="flight-route">
-          <div class="route-end"><b>${rp.fromCode}</b><span>${rp.fromPlace}</span></div>
+          <div class="route-end"><b>${ksuInfo.direction==='Ankomst KSU'?(shown.ksuFlight?.airport||'–'):'KSU'}</b><span>${ksuInfo.direction==='Ankomst KSU'?'Avgang':'Kristiansund'}</span></div>
           <div class="route-arrow"><span>✈</span><i></i></div>
-          <div class="route-end"><b>${rp.toCode}</b><span>${rp.toPlace}</span></div>
+          <div class="route-end"><b>${ksuInfo.direction==='Ankomst KSU'?'KSU':(shown.ksuFlight?.airport||'–')}</b><span>${ksuInfo.direction==='Ankomst KSU'?'Kristiansund':'Destinasjon'}</span></div>
         </div>`
-      : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div></div>`;
+      : rp
+        ? `<div class="flight-route">
+            <div class="route-end"><b>${rp.fromCode}</b><span>${rp.fromPlace}</span></div>
+            <div class="route-arrow"><span>✈</span><i></i></div>
+            <div class="route-end"><b>${rp.toCode}</b><span>${rp.toPlace}</span></div>
+          </div>`
+        : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div></div>`;
     $('cards').innerHTML=`<div class="card aircraft-card ${localRelevant(shown)?'local-card':''}">
       <div class="aircraft-head">
         <div>
