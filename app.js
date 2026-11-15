@@ -26,7 +26,7 @@ function normalize(a,s){
     hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:a.alt_baro??a.alt_geom,gs:a.gs,track:a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,source:a._source||'adsb.lol'
   }
 }
 function planeIcon(p){
@@ -117,18 +117,48 @@ async function enrichRoutes(list){
   });
   if(changed)render(false);
 }
+function mergeAircraft(primary,secondary){
+  const byKey=new Map();
+  const add=(a,source)=>{
+    const key=(a.hex||a.r||a.flight||'').toString().trim().toLowerCase();
+    if(!key)return;
+    const copy={...a,_source:source};
+    if(!byKey.has(key))byKey.set(key,copy);
+    else{
+      const old=byKey.get(key);
+      byKey.set(key,{...copy,...old,_source:old._source==='adsb.lol'?'adsb.lol + airplanes.live':source+' + '+old._source});
+    }
+  };
+  primary.forEach(a=>add(a,'adsb.lol'));
+  secondary.forEach(a=>add(a,'airplanes.live'));
+  return [...byKey.values()];
+}
+async function fetchJson(url){
+  try{
+    const r=await fetch(url,{credentials:'omit'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return await r.json();
+  }catch(e){
+    const proxied='https://proxy.cors.dev/'+url;
+    const r=await fetch(proxied,{credentials:'omit'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    return await r.json();
+  }
+}
 async function refresh(){
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
   home.setLatLng([s.lat,s.lon]);
   updateRangeRings(s);
   try{
-    const upstream=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
-    const url='https://proxy.cors.dev/'+upstream;
-    let r=await fetch(url,{credentials:'omit'});
-    if(!r.ok)throw new Error('HTTP '+r.status);
-    let j=await r.json();
-    planes=(j.ac||[]).filter(a=>a.lat!=null&&a.lon!=null).map(a=>normalize(a,s)).sort((a,b)=>a.d-b.d);
+    const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
+    const aplUrl=`https://api.airplanes.live/v2/point/${s.lat}/${s.lon}/${s.r}`;
+    const [adsbRes,aplRes]=await Promise.allSettled([fetchJson(adsbUrl),fetchJson(aplUrl)]);
+    const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
+    const aplData=aplRes.status==='fulfilled'?(aplRes.value.ac||[]):[];
+    if(!adsbData.length&&!aplData.length)throw new Error('Ingen flydata fra datakildene');
+    const merged=mergeAircraft(adsbData,aplData);
+    planes=merged.filter(a=>a.lat!=null&&a.lon!=null).map(a=>normalize(a,s)).sort((a,b)=>a.d-b.d);
     const localCount=planes.filter(localRelevant).length;$('status').textContent=`${localCount} lokale / ${planes.length} totalt`;$('status').className='ok';
     render(true);
     enrichRoutes(planes);
@@ -166,7 +196,7 @@ function render(autoFit=false){
   $('cards').innerHTML=list.map(p=>`<div class="card ${localRelevant(p)?'local-card':''}" data-h="${p.hex}">
     <div class="top"><div>
       <div class="call">${p.flight||p.reg||p.hex||'Ukjent'}</div>
-      <div class="muted">${[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex}</div>
+      <div class="muted">${[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex}</div><div class="source">${p.source||''}</div>
       <div class="route">${p.route||'Henter rute…'}</div>
     </div><div class="dist">${fNm(p.d)}</div></div>
     <div class="grid">
