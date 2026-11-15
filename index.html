@@ -20,6 +20,7 @@ button{font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);g
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-top:10px}.card{background:var(--p);border:1px solid var(--line);border-radius:12px;padding:12px}.top{display:flex;justify-content:space-between;gap:12px}.call{font-size:18px;font-weight:800}.dist{color:var(--a);font-weight:800;white-space:nowrap}
 .route{margin-top:7px;color:var(--a);font-weight:700;font-size:13px}.source{margin-top:4px;color:#70869c;font-size:10px;text-transform:uppercase;letter-spacing:.04em}.local-card{border-color:#32d98b;box-shadow:0 0 0 1px #32d98b33 inset}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}.grid span{display:block;color:var(--m);font-size:9px}.grid b{font-size:12px}
+.schedule{margin-top:12px;background:var(--p);border:1px solid var(--line);border-radius:14px;padding:12px}.schedule h2{font-size:15px;margin:0 0 8px}.schedule-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid #1b2d43}.schedule-row:first-child{border-top:0}.schedule-row b{display:block;font-size:14px}.schedule-row span{display:block;color:var(--m);font-size:11px;margin-top:2px}.schedule-row.heli{border-left:3px solid #32ff9a;padding-left:9px}.schedule-time{font-weight:700;white-space:nowrap;color:var(--a)}.schedule-empty{color:var(--m);font-size:12px}
 .hero{display:none;background:linear-gradient(135deg,#0d1b2e,#143357);border:1px solid #2d557c;border-radius:18px;padding:28px;margin-bottom:10px}
 .hero.on{display:block}.hero .call{font-size:clamp(42px,8vw,86px);line-height:1}.hero .muted{font-size:clamp(14px,2vw,24px);margin-top:8px}.hero .route{font-size:clamp(22px,4vw,44px);margin-top:24px}.hero .dist{font-size:clamp(28px,5vw,56px)}
 .hero .grid{margin-top:30px;gap:16px}.hero .grid>div{background:#08111f99;border:1px solid #284768;border-radius:14px;padding:18px}.hero .grid span{font-size:13px}.hero .grid b{font-size:clamp(22px,4vw,42px)}
@@ -42,11 +43,12 @@ body.display-on details,body.display-on footer{display:none}
 <section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div><div id="hroute" class="route">Rute ikke tilgjengelig</div></div><div id="hdist" class="dist">–</div></div>
 <div class="grid"><div><span>HØYDE</span><b id="halt">–</b></div><div><span>FART</span><b id="hspd">–</b></div><div><span>KURS</span><b id="htrk">–</b></div><div><span>VERTIKAL</span><b id="hvr">–</b></div></div></section>
 <div id="map"></div><div id="cards" class="cards"></div>
+<section class="schedule"><h2>Planlagt KSU-trafikk</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 <details style="margin-top:12px"><summary>Innstillinger</summary><div class="controls" style="margin-top:10px">
 <input id="lat" value="63.1118" type="number" step=".0001"><input id="lon" value="7.8245" type="number" step=".0001"><button id="save">Lagre</button></div></details>
 </main>
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Kart © OpenStreetMap-bidragsytere.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=9"></script>
+<script src="app.js?v=10"></script>
 </body></html>
