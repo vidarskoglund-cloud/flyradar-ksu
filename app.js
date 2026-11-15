@@ -94,11 +94,11 @@ function applyMapLevel(s){
   map.fitBounds(areaBounds(a.lat,a.lon,viewRadius),{padding:pad});
 }
 function followNearest(list,s){
-  const local=list.filter(localRelevant).sort((a,b)=>a.d-b.d);
-  if(!local.length){ applyMapLevel(s); return; }
+  const sorted=list.slice().sort((a,b)=>a.d-b.d);
+  const nearest=sorted[0];
+  if(!nearest){ applyMapLevel(s); return; }
 
   const airport=[63.1118,7.8245];
-  const nearest=local[0];
   const nearestNm=nm(nearest.d);
 
   if(nearestNm<=10){
@@ -112,18 +112,17 @@ function followNearest(list,s){
     return;
   }
 
-  const points=[airport,...local.map(p=>[p.lat,p.lon])];
-  const farthestNm=Math.max(...local.map(p=>nm(p.d)));
+  if(nearestNm<=30){
+    const nearby=sorted.filter(p=>nm(p.d)<=30);
+    const points=[airport,...nearby.map(p=>[p.lat,p.lon])];
+    map.fitBounds(L.latLngBounds(points),{
+      padding:[60,60],
+      maxZoom:10
+    });
+    return;
+  }
 
-  let maxZoom=10;
-  if(farthestNm<=15)maxZoom=11;
-  if(farthestNm<=7)maxZoom=12;
-  if(farthestNm<=3)maxZoom=13;
-
-  map.fitBounds(L.latLngBounds(points),{
-    padding:[60,60],
-    maxZoom
-  });
+  applyMapLevel(s);
 }
 function fitMap(list,s){
   followNearest(list,s);
