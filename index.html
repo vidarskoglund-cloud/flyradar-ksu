@@ -29,6 +29,13 @@ button{font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);g
 .local-rule{max-width:1200px;margin:10px auto -2px;padding:0 4px;color:var(--m);font-size:11px;opacity:.75}footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}.atc-link{color:#64778c;text-decoration:none;margin-left:8px;font-size:10px;opacity:.55}.atc-link:hover{opacity:1;color:var(--a)}
 body.display-on{overflow:hidden}body.display-on header{position:fixed;left:0;right:0;top:0}body.display-on main{max-width:none;height:100vh;padding:90px 24px 24px}body.display-on .controls{position:fixed;right:18px;top:14px;z-index:1200;display:block}body.display-on .controls>*{display:none}body.display-on #mode{display:block}body.display-on .hero{height:calc(100vh - 114px);margin:0;display:flex;flex-direction:column;justify-content:center}
 body.display-on details,body.display-on footer{display:none}
+@media(min-width:900px){
+  main{max-width:1500px;padding-left:24px;padding-right:24px}
+  #map{height:68vh;min-height:560px}
+  .stats{max-width:1000px;margin-left:auto;margin-right:auto}
+  .local-rule{max-width:1000px}
+  .nearest-panel,.settings-panel{max-width:1000px;margin-left:auto;margin-right:auto}
+}
 @media(max-width:700px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}body.display-on main{padding:82px 12px 12px}.hero .grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -63,5 +70,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 </body></html>
