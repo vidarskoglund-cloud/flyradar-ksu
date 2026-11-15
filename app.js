@@ -79,26 +79,32 @@ function renderNorwayAirports(){
     marker.addTo(airportLayer);
   });
 }
-function airportIcon(code,label,kind='route'){
+function airportIcon(code,label,kind='route',compact=false){
   const safeCode=String(code||'APT').toUpperCase();
   const safeLabel=String(label||'Flyplass');
   const isHome=kind==='home';
+  const showLabel=isHome&&!compact;
   return L.divIcon({
     className:'airport-wrap',
-    html:`<div class="airport-marker ${kind}">
+    html:`<div class="airport-marker ${kind} ${compact?'compact':''}">
       <span class="airport-symbol">✈</span>
-      <div><b>${safeCode}</b>${isHome?`<small>${safeLabel}</small>`:''}</div>
+      <div><b>${safeCode}</b>${showLabel?`<small>${safeLabel}</small>`:''}</div>
     </div>`,
-    iconSize:isHome?[104,38]:[58,30],
-    iconAnchor:isHome?[18,19]:[15,15]
+    iconSize:isHome?(compact?[58,30]:[104,38]):[58,30],
+    iconAnchor:isHome?(compact?[15,15]:[18,19]):[15,15]
   });
 }
 let home=L.marker([63.1118,7.8245],{
-  icon:airportIcon('KSU','Kvernberget','home'),
+  icon:airportIcon('KSU','Kvernberget','home',false),
   zIndexOffset:900
 }).bindTooltip('KSU / Kvernberget',{direction:'top'}).addTo(map);
-map.on('zoomend',()=>{try{updateRangeRings(settings());renderNorwayAirports()}catch(e){}});
+function updateHomeAirportMarker(){
+  const compact=map.getZoom()>=11;
+  home.setIcon(airportIcon('KSU','Kvernberget','home',compact));
+}
+map.on('zoomend',()=>{try{updateRangeRings(settings());renderNorwayAirports();updateHomeAirportMarker()}catch(e){}});
 renderNorwayAirports();
+updateHomeAirportMarker();
 
 const rad=x=>x*Math.PI/180;
 const nm=km=>km/1.852;
