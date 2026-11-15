@@ -16,7 +16,23 @@ let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
 let trackLayer=L.layerGroup().addTo(map);
-let home=L.circleMarker([63.1118,7.8245],{radius:7,color:'#6ee7ff',weight:3,fillColor:'#08111f',fillOpacity:1}).bindTooltip('KSU / Kvernberget').addTo(map);
+function airportIcon(code,label,kind='route'){
+  const safeCode=String(code||'APT').toUpperCase();
+  const safeLabel=String(label||'Flyplass');
+  return L.divIcon({
+    className:'airport-wrap',
+    html:`<div class="airport-marker ${kind}">
+      <span class="airport-symbol">✈</span>
+      <div><b>${safeCode}</b><small>${safeLabel}</small></div>
+    </div>`,
+    iconSize:[104,38],
+    iconAnchor:[18,19]
+  });
+}
+let home=L.marker([63.1118,7.8245],{
+  icon:airportIcon('KSU','Kvernberget','home'),
+  zIndexOffset:900
+}).bindTooltip('KSU / Kvernberget',{direction:'top'}).addTo(map);
 map.on('zoomend',()=>{try{updateRangeRings(settings())}catch(e){}});
 
 const rad=x=>x*Math.PI/180;
@@ -729,16 +745,24 @@ function drawRoute(p){
   const plane=[p.lat,p.lon];
 
   if(from){
+    const a=aps[0];
+    const code=a.iata||a.icao||a.code||'APT';
+    const place=a.city||a.name||'Avgangsflyplass';
     L.polyline([from,plane],{weight:2,opacity:.65,dashArray:'6 8'}).addTo(routeLayer);
-    L.circleMarker(from,{radius:5,weight:2,fillOpacity:1})
-      .bindTooltip('Fra: '+airportLabel(aps[0]),{direction:'top'})
-      .addTo(routeLayer);
+    L.marker(from,{
+      icon:airportIcon(code,place,'departure'),
+      zIndexOffset:700
+    }).bindTooltip('Fra: '+airportLabel(a),{direction:'top'}).addTo(routeLayer);
   }
   if(to){
+    const a=aps[aps.length-1];
+    const code=a.iata||a.icao||a.code||'APT';
+    const place=a.city||a.name||'Ankomstflyplass';
     L.polyline([plane,to],{weight:3,opacity:.9}).addTo(routeLayer);
-    L.circleMarker(to,{radius:6,weight:2,fillOpacity:1})
-      .bindTooltip('Til: '+airportLabel(aps[aps.length-1]),{direction:'top'})
-      .addTo(routeLayer);
+    L.marker(to,{
+      icon:airportIcon(code,place,'arrival'),
+      zIndexOffset:750
+    }).bindTooltip('Til: '+airportLabel(a),{direction:'top'}).addTo(routeLayer);
   }
 }
 function select(p,lookupRoute=true){
