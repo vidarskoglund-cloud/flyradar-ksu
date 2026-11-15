@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { buildPushPayload } from "@block65/webcrypto-web-push";
 
 const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
 const TRACK_KEEP_MS = 20 * 60 * 1000;
@@ -14,6 +15,22 @@ function corsHeaders() {
 
 function keyFor(a) {
   return String(a?.hex || a?.r || a?.flight || "").trim().toLowerCase();
+}
+
+function distanceNm(lat1, lon1, lat2, lon2) {
+  const R = 3440.065;
+  const toRad = (d) => d * Math.PI / 180;
+  const p1 = toRad(lat1);
+  const p2 = toRad(lat2);
+  const dp = toRad(lat2 - lat1);
+  const dl = toRad(lon2 - lon1);
+  const h = Math.sin(dp / 2) ** 2 +
+    Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function aircraftLabel(a) {
+  return String(a?.flight || a?.r || a?.hex || "Ukjent fly").trim().toUpperCase();
 }
 
 function mergeAircraft(primary, secondary) {
@@ -122,6 +139,40 @@ export class TrackStore extends DurableObject {
       });
     }
 
+    if (request.method === "GET" && url.pathname === "/subscriptions") {
+      const subscriptions = (await this.ctx.storage.get("subscriptions")) || {};
+      return new Response(JSON.stringify({
+        ok: true,
+        subscriptions: Object.values(subscriptions).map((x) => x.subscription),
+      }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
+    if (request.method === "DELETE" && url.pathname === "/subscriptions") {
+      const endpoint = url.searchParams.get("endpoint") || "";
+      const subscriptions = (await this.ctx.storage.get("subscriptions")) || {};
+      if (endpoint && subscriptions[endpoint]) {
+        delete subscriptions[endpoint];
+        await this.ctx.storage.put("subscriptions", subscriptions);
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/push-state") {
+      const payload = await request.json();
+      const current = Array.isArray(payload?.inside) ? payload.inside : [];
+      const previous = (await this.ctx.storage.get("inside50")) || [];
+      const previousSet = new Set(previous);
+      const entered = current.filter((key) => !previousSet.has(key));
+      await this.ctx.storage.put("inside50", current);
+      return new Response(JSON.stringify({ ok: true, entered }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
     return new Response("Not found", { status: 404 });
   }
 }
@@ -164,14 +215,15 @@ export default {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
-    if (request.method !== "GET") {
+    const url = new URL(request.url);
+
+    const isPushSubscribe = url.pathname === "/push/subscribe" && request.method === "POST";
+    if (request.method !== "GET" && !isPushSubscribe) {
       return new Response(
         JSON.stringify({ error: "Method not allowed" }),
         { status: 405, headers: corsHeaders() }
       );
     }
-
-    const url = new URL(request.url);
 
     if (url.pathname === "/route") {
       const callsign = (url.searchParams.get("callsign") || "").trim().toUpperCase();
@@ -384,4 +436,90 @@ export default {
       }
     );
   },
+  },
+
+  async scheduled(controller, env, ctx) {
+    if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
+
+    ctx.waitUntil((async () => {
+      const adsbUrl =
+        `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+      const airplanesUrl =
+        `https://api.airplanes.live/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+
+      const [adsb, airplanes] = await Promise.all([
+        getSource("adsb.lol", adsbUrl),
+        getSource("airplanes.live", airplanesUrl),
+      ]);
+      if (!adsb.ok && !airplanes.ok) return;
+
+      const ac = mergeAircraft(adsb.ac, airplanes.ac);
+      const inside = ac.filter((a) => {
+        const lat = Number(a?.lat);
+        const lon = Number(a?.lon);
+        return Number.isFinite(lat) && Number.isFinite(lon) &&
+          distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50;
+      });
+
+      const byKey = new Map(inside.map((a) => [keyFor(a), a]));
+      const id = env.TRACK_STORE.idFromName("ksu");
+      const stub = env.TRACK_STORE.get(id);
+
+      const stateResponse = await stub.fetch("https://track-store/push-state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inside: [...byKey.keys()] }),
+      });
+      if (!stateResponse.ok) return;
+      const state = await stateResponse.json();
+      const entered = Array.isArray(state?.entered) ? state.entered : [];
+      if (!entered.length) return;
+
+      const subResponse = await stub.fetch("https://track-store/subscriptions");
+      if (!subResponse.ok) return;
+      const subData = await subResponse.json();
+      const subscriptions = Array.isArray(subData?.subscriptions) ? subData.subscriptions : [];
+      if (!subscriptions.length) return;
+
+      const vapid = {
+        subject: env.VAPID_SUBJECT,
+        publicKey: env.VAPID_PUBLIC_KEY,
+        privateKey: env.VAPID_PRIVATE_KEY,
+      };
+
+      for (const key of entered) {
+        const a = byKey.get(key);
+        if (!a) continue;
+        const d = distanceNm(KSU.lat, KSU.lon, Number(a.lat), Number(a.lon));
+        const alt = Number(a.alt_baro ?? a.alt_geom);
+        const body = Number.isFinite(alt)
+          ? `${aircraftLabel(a)} er ${d.toFixed(1)} NM fra KSU · ${Math.round(alt).toLocaleString("no-NO")} ft`
+          : `${aircraftLabel(a)} er ${d.toFixed(1)} NM fra KSU`;
+
+        const message = {
+          data: JSON.stringify({
+            title: "Fly innen 50 NM",
+            body,
+            tag: `flyradar-${key}`,
+            url: "https://vidarskoglund-cloud.github.io/flyradar-ksu/",
+          }),
+          options: { ttl: 120 },
+        };
+
+        for (const subscription of subscriptions) {
+          try {
+            const payload = await buildPushPayload(message, subscription, vapid);
+            const response = await fetch(subscription.endpoint, payload);
+            if (response.status === 404 || response.status === 410) {
+              await stub.fetch(
+                "https://track-store/subscriptions?endpoint=" +
+                  encodeURIComponent(subscription.endpoint),
+                { method: "DELETE" }
+              );
+            }
+          } catch (error) {}
+        }
+      }
+    })());
+  }
 };
