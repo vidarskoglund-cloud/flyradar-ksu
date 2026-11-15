@@ -36,6 +36,16 @@ body.display-on details,body.display-on footer{display:none}
   .local-rule{max-width:1000px}
   .nearest-panel,.settings-panel{max-width:1000px;margin-left:auto;margin-right:auto}
 }
+@media(min-width:900px) and (display-mode:fullscreen){
+  html,body{height:100%;overflow:hidden}
+  header{position:static;padding:10px 16px}
+  main{height:calc(100vh - 58px);padding:8px 18px 8px;display:grid;grid-template-rows:auto 1fr auto;gap:8px;overflow:hidden}
+  .local-rule{display:none}
+  #stats{margin-bottom:0}
+  #map{height:100%;min-height:0}
+  .nearest-panel{margin-top:0}
+  .settings-panel,footer{display:none}
+}
 @media(max-width:700px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}body.display-on main{padding:82px 12px 12px}.hero .grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -70,5 +80,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=38"></script>
+<script src="app.js?v=39"></script>
 </body></html>
