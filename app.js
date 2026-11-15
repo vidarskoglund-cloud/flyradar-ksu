@@ -16,6 +16,69 @@ let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
 let trackLayer=L.layerGroup().addTo(map);
+let airportLayer=L.layerGroup().addTo(map);
+
+const norwayAirports=[
+  {code:'OSL',name:'Oslo Gardermoen',lat:60.1939,lon:11.1004,major:true},
+  {code:'BGO',name:'Bergen Flesland',lat:60.2934,lon:5.2181,major:true},
+  {code:'TRD',name:'Trondheim Værnes',lat:63.4578,lon:10.9240,major:true},
+  {code:'SVG',name:'Stavanger Sola',lat:58.8768,lon:5.6379,major:true},
+  {code:'TOS',name:'Tromsø Langnes',lat:69.6833,lon:18.9189,major:true},
+  {code:'KRS',name:'Kristiansand Kjevik',lat:58.2042,lon:8.0854,major:true},
+  {code:'BOO',name:'Bodø',lat:67.2692,lon:14.3653,major:true},
+  {code:'AES',name:'Ålesund Vigra',lat:62.5625,lon:6.1197,major:true},
+  {code:'TRF',name:'Sandefjord Torp',lat:59.1867,lon:10.2586,major:true},
+  {code:'HAU',name:'Haugesund Karmøy',lat:59.3453,lon:5.2084},
+  {code:'ALF',name:'Alta',lat:69.9761,lon:23.3717},
+  {code:'ANX',name:'Andøya Andenes',lat:69.2925,lon:16.1442},
+  {code:'BDU',name:'Bardufoss',lat:69.0558,lon:18.5404},
+  {code:'BVG',name:'Berlevåg',lat:70.8714,lon:29.0342},
+  {code:'BNN',name:'Brønnøysund',lat:65.4611,lon:12.2175},
+  {code:'BJF',name:'Båtsfjord',lat:70.6003,lon:29.6925},
+  {code:'FRO',name:'Florø',lat:61.5836,lon:5.0247},
+  {code:'FDE',name:'Førde Bringeland',lat:61.3911,lon:5.7569},
+  {code:'HFT',name:'Hammerfest',lat:70.6797,lon:23.6686},
+  {code:'EVE',name:'Harstad/Narvik Evenes',lat:68.4913,lon:16.6781},
+  {code:'HAA',name:'Hasvik',lat:70.4867,lon:22.1397},
+  {code:'HVG',name:'Honningsvåg Valan',lat:71.0097,lon:25.9836},
+  {code:'KKN',name:'Kirkenes Høybuktmoen',lat:69.7258,lon:29.8913},
+  {code:'KSU',name:'Kristiansund Kvernberget',lat:63.1118,lon:7.8245,major:true},
+  {code:'LKL',name:'Lakselv Banak',lat:70.0688,lon:24.9735},
+  {code:'LKN',name:'Leknes',lat:68.1525,lon:13.6094},
+  {code:'MEH',name:'Mehamn',lat:71.0297,lon:27.8267},
+  {code:'MQN',name:'Mo i Rana Røssvoll',lat:66.3639,lon:14.3014},
+  {code:'MOL',name:'Molde Årø',lat:62.7447,lon:7.2625},
+  {code:'MJF',name:'Mosjøen Kjærstad',lat:65.7839,lon:13.2149},
+  {code:'OSY',name:'Namsos',lat:64.4722,lon:11.5786},
+  {code:'RRS',name:'Røros',lat:62.5784,lon:11.3423},
+  {code:'RVK',name:'Rørvik Ryum',lat:64.8383,lon:11.1461},
+  {code:'RET',name:'Røst',lat:67.5278,lon:12.1033},
+  {code:'SDN',name:'Sandane Anda',lat:61.8300,lon:6.1058},
+  {code:'SSJ',name:'Sandnessjøen Stokka',lat:65.9568,lon:12.4689},
+  {code:'SOG',name:'Sogndal Haukåsen',lat:61.1561,lon:7.1378},
+  {code:'SKN',name:'Stokmarknes Skagen',lat:68.5788,lon:15.0334},
+  {code:'LYR',name:'Svalbard Longyearbyen',lat:78.2461,lon:15.4656},
+  {code:'SVJ',name:'Svolvær Helle',lat:68.2433,lon:14.6692},
+  {code:'SOJ',name:'Sørkjosen',lat:69.7868,lon:20.9594},
+  {code:'VDS',name:'Vadsø',lat:70.0653,lon:29.8447},
+  {code:'VAW',name:'Vardø Svartnes',lat:70.3554,lon:31.0449},
+  {code:'HOV',name:'Ørsta/Volda Hovden',lat:62.1800,lon:6.0741},
+  {code:'SRP',name:'Stord Sørstokken',lat:59.7919,lon:5.3409}
+];
+
+function renderNorwayAirports(){
+  airportLayer.clearLayers();
+  const zoom=map.getZoom();
+  norwayAirports.forEach(a=>{
+    if(a.code==='KSU')return;
+    if(zoom<6 && !a.major)return;
+    const marker=L.marker([a.lat,a.lon],{
+      icon:airportIcon(a.code,a.name,'network'),
+      zIndexOffset:300
+    }).bindTooltip(`${a.code} · ${a.name}`,{direction:'top'});
+    marker.addTo(airportLayer);
+  });
+}
 function airportIcon(code,label,kind='route'){
   const safeCode=String(code||'APT').toUpperCase();
   const safeLabel=String(label||'Flyplass');
@@ -34,7 +97,8 @@ let home=L.marker([63.1118,7.8245],{
   icon:airportIcon('KSU','Kvernberget','home'),
   zIndexOffset:900
 }).bindTooltip('KSU / Kvernberget',{direction:'top'}).addTo(map);
-map.on('zoomend',()=>{try{updateRangeRings(settings())}catch(e){}});
+map.on('zoomend',()=>{try{updateRangeRings(settings());renderNorwayAirports()}catch(e){}});
+renderNorwayAirports();
 
 const rad=x=>x*Math.PI/180;
 const nm=km=>km/1.852;
