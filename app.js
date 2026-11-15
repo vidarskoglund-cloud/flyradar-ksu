@@ -262,7 +262,8 @@ async function refresh(){
     sourceState.apl=aplRes.status==='fulfilled'?'OK':'feil';
     const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
     const aplData=aplRes.status==='fulfilled'?(aplRes.value.ac||[]):[];
-    if(!adsbData.length&&!aplData.length){
+    const anySourceOk=adsbRes.status==='fulfilled'||aplRes.status==='fulfilled';
+    if(!anySourceOk){
       if(lastGoodPlanes.length){
         planes=lastGoodPlanes.map(p=>({...p}));
         const localCount=planes.filter(localRelevant).length;
