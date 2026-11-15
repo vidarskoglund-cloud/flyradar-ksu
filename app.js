@@ -596,6 +596,24 @@ function followNearest(list,s){
     return;
   }
 
+  if(priority && nearestNm<=50){
+    idleFocusIndex=0;
+    let maxZoom=9;
+    let padding=[62,62];
+    if(nearestNm<=30)maxZoom=10;
+    if(nearestNm<=20){maxZoom=11;padding=[68,68];}
+    if(nearestNm<=12){maxZoom=12;padding=[72,72];}
+    if(nearestNm<=6){maxZoom=13;padding=[76,76];}
+    if(nearestNm<=2){maxZoom=14;padding=[82,82];}
+    map.fitBounds(L.latLngBounds([airport,[priority.lat,priority.lon]]),{
+      padding,
+      maxZoom
+    });
+    selected=priority;
+    select(priority,false);
+    return;
+  }
+
   if(nearestNm<=10){
     idleFocusIndex=0;
     let maxZoom=11;
