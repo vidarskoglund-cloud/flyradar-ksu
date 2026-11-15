@@ -35,7 +35,11 @@ body.display-on details,body.display-on footer{display:none}
 <header><div><h1>Flyradar KSU</h1><div class="muted">Kristiansund / Kvernberget</div></div><div id="status" class="muted">Starter…</div></header>
 <main>
 <div class="controls">
-<select id="radius"><option value="25">25 NM</option><option value="50" selected>50 NM</option><option value="100">100 NM</option><option value="150">150 NM</option></select>
+<select id="radius" aria-label="Kartnivå">
+<option value="25">Lite · 25 NM</option>
+<option value="75" selected>Medium · 75 NM</option>
+<option value="150">Stort · 150 NM</option>
+</select>
 <input id="filter" placeholder="Søk: SAS, NAX, LN-…, callsign">
 <button id="refresh">Oppdater</button><button id="mode">Displaymodus</button>
 </div>
@@ -50,5 +54,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=11"></script>
+<script src="app.js?v=12"></script>
 </body></html>
