@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "flyradar-ksu-api",
+  "name": "flyradar-ksu",
   "main": "src/index.js",
   "compatibility_date": "2026-11-15",
   "workers_dev": true
