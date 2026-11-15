@@ -89,6 +89,57 @@ export default {
 
     const url = new URL(request.url);
 
+    if (url.pathname === "/route") {
+      const callsign = (url.searchParams.get("callsign") || "").trim().toUpperCase();
+      const lat = Number(url.searchParams.get("lat"));
+      const lon = Number(url.searchParams.get("lon"));
+
+      if (!callsign) {
+        return new Response(JSON.stringify({ error: "Missing callsign" }), {
+          status: 400,
+          headers: corsHeaders(),
+        });
+      }
+
+      try {
+        const body = {
+          planes: [{
+            callsign,
+            ...(Number.isFinite(lat) ? { lat } : {}),
+            ...(Number.isFinite(lon) ? { lng: lon } : {}),
+          }],
+        };
+
+        const r = await fetch("https://api.adsb.lol/api/0/routeset", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "User-Agent": "Flyradar-KSU/1.0",
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (!r.ok) {
+          return new Response(JSON.stringify({ error: "Route lookup failed", status: r.status }), {
+            status: 502,
+            headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+          });
+        }
+
+        const rows = await r.json();
+        const route = Array.isArray(rows) ? (rows[0] || null) : null;
+        return new Response(JSON.stringify({ ok: true, callsign, route }), {
+          status: 200,
+          headers: { ...corsHeaders(), "Cache-Control": "public, max-age=300" },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ error: "Route lookup error" }), {
+          status: 502,
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      }
+    }
+
     if (url.pathname === "/health") {
       return new Response(
         JSON.stringify({
