@@ -134,6 +134,16 @@ function observablePasserby(p){
   if(distanceNm<=20 && alt<=8000)return true;
   return false;
 }
+function visibilityHint(p){
+  if(!p||p.signalLost)return '';
+  const distanceNm=nm(p.d);
+  const alt=Number(p.alt);
+  if(!Number.isFinite(alt))return distanceNm<=8?'Kan trolig ses/høres':'';
+  if(distanceNm<=8&&alt<=12000)return 'Kan trolig ses/høres';
+  if(distanceNm<=12&&alt<=7000)return 'Kan trolig ses/høres';
+  if(distanceNm<=18&&alt<=5000)return 'Kan trolig høres';
+  return '';
+}
 function passerbyScore(p){
   if(!observablePasserby(p))return 0;
   const distanceNm=nm(p.d);
@@ -1517,6 +1527,7 @@ function render(autoFit=false){
         <span>${shown.reg?('REG. '+shown.reg):''}</span>
       </div>
       <div class="movement-status ${shown.ksuFlight?'ksu':inferred?'inferred':''}">${shown.signalLost?signalStateText(shown):(shown.ksuFlight?ksuOperationalStatus(shown):(inferred?`Sannsynlig mot ${inferred.code}`:ksuOperationalStatus(shown)))}</div>
+      ${visibilityHint(shown)?`<div class="movement-status">${visibilityHint(shown)}</div>`:''}
       <div class="movement">${shown.signalLost?'Viser siste kjente posisjon':movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
