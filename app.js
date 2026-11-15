@@ -534,10 +534,17 @@ function ksuMovementStatus(p){
     return {label:'Nærmer seg KSU',detail:headingToKsu!==null?`${Math.round(headingToKsu)}° fra direkte kurs mot KSU`:''};
   }
   if(leavingByTrend || (leavingByTrack && distanceNm<=50)){
-    return {label:'Forlater KSU',detail:headingToKsu!==null?`${Math.round(headingToKsu)}° fra kurs mot KSU`:''};
+    if(p.ksuFlight?.arr_dep==='D'){
+      return {label:'Har forlatt KSU',detail:headingToKsu!==null?`${Math.round(headingToKsu)}° fra kurs mot KSU`:''};
+    }
+    if(tr!==null){
+      const dir=courseLabel(tr);
+      return {label:`Flyr ${dir}over`,detail:`kurs ${Math.round(tr)}° · bort fra KSU`};
+    }
+    return {label:'Flyr bort fra KSU',detail:''};
   }
   if(tr!==null){
-    return {label:'Passerer området',detail:`kurs ${Math.round(tr)}° · ${courseLabel(tr)}`};
+    return {label:`Flyr ${courseLabel(tr)}over`,detail:`kurs ${Math.round(tr)}°`};
   }
   return {label:'Retning usikker',detail:''};
 }
