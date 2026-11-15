@@ -1,6 +1,10 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null, avinorFlights=[];
 const routeCache=new Map();
+const mapAreas={
+  airport:{label:'Kvernberget',lat:63.1118,lon:7.8245},
+  city:{label:'Kristiansund sentrum',lat:63.1103,lon:7.7279}
+};
 let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
 let layer=L.layerGroup().addTo(map);
@@ -18,9 +22,9 @@ function localRelevant(p){
   const alt=typeof p.alt==='number'?p.alt:99999;
   return distanceNm<=25 && alt<=20000;
 }
-function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value}}
+function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value,area:$('area')?.value||'airport'}}
 function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
-function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r}catch(e){}}
+function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r;if(s.area&&$('area'))$('area').value=s.area}catch(e){}}
 function normalize(a,s){
   let lat=a.lat,lon=a.lon;
   return{
@@ -75,12 +79,13 @@ function areaBounds(lat,lon,radiusNm){
 }
 function applyMapLevel(s){
   const viewRadius=+s.r;
-  const allowed=areaBounds(s.lat,s.lon,170);
+  const a=mapAreas[s.area]||mapAreas.airport;
+  const allowed=areaBounds(63.1118,7.8245,170);
   map.setMaxBounds(allowed.pad(0.05));
   map.options.maxBoundsViscosity=1.0;
   map.setMinZoom(5);
   const pad=viewRadius<=10?[18,18]:[28,28];
-  map.fitBounds(areaBounds(s.lat,s.lon,viewRadius),{padding:pad});
+  map.fitBounds(areaBounds(a.lat,a.lon,viewRadius),{padding:pad});
 }
 function fitMap(list,s){
   applyMapLevel(s);
@@ -299,6 +304,7 @@ function toggleDisplay(){
 $('refresh').onclick=refresh;
 $('filter').oninput=()=>render(false);
 $('radius').onchange=()=>{save();applyMapLevel(settings());refresh();};
+$('area').onchange=()=>{save();applyMapLevel(settings());};
 $('save').onclick=refresh;
 $('mode').onclick=toggleDisplay;
 load();loadOffshore();refresh();setInterval(refresh,180000);setInterval(loadAvinor,600000);
