@@ -98,6 +98,20 @@ function followNearest(list,s){
   if(!local.length){ applyMapLevel(s); return; }
 
   const airport=[63.1118,7.8245];
+  const nearest=local[0];
+  const nearestNm=nm(nearest.d);
+
+  if(nearestNm<=10){
+    let maxZoom=11;
+    if(nearestNm<=5)maxZoom=12;
+    if(nearestNm<=2)maxZoom=13;
+    map.fitBounds(L.latLngBounds([airport,[nearest.lat,nearest.lon]]),{
+      padding:[70,70],
+      maxZoom
+    });
+    return;
+  }
+
   const points=[airport,...local.map(p=>[p.lat,p.lon])];
   const farthestNm=Math.max(...local.map(p=>nm(p.d)));
 
