@@ -666,8 +666,8 @@ function ksuMovementStatus(p){
   if(distanceNm<=18 && Number.isFinite(alt) && alt<=9000 && descending && (approachingByTrack||approachingByTrend)){
     return {label:'Ser ut til å være på innflyging',detail:'mot Kvernberget'};
   }
-  if(approachingByTrend || (approachingByTrack && distanceNm<=50)){
-    return {label:'Nærmer seg KSU',detail:headingToKsu!==null?`${Math.round(headingToKsu)}° fra direkte kurs mot KSU`:''};
+  if((approachingByTrend || (approachingByTrack && distanceNm<=50)) && headingToKsu!==null && headingToKsu<=55){
+    return {label:'Nærmer seg KSU',detail:`${Math.round(headingToKsu)}° fra direkte kurs mot KSU`};
   }
   if(leavingByTrend || (leavingByTrack && distanceNm<=50)){
     if(p.ksuFlight?.arr_dep==='D'){
