@@ -1,5 +1,5 @@
 const $=x=>document.getElementById(x);
-let planes=[], display=false, selected=null;
+let planes=[], display=false, selected=null, avinorFlights=[];
 const routeCache=new Map();
 let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
@@ -145,6 +145,40 @@ async function fetchJson(url){
     return await r.json();
   }
 }
+async function loadAvinor(){
+  try{
+    const bucket=Math.floor(Date.now()/600000);
+    const r=await fetch('data/avinor-ksu.json?v='+bucket,{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    avinorFlights=Array.isArray(j.flights)?j.flights:[];
+    renderAvinor();
+  }catch(e){
+    avinorFlights=[];
+    renderAvinor();
+  }
+}
+function renderAvinor(){
+  const el=$('avinor-list'); if(!el)return;
+  if(!avinorFlights.length){
+    el.innerHTML='<div class="schedule-empty">Ingen planlagte KSU-data tilgjengelig akkurat nå.</div>';
+    return;
+  }
+  const now=Date.now();
+  const rows=avinorFlights
+    .filter(f=>{const t=Date.parse(f.schedule_time||'');return !Number.isFinite(t)||t>=now-60*60*1000})
+    .slice(0,12);
+  el.innerHTML=rows.map(f=>{
+    const t=f.schedule_time?new Date(f.schedule_time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
+    const dep=f.arr_dep==='D';
+    const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
+    const status=f.status_code?(' · '+f.status_code):'';
+    return `<div class="schedule-row ${heli?'heli':''}">
+      <div><b>${f.flight_id||'Ukjent'}</b><span>${heli?'Helikopter · ':''}${dep?'Fra KSU':'Til KSU'} ${dep?'→':'←'} ${f.airport||'–'}</span></div>
+      <div class="schedule-time">${t}${status}</div>
+    </div>`;
+  }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
+}
 async function refresh(){
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -162,6 +196,7 @@ async function refresh(){
     const localCount=planes.filter(localRelevant).length;$('status').textContent=`${localCount} lokale / ${planes.length} totalt`;$('status').className='ok';
     render(true);
     enrichRoutes(planes);
+    loadAvinor();
   }catch(e){
     $('status').textContent='Feil: '+e.message;$('status').className='err';
     $('cards').innerHTML='<div class="card">Kunne ikke hente live-data. Prøv Oppdater igjen.</div>';
@@ -227,5 +262,5 @@ $('filter').oninput=()=>render(false);
 $('radius').onchange=refresh;
 $('save').onclick=refresh;
 $('mode').onclick=toggleDisplay;
-load();refresh();setInterval(refresh,180000);
+load();refresh();setInterval(refresh,180000);setInterval(loadAvinor,600000);
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
