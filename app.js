@@ -450,9 +450,16 @@ function render(autoFit=false){
   const s=settings();
   let q=($('filter')?.value||'').toLowerCase();
   let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc,p.route].join(' ').toLowerCase().includes(q));
-  $('count').textContent=list.filter(localRelevant).length;
-  $('closest').textContent=list[0]?fNm(list[0].d):'–';
-  $('updated').textContent=new Date().toLocaleTimeString('no-NO');
+  const nearCount=list.filter(localRelevant).length;
+  const closestText=list[0]?fNm(list[0].d):'–';
+  const updatedText=new Date().toLocaleTimeString('no-NO');
+  $('count').textContent=nearCount;
+  $('closest').textContent=closestText;
+  $('updated').textContent=updatedText;
+  if($('fs-count'))$('fs-count').textContent=nearCount;
+  if($('fs-closest'))$('fs-closest').textContent=closestText;
+  if($('fs-updated'))$('fs-updated').textContent=updatedText;
+  if($('fs-status'))$('fs-status').textContent=$('status')?.textContent||'';
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
