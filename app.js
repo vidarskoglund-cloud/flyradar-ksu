@@ -65,14 +65,24 @@ function updateRangeRings(s){
     })}).addTo(rangeLayer);
   });
 }
-function fitMap(list,s){
-  const bounds=L.latLngBounds([
-    destinationPoint(s.lat,s.lon,30,0),
-    destinationPoint(s.lat,s.lon,30,90),
-    destinationPoint(s.lat,s.lon,30,180),
-    destinationPoint(s.lat,s.lon,30,270)
+function areaBounds(lat,lon,radiusNm){
+  return L.latLngBounds([
+    destinationPoint(lat,lon,radiusNm,0),
+    destinationPoint(lat,lon,radiusNm,90),
+    destinationPoint(lat,lon,radiusNm,180),
+    destinationPoint(lat,lon,radiusNm,270)
   ]);
-  map.fitBounds(bounds,{padding:[28,28]});
+}
+function applyMapLevel(s){
+  const viewRadius=+s.r;
+  const allowed=areaBounds(s.lat,s.lon,170);
+  map.setMaxBounds(allowed.pad(0.05));
+  map.options.maxBoundsViscosity=1.0;
+  map.setMinZoom(5);
+  map.fitBounds(areaBounds(s.lat,s.lon,viewRadius),{padding:[28,28]});
+}
+function fitMap(list,s){
+  applyMapLevel(s);
 }
 function airportLabel(a){
   if(!a)return'';
@@ -287,7 +297,7 @@ function toggleDisplay(){
 }
 $('refresh').onclick=refresh;
 $('filter').oninput=()=>render(false);
-$('radius').onchange=refresh;
+$('radius').onchange=()=>{save();applyMapLevel(settings());refresh();};
 $('save').onclick=refresh;
 $('mode').onclick=toggleDisplay;
 load();loadOffshore();refresh();setInterval(refresh,180000);setInterval(loadAvinor,600000);
