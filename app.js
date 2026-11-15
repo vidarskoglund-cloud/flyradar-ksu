@@ -447,9 +447,12 @@ async function loadAvinor(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
     avinorFlights=Array.isArray(j.flights)?j.flights:[];
+    attachAvinorMatches();
     renderAvinor();
+    render(false);
   }catch(e){
     avinorFlights=[];
+    attachAvinorMatches();
     renderAvinor();
   }
 }
@@ -469,12 +472,89 @@ function renderAvinor(){
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
     const status=f.status_code?(' · '+f.status_code):'';
     const route=dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`;
-    return `<div class="schedule-row ${heli?'heli':''}">
-      <div class="schedule-main"><b>${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b><span>${route}</span></div>
+    const matched=planes.some(p=>p.ksuFlight&&p.ksuFlight.uniqueId===f.uniqueId);
+    const statusText=avinorStatusText(f);
+    return `<div class="schedule-row ${heli?'heli':''} ${matched?'matched':''}">
+      <div class="schedule-main"><b>${matched?'● ':''}${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b><span>${route}${statusText?' · '+statusText:''}</span></div>
       <div class="schedule-time">${t}</div>
     </div>`;
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
+
+function compactFlightId(value){
+  return String(value||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+function flightAliases(value){
+  const id=compactFlightId(value);
+  const out=new Set();
+  if(!id)return out;
+  out.add(id);
+  const m=id.match(/^([A-Z]{2,3})(\d+[A-Z]?)$/);
+  if(!m)return out;
+  const carrier=m[1],number=m[2];
+  const pairs={SK:'SAS',SAS:'SK',WF:'WIF',WIF:'WF'};
+  if(pairs[carrier])out.add(pairs[carrier]+number);
+  return out;
+}
+function avinorStatusText(f){
+  const code=String(f?.status_code||'').trim().toUpperCase();
+  const known={A:'Landet',D:'Avreist',C:'Innstilt',E:'Ny tid'};
+  return known[code]||'';
+}
+function findKsuFlight(p){
+  if(!p?.flight||!avinorFlights.length)return null;
+  const aliases=flightAliases(p.flight);
+  if(!aliases.size)return null;
+  const now=Date.now();
+  const candidates=avinorFlights.filter(f=>{
+    const avAliases=flightAliases(f.flight_id);
+    const same=[...aliases].some(x=>avAliases.has(x));
+    if(!same)return false;
+    const t=Date.parse(f.schedule_time||'');
+    return !Number.isFinite(t)||Math.abs(t-now)<=8*60*60*1000;
+  });
+  if(!candidates.length)return null;
+  candidates.sort((a,b)=>{
+    const ta=Date.parse(a.schedule_time||''),tb=Date.parse(b.schedule_time||'');
+    const da=Number.isFinite(ta)?Math.abs(ta-now):Number.MAX_SAFE_INTEGER;
+    const db=Number.isFinite(tb)?Math.abs(tb-now):Number.MAX_SAFE_INTEGER;
+    return da-db;
+  });
+  return candidates[0];
+}
+function attachAvinorMatches(){
+  planes.forEach(p=>{p.ksuFlight=findKsuFlight(p);});
+}
+function ksuFlightInfo(p){
+  const f=p?.ksuFlight;
+  if(!f)return null;
+  const dep=f.arr_dep==='D';
+  const time=f.schedule_time
+    ? new Date(f.schedule_time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})
+    : '–';
+  return {
+    direction:dep?'Avgang KSU':'Ankomst KSU',
+    route:dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`,
+    time,
+    status:avinorStatusText(f),
+    flightId:f.flight_id||p.flight
+  };
+}
+function ksuOperationalStatus(p){
+  const info=ksuFlightInfo(p);
+  if(!info)return ksuMovementStatus(p).label;
+  const movement=ksuMovementStatus(p).label;
+  if(info.direction==='Ankomst KSU'){
+    if(info.status==='Landet')return 'Landet på Kvernberget';
+    if(movement==='Ser ut til å være på innflyging')return 'På innflyging til Kvernberget';
+    if(movement==='Nærmer seg KSU')return 'KSU-ankomst nærmer seg';
+    return 'Planlagt ankomst KSU';
+  }
+  if(info.status==='Avreist')return 'Avreist fra Kvernberget';
+  if(movement==='Forlater KSU')return 'Har forlatt Kvernberget';
+  return 'Planlagt avgang KSU';
+}
+
 function base64UrlToUint8Array(base64Url){
   const padding='='.repeat((4-base64Url.length%4)%4);
   const base64=(base64Url+padding).replace(/-/g,'+').replace(/_/g,'/');
@@ -604,6 +684,7 @@ async function refresh(){
       .filter(p=>nm(p.d)<=150)
       .sort((a,b)=>a.d-b.d);
 
+    attachAvinorMatches();
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
     check50NmNotifications(planes);
@@ -692,13 +773,13 @@ function render(autoFit=false){
   if($('fs-aircraft')){
     const p=list[0]||null;
     $('fs-aircraft').innerHTML=p
-      ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,displayRoute(p),f(p.alt,' ft'),f(p.gs,' kt'),movementText(p)].filter(Boolean).join(' · ')}</span>`
+      ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,ksuFlightInfo(p)?.route||displayRoute(p),ksuOperationalStatus(p),f(p.alt,' ft'),f(p.gs,' kt')].filter(Boolean).join(' · ')}</span>`
       : '<b>Ingen fly</b><span>–</span>';
   }
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
-      .bindTooltip(`${localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
+      .bindTooltip(`${p.ksuFlight?'KSU · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}`,{direction:'top',offset:[0,-15]})
       .on('click',()=>{select(p);render(false)})
       .addTo(layer);
   });
@@ -709,6 +790,7 @@ function render(autoFit=false){
     selected=shown;
     const rp=routeCardParts(shown);
     const service=specialService(shown);
+    const ksuInfo=ksuFlightInfo(shown);
     const routeBlock=rp
       ? `<div class="flight-route">
           <div class="route-end"><b>${rp.fromCode}</b><span>${rp.fromPlace}</span></div>
@@ -727,6 +809,7 @@ function render(autoFit=false){
         </div>
         <div class="dist">${fNm(shown.d)}</div>
       </div>
+      ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
       <div class="aircraft-metrics">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
@@ -738,7 +821,7 @@ function render(autoFit=false){
         <span>${shown.desc||shown.type||'Fly'}</span>
         <span>${shown.reg?('REG. '+shown.reg):''}</span>
       </div>
-      <div class="movement-status">${ksuMovementStatus(shown).label}</div>
+      <div class="movement-status ${shown.ksuFlight?'ksu':''}">${ksuOperationalStatus(shown)}</div>
       <div class="movement">${movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
