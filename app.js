@@ -95,25 +95,21 @@ function applyMapLevel(s){
 }
 function followNearest(list,s){
   const local=list.filter(localRelevant).sort((a,b)=>a.d-b.d);
-  const p=local[0];
-  if(!p){ applyMapLevel(s); return; }
+  if(!local.length){ applyMapLevel(s); return; }
 
   const airport=[63.1118,7.8245];
-  const plane=[p.lat,p.lon];
-  const dNm=nm(p.d);
+  const points=[airport,...local.map(p=>[p.lat,p.lon])];
+  const farthestNm=Math.max(...local.map(p=>nm(p.d)));
 
-  let maxZoom=9;
-  if(dNm<=20)maxZoom=10;
-  if(dNm<=10)maxZoom=11;
-  if(dNm<=5)maxZoom=12;
-  if(dNm<=2)maxZoom=13;
+  let maxZoom=10;
+  if(farthestNm<=15)maxZoom=11;
+  if(farthestNm<=7)maxZoom=12;
+  if(farthestNm<=3)maxZoom=13;
 
-  const bounds=L.latLngBounds([airport,plane]);
-  if(dNm<0.5){
-    map.setView(plane,14);
-  }else{
-    map.fitBounds(bounds,{padding:[70,70],maxZoom});
-  }
+  map.fitBounds(L.latLngBounds(points),{
+    padding:[60,60],
+    maxZoom
+  });
 }
 function fitMap(list,s){
   followNearest(list,s);
