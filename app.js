@@ -710,9 +710,58 @@ function specialService(p){
   if(/helicopter|helikopter|chc/.test(op+' '+desc) || /^HK[SM]/.test(f) || type.startsWith('S92')) return 'Offshorehelikopter';
   return '';
 }
+function inferredAirportCandidate(p){
+  if(!p||p.ksuFlight)return null;
+  const tr=getTrackDeg(p);
+  const alt=Number(p.alt);
+  const vr=Number(p.vr);
+  if(tr===null)return null;
+
+  const candidates=norwayAirports.map(a=>{
+    const dNm=nm(dist(p.lat,p.lon,a.lat,a.lon));
+    if(dNm>90)return null;
+    const bearing=bearingBetween(p.lat,p.lon,a.lat,a.lon);
+    const diff=angleDiff(tr,bearing);
+    if(diff>35)return null;
+
+    let score=0;
+    score += Math.max(0,70-dNm);
+    score += Math.max(0,35-diff);
+
+    if(Number.isFinite(vr)&&vr<-150)score+=20;
+    if(Number.isFinite(alt)){
+      if(dNm<=30&&alt<=12000)score+=20;
+      if(dNm<=15&&alt<=8000)score+=20;
+    }
+    if(a.major)score+=4;
+
+    return {airport:a,dNm,diff,score};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score);
+
+  const best=candidates[0];
+  if(!best||best.score<55)return null;
+
+  const second=candidates[1];
+  if(second && best.score-second.score<8)return null;
+
+  return best;
+}
+function inferredRouteLabel(p){
+  const best=inferredAirportCandidate(p);
+  if(!best)return null;
+  return {
+    code:best.airport.code,
+    name:best.airport.name,
+    distanceNm:best.dNm,
+    label:`Sannsynlig ${best.airport.code}`
+  };
+}
 function displayRoute(p){
   const service=specialService(p);
   if(service)return service;
+  if(p.route&&p.route!=='Rute ikke tilgjengelig'&&p.route!=='Henter rute…')return p.route;
+  const inferred=inferredRouteLabel(p);
+  if(inferred)return `${inferred.label} · ${inferred.name}`;
   return p.route||'Henter rute…';
 }
 async function enrichRoute(p){
@@ -1233,6 +1282,7 @@ function render(autoFit=false){
     const rp=routeCardParts(shown);
     const service=specialService(shown);
     const ksuInfo=ksuFlightInfo(shown);
+    const inferred=inferredRouteLabel(shown);
     const routeBlock=ksuInfo
       ? `<div class="flight-route">
           <div class="route-end"><b>${ksuInfo.direction==='Ankomst KSU'?(shown.ksuFlight?.airport||'–'):'KSU'}</b><span>${ksuInfo.direction==='Ankomst KSU'?'Avgang':'Kristiansund'}</span></div>
@@ -1245,7 +1295,9 @@ function render(autoFit=false){
             <div class="route-arrow"><span>✈</span><i></i></div>
             <div class="route-end"><b>${rp.toCode}</b><span>${rp.toPlace}</span></div>
           </div>`
-        : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div></div>`;
+        : inferred
+          ? `<div class="flight-route fallback inferred"><div class="route-loading">${inferred.label} · ${inferred.name}</div></div>`
+          : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div></div>`;
     $('cards').innerHTML=`<div class="card aircraft-card ${localRelevant(shown)?'local-card':''}">
       <div class="aircraft-head">
         <div>
@@ -1269,7 +1321,7 @@ function render(autoFit=false){
         <span>${shown.desc||shown.type||'Fly'}</span>
         <span>${shown.reg?('REG. '+shown.reg):''}</span>
       </div>
-      <div class="movement-status ${shown.ksuFlight?'ksu':''}">${ksuOperationalStatus(shown)}</div>
+      <div class="movement-status ${shown.ksuFlight?'ksu':inferred?'inferred':''}">${shown.ksuFlight?ksuOperationalStatus(shown):(inferred?`Sannsynlig mot ${inferred.code}`:ksuOperationalStatus(shown))}</div>
       <div class="movement">${movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
