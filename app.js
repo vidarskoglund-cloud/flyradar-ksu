@@ -580,12 +580,61 @@ function bearingBetween(lat1,lon1,lat2,lon2){
 function angleDiff(a,b){
   return Math.abs((((a-b)+540)%360)-180);
 }
+function movementDestination(p){
+  if(!p||p.ksuFlight)return null;
+
+  const aps=Array.isArray(p.routeData?._airports)?p.routeData._airports:[];
+  if(aps.length>=2 && routeText(p.routeData)!=='Rute ikke tilgjengelig'){
+    const last=aps[aps.length-1];
+    const code=String(last.iata||last.code||'').toUpperCase();
+    const airport=airportByCode(code);
+    if(airport && airport.code!=='KSU')return {airport,confirmed:true};
+  }
+
+  const inferred=inferredRouteLabel(p);
+  if(inferred){
+    const airport=airportByCode(inferred.code);
+    if(airport && airport.code!=='KSU')return {airport,confirmed:false};
+  }
+  return null;
+}
 function ksuMovementStatus(p){
   if(!p)return {label:'Retning usikker',detail:''};
   const distanceNm=nm(p.d);
   const alt=Number(p.alt);
   const vr=Number(p.vr);
   const tr=getTrackDeg(p);
+
+  const destination=movementDestination(p);
+  if(destination){
+    const a=destination.airport;
+    const dNm=nm(dist(p.lat,p.lon,a.lat,a.lon));
+    const toAirport=bearingBetween(p.lat,p.lon,a.lat,a.lon);
+    const diff=tr!==null?angleDiff(tr,toAirport):null;
+    const descending=Number.isFinite(vr)&&vr<-250;
+    const low=Number.isFinite(alt)&&alt<=9000;
+    const toward=diff!==null&&diff<=55;
+
+    if(dNm<=18 && low && descending && toward){
+      return {
+        label:`På innflyging mot ${a.code}`,
+        detail:`${destination.confirmed?'bekreftet':'sannsynlig'} destinasjon · ${dNm.toFixed(0)} NM igjen`
+      };
+    }
+    if(dNm<=55 && toward){
+      return {
+        label:`Nærmer seg ${a.code}`,
+        detail:`${destination.confirmed?'bekreftet':'sannsynlig'} destinasjon · ${dNm.toFixed(0)} NM igjen`
+      };
+    }
+    if(tr!==null){
+      return {
+        label:`Flyr ${courseLabel(tr)}over`,
+        detail:`${destination.confirmed?'Rute mot':'Sannsynlig mot'} ${a.code} · kurs ${Math.round(tr)}°`
+      };
+    }
+  }
+
   const toKsu=bearingBetween(p.lat,p.lon,63.1118,7.8245);
   const headingToKsu=tr!==null?angleDiff(tr,toKsu):null;
 
