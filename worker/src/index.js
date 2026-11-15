@@ -226,6 +226,17 @@ export class TrackStore extends DurableObject {
   }
 }
 
+function localFlightAwareEligible(lat, lon, alt) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  const dNm = distanceNm(KSU.lat, KSU.lon, lat, lon);
+  const h = Number(alt);
+  if (!Number.isFinite(h)) return dNm <= 10;
+  if (dNm <= 10 && h <= 18000) return true;
+  if (dNm <= 15 && h <= 12000) return true;
+  if (dNm <= 20 && h <= 8000) return true;
+  return false;
+}
+
 function routeUsable(route) {
   if (!route) return false;
   const codes = String(route.airport_codes || "").toLowerCase();
@@ -359,6 +370,11 @@ export default {
       const callsign = (url.searchParams.get("callsign") || "").trim().toUpperCase();
       const lat = Number(url.searchParams.get("lat"));
       const lon = Number(url.searchParams.get("lon"));
+      const alt = Number(url.searchParams.get("alt"));
+      const faScope = (url.searchParams.get("fa_scope") || "").toLowerCase();
+      const allowFlightAware =
+        faScope === "ksu" ||
+        (faScope === "local" && localFlightAwareEligible(lat, lon, alt));
 
       if (!callsign) {
         return new Response(JSON.stringify({ error: "Missing callsign" }), {
@@ -395,7 +411,7 @@ export default {
         }
       } catch (error) {}
 
-      if (!routeUsable(route)) {
+      if (!routeUsable(route) && allowFlightAware) {
         try {
           const faRoute = await flightAwareRoute(env, callsign);
           if (routeUsable(faRoute)) {
@@ -409,6 +425,7 @@ export default {
         ok: true,
         callsign,
         source,
+        flightaware_allowed: allowFlightAware,
         route: routeUsable(route) ? route : null,
       }), {
         status: 200,
