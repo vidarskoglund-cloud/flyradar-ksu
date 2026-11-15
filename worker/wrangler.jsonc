@@ -3,5 +3,19 @@
   "name": "flyradar-ksu",
   "main": "src/index.js",
   "compatibility_date": "2026-11-15",
-  "workers_dev": true
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "TRACK_STORE",
+        "class_name": "TrackStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["TrackStore"]
+    }
+  ]
 }
