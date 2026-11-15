@@ -463,6 +463,23 @@ function drawTrackAndPrediction(p){
     return;
   }
 
+  const inferred=inferredRouteLabel(p);
+  if(inferred && !p.routeData){
+    const target=airportByCode(inferred.code);
+    if(target){
+      const targetPos=[target.lat,target.lon];
+      L.polyline([[p.lat,p.lon],targetPos],{
+        weight:3,
+        opacity:.85,
+        dashArray:'5 9'
+      }).bindTooltip(`Antatt videre mot ${inferred.code} · ikke bekreftet`,{sticky:true}).addTo(trackLayer);
+      L.circleMarker(targetPos,{radius:6,weight:2,fillOpacity:.75})
+        .bindTooltip(`${inferred.label} · ${inferred.name} · ikke bekreftet`,{direction:'top'})
+        .addTo(trackLayer);
+      return;
+    }
+  }
+
   const preds=predictedPoints(p);
   if(preds.length){
     L.polyline([[p.lat,p.lon],...preds.map(x=>x.pos)],{
