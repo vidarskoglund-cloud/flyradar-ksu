@@ -1,5 +1,6 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
+let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
 let notified50=new Set(), notificationBaselineReady=false;
@@ -162,6 +163,21 @@ function applyMapLevel(s){
   const pad=viewRadius<=10?[18,18]:[28,28];
   map.fitBounds(areaBounds(a.lat,a.lon,viewRadius),{padding:pad});
 }
+function idleCandidates(list){
+  return list.slice().sort((a,b)=>a.d-b.d).filter(p=>nm(p.d)>50).slice(0,3);
+}
+function focusIdleCandidate(list,advance=false){
+  const candidates=idleCandidates(list);
+  if(!candidates.length)return false;
+  if(advance)idleFocusIndex=(idleFocusIndex+1)%candidates.length;
+  if(idleFocusIndex>=candidates.length)idleFocusIndex=0;
+  const p=candidates[idleFocusIndex];
+  selected=p;
+  map.setView([p.lat,p.lon],8);
+  select(p,false);
+  if($('fs-status'))$('fs-status').textContent=`rolig visning · fly ${idleFocusIndex+1}/${candidates.length}`;
+  return true;
+}
 function followNearest(list,s){
   const sorted=list.slice().sort((a,b)=>a.d-b.d);
   const nearest=sorted[0];
@@ -171,6 +187,7 @@ function followNearest(list,s){
   const nearestNm=nm(nearest.d);
 
   if(nearestNm<=10){
+    idleFocusIndex=0;
     let maxZoom=11;
     if(nearestNm<=5)maxZoom=12;
     if(nearestNm<=2)maxZoom=13;
@@ -182,6 +199,7 @@ function followNearest(list,s){
   }
 
   if(nearestNm<=50){
+    idleFocusIndex=0;
     const nearby=sorted.filter(p=>nm(p.d)<=50);
     const points=[airport,...nearby.map(p=>[p.lat,p.lon])];
     map.fitBounds(L.latLngBounds(points),{
@@ -191,7 +209,7 @@ function followNearest(list,s){
     return;
   }
 
-  applyMapLevel(s);
+  if(!focusIdleCandidate(sorted,false))applyMapLevel(s);
 }
 function fitMap(list,s){
   followNearest(list,s);
@@ -605,4 +623,10 @@ async function adaptiveRefresh(){
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
 load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);
+setInterval(()=>{
+  if(document.hidden)return;
+  const sorted=planes.slice().sort((a,b)=>a.d-b.d);
+  const nearest=sorted[0];
+  if(nearest && nm(nearest.d)>50)focusIdleCandidate(sorted,true);
+},20000);
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
