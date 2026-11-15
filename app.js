@@ -862,6 +862,33 @@ function avinorStatusText(f){
   const known={A:'Landet',D:'Avreist',C:'Innstilt',E:'Ny tid'};
   return known[code]||'';
 }
+
+function pointToSegmentNm(pLat,pLon,aLat,aLon,bLat,bLon){
+  const lat0=rad((aLat+bLat+pLat)/3);
+  const x=(lon)=>rad(lon)*Math.cos(lat0)*3440.065;
+  const y=(lat)=>rad(lat)*3440.065;
+  const px=x(pLon),py=y(pLat),ax=x(aLon),ay=y(aLat),bx=x(bLon),by=y(bLat);
+  const abx=bx-ax,aby=by-ay;
+  const apx=px-ax,apy=py-ay;
+  const len2=abx*abx+aby*aby;
+  const t=len2?Math.max(0,Math.min(1,(apx*abx+apy*aby)/len2)):0;
+  const cx=ax+t*abx,cy=ay+t*aby;
+  return Math.hypot(px-cx,py-cy);
+}
+function plausibleKsuRouteCorridor(p,f){
+  if(!p||!f)return false;
+  const other=airportByCode(f.airport);
+  if(!other)return true;
+  const ksu={lat:63.1118,lon:7.8245};
+  const corridorNm=pointToSegmentNm(p.lat,p.lon,other.lat,other.lon,ksu.lat,ksu.lon);
+  const endDist=Math.min(
+    nm(dist(p.lat,p.lon,other.lat,other.lon)),
+    nm(dist(p.lat,p.lon,ksu.lat,ksu.lon))
+  );
+  // Tillat litt slingringsmonn nær endepunktene, men ikke fly langt utenfor ruten.
+  return corridorNm<=45 || endDist<=30;
+}
+
 function findKsuFlight(p){
   if(!p?.flight||!avinorFlights.length)return null;
   const aliases=flightAliases(p.flight);
@@ -899,16 +926,17 @@ function findKsuFlight(p){
     if(String(f.status_code||'').toUpperCase()==='C')return false;
     const t=Date.parse(f.schedule_time||'');
     if(!Number.isFinite(t))return false;
+    if(!plausibleKsuRouteCorridor(p,f))return false;
 
     if(f.arr_dep!=='D'){
       if(dNm>150)return false;
-      if(!approaching && dNm>35)return false;
-      return t>=now-120*60*1000 && t<=now+90*60*1000;
+      if(!approaching && dNm>30)return false;
+      return t>=now-75*60*1000 && t<=now+75*60*1000;
     }
 
     if(dNm>75)return false;
-    if(!leaving && dNm>20)return false;
-    return t>=now-60*60*1000 && t<=now+90*60*1000;
+    if(!leaving && dNm>15)return false;
+    return t>=now-45*60*1000 && t<=now+75*60*1000;
   });
 
   if(!fallback.length)return null;
@@ -1293,6 +1321,10 @@ load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);
 setInterval(()=>{
   if(document.hidden)return;
   const sorted=planes.slice().sort((a,b)=>a.d-b.d);
+  const priority=priorityKsuAircraft(sorted);
+  if(priority)return;
+  const passerby=priorityPasserby(sorted);
+  if(passerby)return;
   const nearest=sorted[0];
   if(nearest && nm(nearest.d)>50)focusIdleCandidate(sorted,true);
 },20000);
