@@ -38,14 +38,14 @@ body.display-on details,body.display-on footer{display:none}
 }
 @media(min-width:900px) and (display-mode:fullscreen){
   html,body{height:100%;overflow:hidden}
-  header,#stats,.local-rule,.settings-panel,footer{display:none}
-  main{height:100vh;padding:8px 18px;display:grid;grid-template-rows:1fr auto auto;gap:8px;overflow:hidden}
+  header,#stats,.local-rule,.settings-panel,footer,.nearest-panel{display:none}
+  main{height:100vh;padding:8px 18px;display:grid;grid-template-rows:1fr auto;gap:6px;overflow:hidden}
   #map{height:100%;min-height:0}
-  .fullscreen-strip{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:8px;max-width:1000px;width:100%;margin:0 auto}
-  .fullscreen-strip>div{background:var(--p);border:1px solid var(--line);border-radius:10px;padding:7px 10px;min-width:0}
-  .fullscreen-strip b{display:block;font-size:14px}
-  .fullscreen-strip span{display:block;color:var(--m);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .nearest-panel{margin-top:0}
+  .fullscreen-strip{display:grid;grid-template-columns:1.7fr .7fr .9fr .9fr 2.8fr;gap:6px;max-width:1400px;width:100%;margin:0 auto}
+  .fullscreen-strip>div{background:var(--p);border:1px solid var(--line);border-radius:9px;padding:5px 9px;min-width:0}
+  .fullscreen-strip b{display:block;font-size:12px;line-height:1.1}
+  .fullscreen-strip span{display:block;color:var(--m);font-size:9px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fs-aircraft b{color:var(--a)}
 }
 @media(max-width:700px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}body.display-on main{padding:82px 12px 12px}.hero .grid{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -58,10 +58,11 @@ body.display-on details,body.display-on footer{display:none}
 <div class="grid"><div><span>HØYDE</span><b id="halt">–</b></div><div><span>FART</span><b id="hspd">–</b></div><div><span>KURS</span><b id="htrk">–</b></div><div><span>VERTIKAL</span><b id="hvr">–</b></div></div></section>
 <div id="map"></div>
 <div class="fullscreen-strip">
-  <div><b>Flyradar KSU</b><span id="fs-status">–</span></div>
+  <div class="fs-brand"><b>Flyradar KSU</b><span id="fs-status">–</span></div>
   <div><b id="fs-count">0</b><span>nærtrafikk</span></div>
   <div><b id="fs-closest">–</b><span>nærmest</span></div>
   <div><b id="fs-updated">–</b><span>oppdatert</span></div>
+  <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
 <section class="schedule nearest-panel"><h2>Nærmeste fly</h2><div id="cards" class="cards"></div></section>
 <details class="settings-panel" style="margin-top:12px"><summary>Innstillinger</summary>
@@ -87,5 +88,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=40"></script>
+<script src="app.js?v=41"></script>
 </body></html>
