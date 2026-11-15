@@ -50,6 +50,7 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 }
 function updateRangeRings(s){
   rangeLayer.clearLayers();
+  const overview=+s.r>=150;
   [10,25,50].forEach(n=>{
     const active=+s.r===n;
     L.circle([s.lat,s.lon],{
@@ -61,12 +62,14 @@ function updateRangeRings(s){
       dashArray:active?null:'6 8',
       interactive:false
     }).addTo(rangeLayer);
-    const pos=destinationPoint(s.lat,s.lon,n,0);
-    L.marker(pos,{interactive:false,icon:L.divIcon({
-      className:'range-label-wrap',
-      html:`<div class="range-label ${active?'active':''}">${n} NM</div>`,
-      iconSize:[58,20],iconAnchor:[29,10]
-    })}).addTo(rangeLayer);
+    if(!overview){
+      const pos=destinationPoint(s.lat,s.lon,n,0);
+      L.marker(pos,{interactive:false,icon:L.divIcon({
+        className:'range-label-wrap',
+        html:`<div class="range-label ${active?'active':''}">${n} NM</div>`,
+        iconSize:[58,20],iconAnchor:[29,10]
+      })}).addTo(rangeLayer);
+    }
   });
 }
 function areaBounds(lat,lon,radiusNm){
@@ -79,6 +82,7 @@ function areaBounds(lat,lon,radiusNm){
 }
 function applyMapLevel(s){
   const viewRadius=+s.r;
+  document.body.classList.toggle('overview-map',viewRadius>=150);
   const a=mapAreas[s.area]||mapAreas.airport;
   const allowed=areaBounds(63.1118,7.8245,170);
   map.setMaxBounds(allowed.pad(0.05));
@@ -201,7 +205,7 @@ async function loadOffshore(){
       const kind=p.fclKind||p.fclSurface||'';
       const icon=L.divIcon({
         className:'offshore-wrap',
-        html:'<div class="offshore-marker">◆</div>',
+        html:'<div class="offshore-marker '+(settings().r>=150?'overview':'')+'">◆</div>',
         iconSize:[18,18],iconAnchor:[9,9]
       });
       L.marker([c[1],c[0]],{icon})
