@@ -18,9 +18,10 @@ input,select,button{min-height:42px;border:1px solid var(--line);border-radius:1
 button{font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.stats div{background:var(--p);border:1px solid var(--line);border-radius:12px;padding:10px}.stats b{display:block;font-size:20px}
 #map{height:52vh;min-height:340px;border-radius:14px;border:1px solid var(--line)}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-top:10px}.card{background:var(--p);border:1px solid var(--line);border-radius:12px;padding:12px}.top{display:flex;justify-content:space-between;gap:12px}.call{font-size:18px;font-weight:800}.dist{color:var(--a);font-weight:800;white-space:nowrap}
+.route{margin-top:7px;color:var(--a);font-weight:700;font-size:13px}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}.grid span{display:block;color:var(--m);font-size:9px}.grid b{font-size:12px}
 .hero{display:none;background:linear-gradient(135deg,#0d1b2e,#143357);border:1px solid #2d557c;border-radius:18px;padding:28px;margin-bottom:10px}
-.hero.on{display:block}.hero .call{font-size:clamp(42px,8vw,86px);line-height:1}.hero .muted{font-size:clamp(14px,2vw,24px);margin-top:8px}.hero .dist{font-size:clamp(28px,5vw,56px)}
+.hero.on{display:block}.hero .call{font-size:clamp(42px,8vw,86px);line-height:1}.hero .muted{font-size:clamp(14px,2vw,24px);margin-top:8px}.hero .route{font-size:clamp(22px,4vw,44px);margin-top:24px}.hero .dist{font-size:clamp(28px,5vw,56px)}
 .hero .grid{margin-top:30px;gap:16px}.hero .grid>div{background:#08111f99;border:1px solid #284768;border-radius:14px;padding:18px}.hero .grid span{font-size:13px}.hero .grid b{font-size:clamp(22px,4vw,42px)}
 .hidden{display:none!important}.plane-wrap{background:transparent;border:0}.plane-marker{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:#00d7ff;font-size:27px;line-height:34px;text-shadow:0 0 3px #001,0 0 8px #001}
 footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}
@@ -38,14 +39,14 @@ body.display-on details,body.display-on footer{display:none}
 <button id="refresh">Oppdater</button><button id="mode">Displaymodus</button>
 </div>
 <div id="stats" class="stats"><div><b id="count">0</b><span class="muted">fly</span></div><div><b id="closest">–</b><span class="muted">nærmest</span></div><div><b id="updated">–</b><span class="muted">oppdatert</span></div></div>
-<section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div></div><div id="hdist" class="dist">–</div></div>
+<section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div><div id="hroute" class="route">Rute ikke tilgjengelig</div></div><div id="hdist" class="dist">–</div></div>
 <div class="grid"><div><span>HØYDE</span><b id="halt">–</b></div><div><span>FART</span><b id="hspd">–</b></div><div><span>KURS</span><b id="htrk">–</b></div><div><span>VERTIKAL</span><b id="hvr">–</b></div></div></section>
 <div id="map"></div><div id="cards" class="cards"></div>
 <details style="margin-top:12px"><summary>Innstillinger</summary><div class="controls" style="margin-top:10px">
 <input id="lat" value="63.1118" type="number" step=".0001"><input id="lon" value="7.8245" type="number" step=".0001"><button id="save">Lagre</button></div></details>
 </main>
-<footer>Flydata: adsb.lol (ODbL 1.0), hentet via cors.dev. Kart © OpenStreetMap-bidragsytere.</footer>
+<footer>Flydata og ruteoppslag: adsb.lol. Kart © OpenStreetMap-bidragsytere.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=5"></script>
+<script src="app.js?v=6"></script>
 </body></html>
