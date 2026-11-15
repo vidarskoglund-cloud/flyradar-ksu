@@ -53,7 +53,7 @@ function planeIcon(p){
 function planeKey(p){return p.hex||p.reg||p.flight||''}
 function updateTrackHistory(list){
   const now=Date.now();
-  const keepMs=20*60*1000;
+  const keepMs=5*60*1000;
   const active=new Set();
   list.forEach(p=>{
     const key=planeKey(p);
@@ -93,14 +93,17 @@ function drawTrackAndPrediction(p){
   const hist=trackHistory.get(key)||[];
   if(hist.length>=2){
     L.polyline(hist.map(x=>[x.lat,x.lon]),{
-      weight:3,opacity:.7
-    }).addTo(trackLayer);
+      weight:4,
+      opacity:.85
+    }).bindTooltip('Faktisk spor · siste 5 min',{sticky:true}).addTo(trackLayer);
   }
   const preds=predictedPoints(p);
   if(preds.length){
     L.polyline([[p.lat,p.lon],...preds.map(x=>x.pos)],{
-      weight:2,opacity:.75,dashArray:'7 8'
-    }).addTo(trackLayer);
+      weight:3,
+      opacity:.8,
+      dashArray:'7 8'
+    }).bindTooltip('Estimert videre retning',{sticky:true}).addTo(trackLayer);
     preds.forEach(x=>{
       L.circleMarker(x.pos,{radius:4,weight:1,fillOpacity:1})
         .bindTooltip(`Estimert +${x.min} min`,{direction:'top'})
