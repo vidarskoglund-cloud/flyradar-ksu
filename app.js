@@ -47,7 +47,7 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 function updateRangeRings(s){
   rangeLayer.clearLayers();
   [10,25,50].forEach(n=>{
-    const active=n===25;
+    const active=+s.r===n;
     L.circle([s.lat,s.lon],{
       radius:n*1852,
       color:active?'#6ee7ff':'#6b8198',
@@ -79,7 +79,8 @@ function applyMapLevel(s){
   map.setMaxBounds(allowed.pad(0.05));
   map.options.maxBoundsViscosity=1.0;
   map.setMinZoom(5);
-  map.fitBounds(areaBounds(s.lat,s.lon,viewRadius),{padding:[28,28]});
+  const pad=viewRadius<=10?[18,18]:[28,28];
+  map.fitBounds(areaBounds(s.lat,s.lon,viewRadius),{padding:pad});
 }
 function fitMap(list,s){
   applyMapLevel(s);
