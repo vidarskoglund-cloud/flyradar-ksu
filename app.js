@@ -286,13 +286,23 @@ function renderAvinor(){
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
 async function requestNotifications(){
+  const standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+  const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if(isiOS && !standalone){
+    alert('På iPhone må Flyradar KSU først legges til på Hjem-skjermen. Åpne Del-menyen, velg «Legg til på Hjem-skjerm», åpne deretter Flyradar KSU fra ikonet og trykk «Aktiver varsling» igjen.');
+    return;
+  }
+
   if(!('Notification' in window)){
     alert('Varsling støttes ikke i denne nettleseren.');
     return;
   }
+
   const permission=await Notification.requestPermission();
   const b=$('notify');
   if(b)b.textContent=permission==='granted'?'Varsling aktiv':'Aktiver varsling';
+
   if(permission==='granted'){
     try{
       const reg=await navigator.serviceWorker.ready;
