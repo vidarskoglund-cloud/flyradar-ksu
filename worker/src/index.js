@@ -3,6 +3,8 @@ import { buildPushPayload } from "@block65/webcrypto-web-push";
 
 const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
 const TRACK_KEEP_MS = 20 * 60 * 1000;
+const FLIGHTAWARE_QUERY_COST_USD = 0.005;
+const FLIGHTAWARE_MONTHLY_BUDGET_USD = 4.50;
 
 function corsHeaders() {
   return {
@@ -177,8 +179,128 @@ export class TrackStore extends DurableObject {
       });
     }
 
+    if ((request.method === "GET" || request.method === "POST") && url.pathname === "/flightaware-budget") {
+      const month = new Date().toISOString().slice(0, 7);
+      let state = (await this.ctx.storage.get("flightawareBudget")) || { month, spent: 0, calls: 0 };
+      if (state.month !== month) state = { month, spent: 0, calls: 0 };
+
+      if (request.method === "POST") {
+        const payload = await request.json().catch(() => ({}));
+        const cost = Number(payload?.cost || 0);
+        if (!Number.isFinite(cost) || cost < 0) {
+          return new Response(JSON.stringify({ ok: false, error: "Invalid cost" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+          });
+        }
+        if (state.spent + cost > FLIGHTAWARE_MONTHLY_BUDGET_USD) {
+          return new Response(JSON.stringify({
+            ok: false,
+            allowed: false,
+            month: state.month,
+            spent: state.spent,
+            budget: FLIGHTAWARE_MONTHLY_BUDGET_USD,
+          }), {
+            status: 429,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+          });
+        }
+        state.spent = Number((state.spent + cost).toFixed(3));
+        state.calls += 1;
+        await this.ctx.storage.put("flightawareBudget", state);
+      }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        allowed: state.spent + FLIGHTAWARE_QUERY_COST_USD <= FLIGHTAWARE_MONTHLY_BUDGET_USD,
+        month: state.month,
+        spent: state.spent,
+        calls: state.calls,
+        budget: FLIGHTAWARE_MONTHLY_BUDGET_USD,
+      }), {
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
+
     return new Response("Not found", { status: 404 });
   }
+}
+
+function routeUsable(route) {
+  if (!route) return false;
+  const codes = String(route.airport_codes || "").toLowerCase();
+  const aps = Array.isArray(route._airports) ? route._airports : [];
+  return route.plausible !== false && codes !== "unknown" && (aps.length >= 2 || (codes && codes !== "unknown"));
+}
+
+function faAirport(ap) {
+  if (!ap) return null;
+  const iata = ap.code_iata || "";
+  const icao = ap.code_icao || "";
+  const code = iata || icao || ap.code_lid || ap.code || "";
+  if (!code) return null;
+  return {
+    code,
+    iata,
+    icao,
+    name: ap.name || "",
+    city: ap.city || "",
+  };
+}
+
+function flightTimeScore(f) {
+  const now = Date.now();
+  const values = [
+    f?.actual_off, f?.estimated_out, f?.scheduled_out,
+    f?.actual_on, f?.estimated_in, f?.scheduled_in,
+  ];
+  const times = values.map((v) => Date.parse(v || "")).filter(Number.isFinite);
+  if (!times.length) return Number.MAX_SAFE_INTEGER;
+  return Math.min(...times.map((t) => Math.abs(t - now)));
+}
+
+async function flightAwareRoute(env, callsign) {
+  if (!env.FLIGHTAWARE_API_KEY) return null;
+
+  const id = env.TRACK_STORE.idFromName("ksu");
+  const stub = env.TRACK_STORE.get(id);
+  const reserve = await stub.fetch("https://track-store/flightaware-budget", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cost: FLIGHTAWARE_QUERY_COST_USD }),
+  });
+  if (!reserve.ok) return null;
+
+  const u = new URL("https://aeroapi.flightaware.com/aeroapi/flights/" + encodeURIComponent(callsign));
+  u.searchParams.set("max_pages", "1");
+  const r = await fetch(u.toString(), {
+    headers: {
+      "Accept": "application/json",
+      "x-apikey": env.FLIGHTAWARE_API_KEY,
+      "User-Agent": "Flyradar-KSU/1.0",
+    },
+  });
+  if (!r.ok) return null;
+
+  const j = await r.json();
+  const flights = Array.isArray(j?.flights) ? j.flights.slice() : [];
+  flights.sort((a, b) => flightTimeScore(a) - flightTimeScore(b));
+
+  const f = flights.find((x) => x?.origin && x?.destination) || null;
+  if (!f) return null;
+
+  const from = faAirport(f.origin);
+  const to = faAirport(f.destination);
+  if (!from || !to) return null;
+
+  return {
+    plausible: true,
+    airport_codes: `${from.code}-${to.code}`,
+    _airports: [from, to],
+    _source: "flightaware",
+    fa_flight_id: f.fa_flight_id || null,
+    ident: f.ident || callsign,
+  };
 }
 
 async function getSource(name, url) {
@@ -245,6 +367,9 @@ export default {
         });
       }
 
+      let route = null;
+      let source = null;
+
       try {
         const body = {
           planes: [{
@@ -263,22 +388,50 @@ export default {
           body: JSON.stringify(body),
         });
 
-        if (!r.ok) {
-          return new Response(JSON.stringify({ error: "Route lookup failed", status: r.status }), {
-            status: 502,
-            headers: { ...corsHeaders(), "Cache-Control": "no-store" },
-          });
+        if (r.ok) {
+          const rows = await r.json();
+          route = Array.isArray(rows) ? (rows[0] || null) : null;
+          if (routeUsable(route)) source = "adsb.lol";
         }
+      } catch (error) {}
 
-        const rows = await r.json();
-        const route = Array.isArray(rows) ? (rows[0] || null) : null;
-        return new Response(JSON.stringify({ ok: true, callsign, route }), {
-          status: 200,
-          headers: { ...corsHeaders(), "Cache-Control": "public, max-age=300" },
+      if (!routeUsable(route)) {
+        try {
+          const faRoute = await flightAwareRoute(env, callsign);
+          if (routeUsable(faRoute)) {
+            route = faRoute;
+            source = "flightaware";
+          }
+        } catch (error) {}
+      }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        callsign,
+        source,
+        route: routeUsable(route) ? route : null,
+      }), {
+        status: 200,
+        headers: { ...corsHeaders(), "Cache-Control": "public, max-age=1800" },
+      });
+    }
+
+    if (url.pathname === "/flightaware/status") {
+      try {
+        const id = env.TRACK_STORE.idFromName("ksu");
+        const stub = env.TRACK_STORE.get(id);
+        const r = await stub.fetch("https://track-store/flightaware-budget");
+        const budget = await r.json();
+        return new Response(JSON.stringify({
+          ok: true,
+          enabled: Boolean(env.FLIGHTAWARE_API_KEY),
+          ...budget,
+        }), {
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
         });
       } catch (error) {
-        return new Response(JSON.stringify({ error: "Route lookup error" }), {
-          status: 502,
+        return new Response(JSON.stringify({ ok: false, enabled: Boolean(env.FLIGHTAWARE_API_KEY) }), {
+          status: 500,
           headers: { ...corsHeaders(), "Cache-Control": "no-store" },
         });
       }
@@ -347,6 +500,8 @@ export default {
           ok: true,
           service: "flyradar-ksu-worker",
           location: "KSU",
+          flightaware_enabled: Boolean(env.FLIGHTAWARE_API_KEY),
+          flightaware_budget_usd: FLIGHTAWARE_MONTHLY_BUDGET_USD,
         }),
         {
           status: 200,
