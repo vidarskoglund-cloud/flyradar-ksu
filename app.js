@@ -21,7 +21,7 @@ function fNm(km){return km==null?'–':nm(km).toFixed(1)+' NM'}
 function localRelevant(p){
   const distanceNm=nm(p.d);
   const alt=typeof p.alt==='number'?p.alt:99999;
-  return distanceNm<=25 && alt<=20000;
+  return distanceNm<=30 && alt<=25000;
 }
 function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value,area:$('area')?.value||'airport'}}
 function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
@@ -388,5 +388,23 @@ if($('radius'))$('radius').onchange=()=>{save();applyMapLevel(settings());refres
 if($('area'))$('area').onchange=()=>{save();applyMapLevel(settings());};
 if($('save'))$('save').onclick=refresh;
 if($('mode'))$('mode').onclick=toggleDisplay;
-load();loadOffshore();refresh();setInterval(refresh,30000);setInterval(loadAvinor,600000);
+let refreshTimer=null;
+function nextRefreshMs(){
+  if(!planes.length)return 120000;
+  const nearest=planes.slice().sort((a,b)=>a.d-b.d)[0];
+  if(!nearest)return 120000;
+  const dNm=nm(nearest.d);
+  const alt=typeof nearest.alt==='number'?nearest.alt:99999;
+  if(dNm<=5)return 10000;
+  if(dNm<=15)return 15000;
+  if(dNm<=30 && alt<=20000)return 30000;
+  if(dNm<=75)return 60000;
+  return 120000;
+}
+async function adaptiveRefresh(){
+  if(refreshTimer)clearTimeout(refreshTimer);
+  await refresh();
+  refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
+}
+load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
