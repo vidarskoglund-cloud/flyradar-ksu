@@ -19,14 +19,15 @@ let trackLayer=L.layerGroup().addTo(map);
 function airportIcon(code,label,kind='route'){
   const safeCode=String(code||'APT').toUpperCase();
   const safeLabel=String(label||'Flyplass');
+  const isHome=kind==='home';
   return L.divIcon({
     className:'airport-wrap',
     html:`<div class="airport-marker ${kind}">
       <span class="airport-symbol">✈</span>
-      <div><b>${safeCode}</b><small>${safeLabel}</small></div>
+      <div><b>${safeCode}</b>${isHome?`<small>${safeLabel}</small>`:''}</div>
     </div>`,
-    iconSize:[104,38],
-    iconAnchor:[18,19]
+    iconSize:isHome?[104,38]:[58,30],
+    iconAnchor:isHome?[18,19]:[15,15]
   });
 }
 let home=L.marker([63.1118,7.8245],{
