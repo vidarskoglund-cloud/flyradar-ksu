@@ -140,13 +140,63 @@ function drawTrackAndPrediction(p){
     });
   }
 }
+function bearingBetween(lat1,lon1,lat2,lon2){
+  const p1=rad(lat1),p2=rad(lat2),dl=rad(lon2-lon1);
+  const y=Math.sin(dl)*Math.cos(p2);
+  const x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function angleDiff(a,b){
+  return Math.abs((((a-b)+540)%360)-180);
+}
+function ksuMovementStatus(p){
+  if(!p)return {label:'Retning usikker',detail:''};
+  const distanceNm=nm(p.d);
+  const alt=Number(p.alt);
+  const vr=Number(p.vr);
+  const tr=getTrackDeg(p);
+  const toKsu=bearingBetween(p.lat,p.lon,63.1118,7.8245);
+  const headingToKsu=tr!==null?angleDiff(tr,toKsu):null;
+
+  const hist=trackHistory.get(planeKey(p))||[];
+  let trendNm=null;
+  if(hist.length>=2){
+    const first=hist[0],last=hist[hist.length-1];
+    const firstNm=nm(dist(63.1118,7.8245,first.lat,first.lon));
+    const lastNm=nm(dist(63.1118,7.8245,last.lat,last.lon));
+    trendNm=lastNm-firstNm;
+  }
+
+  const approachingByTrack=headingToKsu!==null&&headingToKsu<=55;
+  const leavingByTrack=headingToKsu!==null&&headingToKsu>=125;
+  const approachingByTrend=trendNm!==null&&trendNm<=-0.6;
+  const leavingByTrend=trendNm!==null&&trendNm>=0.6;
+  const descending=Number.isFinite(vr)&&vr<-250;
+
+  if(distanceNm<=18 && Number.isFinite(alt) && alt<=9000 && descending && (approachingByTrack||approachingByTrend)){
+    return {label:'Ser ut til å være på innflyging',detail:'mot Kvernberget'};
+  }
+  if(approachingByTrend || (approachingByTrack && distanceNm<=50)){
+    return {label:'Nærmer seg KSU',detail:headingToKsu!==null?`${Math.round(headingToKsu)}° fra direkte kurs mot KSU`:''};
+  }
+  if(leavingByTrend || (leavingByTrack && distanceNm<=50)){
+    return {label:'Forlater KSU',detail:headingToKsu!==null?`${Math.round(headingToKsu)}° fra kurs mot KSU`:''};
+  }
+  if(tr!==null){
+    return {label:'Passerer området',detail:`kurs ${Math.round(tr)}° · ${courseLabel(tr)}`};
+  }
+  return {label:'Retning usikker',detail:''};
+}
 function movementText(p){
+  const status=ksuMovementStatus(p);
   const preds=predictedPoints(p);
   const dir=courseLabel(getTrackDeg(p));
-  if(!preds.length)return `Retning: ${dir}`;
+  const bits=[status.label];
+  if(status.detail)bits.push(status.detail);
+  bits.push(`retning ${dir}`);
   const p5=preds.find(x=>x.min===5);
-  const p10=preds.find(x=>x.min===10);
-  return `Retning: ${dir}${p5?' · +5 min ca. '+p5.nmAhead.toFixed(0)+' NM':''}${p10?' · +10 min ca. '+p10.nmAhead.toFixed(0)+' NM':''}`;
+  if(p5)bits.push(`+5 min ca. ${p5.nmAhead.toFixed(0)} NM`);
+  return bits.join(' · ');
 }
 function destinationPoint(lat,lon,distanceNm,bearingDeg){
   const R=6371, d=distanceNm*1.852/R, br=rad(bearingDeg), p1=rad(lat), l1=rad(lon);
@@ -688,6 +738,7 @@ function render(autoFit=false){
         <span>${shown.desc||shown.type||'Fly'}</span>
         <span>${shown.reg?('REG. '+shown.reg):''}</span>
       </div>
+      <div class="movement-status">${ksuMovementStatus(shown).label}</div>
       <div class="movement">${movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
