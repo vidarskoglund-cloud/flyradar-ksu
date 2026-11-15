@@ -33,7 +33,7 @@ function aircraftLabel(a) {
   return String(a?.flight || a?.r || a?.hex || "Ukjent fly").trim().toUpperCase();
 }
 
-function mergeAircraft(primary, secondary) {
+function mergeAircraft(...sources) {
   const byKey = new Map();
 
   const add = (a, source) => {
@@ -47,18 +47,22 @@ function mergeAircraft(primary, secondary) {
     }
 
     const old = byKey.get(key);
+    const names = new Set(
+      String(old._source || "")
+        .split(" + ")
+        .filter(Boolean)
+        .concat(source)
+    );
     byKey.set(key, {
       ...copy,
       ...old,
-      _source:
-        old._source === source
-          ? source
-          : [old._source, source].filter(Boolean).join(" + "),
+      _source: [...names].join(" + "),
     });
   };
 
-  primary.forEach((a) => add(a, "adsb.lol"));
-  secondary.forEach((a) => add(a, "airplanes.live"));
+  for (const source of sources) {
+    for (const a of source.ac || []) add(a, source.name);
+  }
   return [...byKey.values()];
 }
 
@@ -196,7 +200,11 @@ async function getSource(name, url) {
       name,
       ok: true,
       status: response.status,
-      ac: Array.isArray(json?.ac) ? json.ac : [],
+      ac: Array.isArray(json?.ac)
+        ? json.ac
+        : Array.isArray(json?.aircraft)
+          ? json.aircraft
+          : [],
     };
   } catch (error) {
     return {
@@ -361,13 +369,16 @@ export default {
       `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
     const airplanesUrl =
       `https://api.airplanes.live/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+    const adsbFiUrl =
+      `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
 
-    const [adsb, airplanes] = await Promise.all([
+    const [adsb, airplanes, adsbfi] = await Promise.all([
       getSource("adsb.lol", adsbUrl),
       getSource("airplanes.live", airplanesUrl),
+      getSource("adsb.fi", adsbFiUrl),
     ]);
 
-    if (!adsb.ok && !airplanes.ok) {
+    if (!adsb.ok && !airplanes.ok && !adsbfi.ok) {
       return new Response(
         JSON.stringify({
           ok: false,
@@ -375,6 +386,7 @@ export default {
           sources: {
             "adsb.lol": { ok: adsb.ok, status: adsb.status },
             "airplanes.live": { ok: airplanes.ok, status: airplanes.status },
+            "adsb.fi": { ok: adsbfi.ok, status: adsbfi.status },
           },
         }),
         {
@@ -387,7 +399,7 @@ export default {
       );
     }
 
-    const ac = mergeAircraft(adsb.ac, airplanes.ac);
+    const ac = mergeAircraft(adsb, airplanes, adsbfi);
 
     let tracks = {};
     try {
@@ -424,6 +436,11 @@ export default {
             status: airplanes.status,
             count: airplanes.ac.length,
           },
+          "adsb.fi": {
+            ok: adsbfi.ok,
+            status: adsbfi.status,
+            count: adsbfi.ac.length,
+          },
         },
         ac,
       }),
@@ -445,14 +462,17 @@ export default {
         `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
       const airplanesUrl =
         `https://api.airplanes.live/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+      const adsbFiUrl =
+        `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
 
-      const [adsb, airplanes] = await Promise.all([
+      const [adsb, airplanes, adsbfi] = await Promise.all([
         getSource("adsb.lol", adsbUrl),
         getSource("airplanes.live", airplanesUrl),
+        getSource("adsb.fi", adsbFiUrl),
       ]);
-      if (!adsb.ok && !airplanes.ok) return;
+      if (!adsb.ok && !airplanes.ok && !adsbfi.ok) return;
 
-      const ac = mergeAircraft(adsb.ac, airplanes.ac);
+      const ac = mergeAircraft(adsb, airplanes, adsbfi);
       const inside = ac.filter((a) => {
         const lat = Number(a?.lat);
         const lon = Number(a?.lon);
