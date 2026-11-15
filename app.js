@@ -53,8 +53,9 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 }
 function updateRangeRings(s){
   rangeLayer.clearLayers();
-  const overview=+s.r>=150;
-  [10,25,50].forEach(n=>{
+  const overview=+s.r>=75;
+  const rings=overview?[50]:[10,25,50];
+  rings.forEach(n=>{
     const active=+s.r===n;
     L.circle([s.lat,s.lon],{
       radius:n*1852,
