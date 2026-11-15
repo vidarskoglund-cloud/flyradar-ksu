@@ -54,6 +54,7 @@ body.display-on details,body.display-on footer{display:none}
 </select>
 <input id="filter" placeholder="Søk etter fly">
 <button id="refresh">Oppdater nå</button>
+<button id="notify">Aktiver varsling</button>
 <input id="lat" value="63.1118" type="number" step=".0001">
 <input id="lon" value="7.8245" type="number" step=".0001">
 <button id="save">Lagre</button>
@@ -62,5 +63,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=34"></script>
+<script src="app.js?v=35"></script>
 </body></html>
