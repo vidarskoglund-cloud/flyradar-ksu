@@ -41,8 +41,16 @@ function normalize(a,s){
     vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol'
   }
 }
+function getTrackDeg(p){
+  const values=[p.track,p.true_track,p.true_heading,p.mag_heading];
+  for(const v of values){
+    const n=Number(v);
+    if(Number.isFinite(n))return ((n%360)+360)%360;
+  }
+  return null;
+}
 function planeIcon(p){
-  const tr=Number.isFinite(+p.track)?+p.track:0;
+  const tr=getTrackDeg(p)??0;
   const iconOffset=-45;
   return L.divIcon({
     className:'plane-wrap',
@@ -73,14 +81,16 @@ function updateTrackHistory(list){
   }
 }
 function courseLabel(track){
-  if(!Number.isFinite(+track))return'ukjent retning';
+  if(!Number.isFinite(Number(track)))return'ukjent retning';
   const dirs=['nord','nordøst','øst','sørøst','sør','sørvest','vest','nordvest'];
-  return dirs[Math.round(((+track%360)+360)%360/45)%8];
+  const tr=((Number(track)%360)+360)%360;
+  return dirs[Math.round(tr/45)%8];
 }
 function predictedPoints(p){
-  const gs=Number(p.gs), tr=Number(p.track);
-  if(!Number.isFinite(gs)||!Number.isFinite(tr)||gs<=0)return[];
-  return [5,10].map(min=>{
+  const gs=Number(p.gs);
+  const tr=getTrackDeg(p);
+  if(!Number.isFinite(gs)||tr===null||gs<=0)return[];
+  return [2,5,10].map(min=>{
     const nmAhead=gs*(min/60);
     const pos=destinationPoint(p.lat,p.lon,nmAhead,tr);
     return {min,nmAhead,pos};
@@ -113,9 +123,11 @@ function drawTrackAndPrediction(p){
 }
 function movementText(p){
   const preds=predictedPoints(p);
-  const dir=courseLabel(p.track);
+  const dir=courseLabel(getTrackDeg(p));
   if(!preds.length)return `Retning: ${dir}`;
-  return `Retning: ${dir} · +5 min ca. ${preds[0].nmAhead.toFixed(0)} NM · +10 min ca. ${preds[1].nmAhead.toFixed(0)} NM`;
+  const p5=preds.find(x=>x.min===5);
+  const p10=preds.find(x=>x.min===10);
+  return `Retning: ${dir}${p5?' · +5 min ca. '+p5.nmAhead.toFixed(0)+' NM':''}${p10?' · +10 min ca. '+p10.nmAhead.toFixed(0)+' NM':''}`;
 }
 function destinationPoint(lat,lon,distanceNm,bearingDeg){
   const R=6371, d=distanceNm*1.852/R, br=rad(bearingDeg), p1=rad(lat), l1=rad(lon);
