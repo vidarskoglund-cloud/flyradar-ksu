@@ -1,5 +1,6 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null;
+const routeCache=new Map();
 let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
 let layer=L.layerGroup().addTo(map);
@@ -19,7 +20,7 @@ function normalize(a,s){
     hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:a.alt_baro??a.alt_geom,gs:a.gs,track:a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon)
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null
   }
 }
 function planeIcon(p){
@@ -35,6 +36,50 @@ function fitMap(list,s){
   if(pts.length>1) map.fitBounds(L.latLngBounds(pts),{padding:[45,45],maxZoom:9});
   else map.setView([s.lat,s.lon],7);
 }
+function airportLabel(a){
+  if(!a)return'';
+  const code=a.iata||a.icao||a.code||'';
+  const place=a.city||a.name||'';
+  if(place&&code)return `${place} (${code})`;
+  return place||code;
+}
+function routeText(r){
+  if(!r||r.plausible===false||r.airport_codes==='unknown')return'Rute ikke tilgjengelig';
+  const aps=Array.isArray(r._airports)?r._airports:[];
+  if(aps.length>=2){
+    const from=airportLabel(aps[0]),to=airportLabel(aps[aps.length-1]);
+    if(from&&to)return `${from} → ${to}`;
+  }
+  if(r.airport_codes&&r.airport_codes!=='unknown'){
+    return String(r.airport_codes).replace(/[-_]/g,' → ');
+  }
+  return'Rute ikke tilgjengelig';
+}
+async function enrichRoutes(list){
+  const wanted=list.filter(p=>p.flight && !routeCache.has(p.flight));
+  if(wanted.length){
+    try{
+      const resp=await fetch('https://api.adsb.lol/api/0/routeset',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({planes:wanted.slice(0,100).map(p=>({callsign:p.flight,lat:p.lat,lng:p.lon}))})
+      });
+      if(resp.ok){
+        const rows=await resp.json();
+        if(Array.isArray(rows)){
+          rows.forEach(r=>{if(r&&r.callsign)routeCache.set(String(r.callsign).trim(),r)});
+        }
+      }
+    }catch(e){}
+  }
+  let changed=false;
+  list.forEach(p=>{
+    const r=p.flight?routeCache.get(p.flight):null;
+    const t=routeText(r);
+    if(p.route!==t){p.route=t;changed=true}
+  });
+  if(changed)render(false);
+}
 async function refresh(){
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -48,6 +93,7 @@ async function refresh(){
     planes=(j.ac||[]).filter(a=>a.lat!=null&&a.lon!=null).map(a=>normalize(a,s)).sort((a,b)=>a.d-b.d);
     $('status').textContent=planes.length+' fly';$('status').className='ok';
     render(true);
+    enrichRoutes(planes);
   }catch(e){
     $('status').textContent='Feil: '+e.message;$('status').className='err';
     $('cards').innerHTML='<div class="card">Kunne ikke hente live-data. Prøv Oppdater igjen.</div>';
@@ -58,6 +104,7 @@ function select(p){
   selected=p;
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
+  $('hroute').textContent=p.route||'Henter rute…';
   $('hdist').textContent=fNm(p.d);
   $('halt').textContent=f(p.alt,' ft');
   $('hspd').textContent=f(p.gs,' kt');
@@ -67,7 +114,7 @@ function select(p){
 function render(autoFit=false){
   const s=settings();
   let q=$('filter').value.toLowerCase();
-  let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc].join(' ').toLowerCase().includes(q));
+  let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc,p.route].join(' ').toLowerCase().includes(q));
   $('count').textContent=list.length;
   $('closest').textContent=list[0]?fNm(list[0].d):'–';
   $('updated').textContent=new Date().toLocaleTimeString('no-NO');
@@ -82,6 +129,7 @@ function render(autoFit=false){
     <div class="top"><div>
       <div class="call">${p.flight||p.reg||p.hex||'Ukjent'}</div>
       <div class="muted">${[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex}</div>
+      <div class="route">${p.route||'Henter rute…'}</div>
     </div><div class="dist">${fNm(p.d)}</div></div>
     <div class="grid">
       <div><span>HØYDE</span><b>${f(p.alt,' ft')}</b></div>
@@ -92,6 +140,7 @@ function render(autoFit=false){
   </div>`).join('');
   document.querySelectorAll('[data-h]').forEach(e=>e.onclick=()=>select(list.find(p=>p.hex===e.dataset.h)));
   if(list.length && (!selected || !list.some(p=>p.hex===selected.hex))) select(list[0]);
+  else if(selected){const current=list.find(p=>p.hex===selected.hex);if(current)select(current)}
   if(autoFit) fitMap(list,s);
 }
 function toggleDisplay(){
