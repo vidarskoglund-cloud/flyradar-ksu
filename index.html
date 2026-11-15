@@ -36,6 +36,7 @@ body.display-on details,body.display-on footer{display:none}
 <main>
 <div class="controls">
 <select id="radius" aria-label="Kartnivå">
+<option value="10">Flyplass · 10 NM</option>
 <option value="25">Lite · 25 NM</option>
 <option value="75" selected>Medium · 75 NM</option>
 <option value="150">Stort · 150 NM</option>
@@ -54,5 +55,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere.</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=12"></script>
+<script src="app.js?v=13"></script>
 </body></html>
