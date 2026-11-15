@@ -808,6 +808,9 @@ async function enrichRoute(p){
     u.searchParams.set('callsign',key);
     u.searchParams.set('lat',p.lat);
     u.searchParams.set('lon',p.lon);
+    if(Number.isFinite(Number(p.alt)))u.searchParams.set('alt',Number(p.alt));
+    if(p.ksuFlight)u.searchParams.set('fa_scope','ksu');
+    else if(observablePasserby(p))u.searchParams.set('fa_scope','local');
     const resp=await fetch(u,{cache:'no-store',credentials:'omit'});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const j=await resp.json();
