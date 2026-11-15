@@ -87,8 +87,30 @@ function applyMapLevel(s){
   const pad=viewRadius<=10?[18,18]:[28,28];
   map.fitBounds(areaBounds(a.lat,a.lon,viewRadius),{padding:pad});
 }
+function followNearest(list,s){
+  const local=list.filter(localRelevant).sort((a,b)=>a.d-b.d);
+  const p=local[0];
+  if(!p){ applyMapLevel(s); return; }
+
+  const airport=[63.1118,7.8245];
+  const plane=[p.lat,p.lon];
+  const dNm=nm(p.d);
+
+  let maxZoom=9;
+  if(dNm<=20)maxZoom=10;
+  if(dNm<=10)maxZoom=11;
+  if(dNm<=5)maxZoom=12;
+  if(dNm<=2)maxZoom=13;
+
+  const bounds=L.latLngBounds([airport,plane]);
+  if(dNm<0.5){
+    map.setView(plane,14);
+  }else{
+    map.fitBounds(bounds,{padding:[70,70],maxZoom});
+  }
+}
 function fitMap(list,s){
-  applyMapLevel(s);
+  followNearest(list,s);
 }
 function airportLabel(a){
   if(!a)return'';
@@ -307,5 +329,5 @@ $('radius').onchange=()=>{save();applyMapLevel(settings());refresh();};
 $('area').onchange=()=>{save();applyMapLevel(settings());};
 $('save').onclick=refresh;
 $('mode').onclick=toggleDisplay;
-load();loadOffshore();refresh();setInterval(refresh,180000);setInterval(loadAvinor,600000);
+load();loadOffshore();refresh();setInterval(refresh,30000);setInterval(loadAvinor,600000);
 if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
