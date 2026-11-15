@@ -1577,6 +1577,19 @@ if($('notify'))$('notify').onclick=requestNotifications;
 let refreshTimer=null;
 function nextRefreshMs(){
   if(!planes.length)return 120000;
+
+  // Fly som er lave og nær en kjent flyplass skal oppdateres raskt,
+  // selv om flyplassen ligger langt fra KSU.
+  for(const p of planes){
+    const near=nearestKnownAirport(p,8);
+    if(!near)continue;
+    const alt=Number(p.alt);
+    const gs=Number(p.gs);
+    if(near.dNm<=3 && Number.isFinite(alt) && alt<=3000)return 10000;
+    if(near.dNm<=6 && Number.isFinite(alt) && alt<=6000)return 15000;
+    if(near.dNm<=8 && Number.isFinite(alt) && alt<=10000 && (!Number.isFinite(gs)||gs<=250))return 30000;
+  }
+
   const nearest=planes.slice().sort((a,b)=>a.d-b.d)[0];
   if(!nearest)return 120000;
   const dNm=nm(nearest.d);
