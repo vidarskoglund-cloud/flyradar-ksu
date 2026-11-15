@@ -1,6 +1,7 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
 const routeCache=new Map();
+const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
   airport:{label:'Kvernberget',lat:63.1118,lon:7.8245},
   city:{label:'Kristiansund sentrum',lat:63.1103,lon:7.7279}
@@ -258,42 +259,57 @@ async function refresh(){
   home.setLatLng([s.lat,s.lon]);
   updateRangeRings(s);
   try{
-    const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
-    const aplUrl=`https://api.airplanes.live/v2/point/${s.lat}/${s.lon}/${s.r}`;
-    const [adsbRes,aplRes]=await Promise.allSettled([fetchJson(adsbUrl),fetchJson(aplUrl)]);
-    sourceState.adsb=adsbRes.status==='fulfilled'?'OK':'feil';
-    sourceState.apl=aplRes.status==='fulfilled'?'OK':'feil';
-    const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
-    const aplData=aplRes.status==='fulfilled'?(aplRes.value.ac||[]):[];
-    const anySourceOk=adsbRes.status==='fulfilled'||aplRes.status==='fulfilled';
-    if(!anySourceOk){
-      if(lastGoodPlanes.length){
-        planes=lastGoodPlanes.map(p=>({...p}));
-        const localCount=planes.filter(localRelevant).length;
-        $('status').textContent=`${localCount} fly i området · viser sist kjente data`;
-        $('status').className='muted';
-        render(false);
-        loadAvinor();
-        return;
-      }
-      throw new Error(`adsb.lol: ${sourceState.adsb} · Airplanes.live: ${sourceState.apl}`);
+    let merged=[], workerOk=false;
+    try{
+      const wr=await fetch(WORKER_URL,{cache:'no-store',credentials:'omit'});
+      if(!wr.ok)throw new Error('Worker HTTP '+wr.status);
+      const w=await wr.json();
+      if(!w||w.ok!==true||!Array.isArray(w.ac))throw new Error('Ugyldig Worker-svar');
+      merged=w.ac;
+      sourceState.adsb=w.sources?.['adsb.lol']?.ok?'OK':'feil';
+      sourceState.apl=w.sources?.['airplanes.live']?.ok?'OK':'feil';
+      workerOk=true;
+    }catch(workerError){
+      const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
+      const aplUrl=`https://api.airplanes.live/v2/point/${s.lat}/${s.lon}/${s.r}`;
+      const [adsbRes,aplRes]=await Promise.allSettled([fetchJson(adsbUrl),fetchJson(aplUrl)]);
+      sourceState.adsb=adsbRes.status==='fulfilled'?'OK':'feil';
+      sourceState.apl=aplRes.status==='fulfilled'?'OK':'feil';
+      const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
+      const aplData=aplRes.status==='fulfilled'?(aplRes.value.ac||[]):[];
+      const anySourceOk=adsbRes.status==='fulfilled'||aplRes.status==='fulfilled';
+      if(!anySourceOk)throw workerError;
+      merged=mergeAircraft(adsbData,aplData);
     }
-    const merged=mergeAircraft(adsbData,aplData);
-    planes=merged.filter(a=>a.lat!=null&&a.lon!=null).map(a=>normalize(a,s)).sort((a,b)=>a.d-b.d);
+
+    planes=merged
+      .filter(a=>a.lat!=null&&a.lon!=null)
+      .map(a=>normalize(a,s))
+      .filter(p=>nm(p.d)<=s.r)
+      .sort((a,b)=>a.d-b.d);
+
     lastGoodPlanes=planes.map(p=>({...p}));
     const localCount=planes.filter(localRelevant).length;
     const followed=planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
     const followText=followed?' · følger '+(followed.flight||followed.reg||followed.hex):'';
     $('status').textContent=`${localCount} fly i området${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
+    document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
     render(true);
     enrichRoutes(planes);
     loadAvinor();
   }catch(e){
-    $('status').textContent='Feil: '+e.message;$('status').className='err';
-    if(!lastGoodPlanes.length){
-      $('cards').innerHTML='<div class="card">Kunne ikke hente live-data. Kontroller nettverk eller prøv Oppdater igjen.</div>';
+    if(lastGoodPlanes.length){
+      planes=lastGoodPlanes.map(p=>({...p}));
+      const localCount=planes.filter(localRelevant).length;
+      $('status').textContent=`${localCount} fly i området · viser sist kjente data`;
+      $('status').className='muted';
+      render(false);
+      loadAvinor();
+      return;
     }
+    $('status').textContent='Feil: '+e.message;$('status').className='err';
+    $('cards').innerHTML='<div class="card">Kunne ikke hente live-data. Kontroller nettverk eller prøv Oppdater igjen.</div>';
   }
 }
 function airportCoords(a){
