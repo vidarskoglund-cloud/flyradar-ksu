@@ -154,7 +154,7 @@ async function enrichRoute(p){
     const r=routeCache.get(key);
     p.routeData=r||null;
     p.route=routeText(r);
-    select(p);
+    render(false);
     return;
   }
   try{
@@ -169,10 +169,12 @@ async function enrichRoute(p){
     routeCache.set(key,r);
     p.routeData=r;
     p.route=routeText(r);
-    select(p);
+    render(false);
   }catch(e){
+    routeCache.set(key,null);
+    p.routeData=null;
     p.route='Rute ikke tilgjengelig';
-    select(p);
+    render(false);
   }
 }
 function mergeAircraft(primary,secondary){
