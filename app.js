@@ -610,17 +610,22 @@ function followNearest(list,s){
 
   if(priority && nearestNm<=50){
     idleFocusIndex=0;
-    let maxZoom=9;
-    let padding=[62,62];
-    if(nearestNm<=30)maxZoom=10;
-    if(nearestNm<=20){maxZoom=11;padding=[68,68];}
-    if(nearestNm<=12){maxZoom=12;padding=[72,72];}
-    if(nearestNm<=6){maxZoom=13;padding=[76,76];}
-    if(nearestNm<=2){maxZoom=14;padding=[82,82];}
-    map.fitBounds(L.latLngBounds([airport,[priority.lat,priority.lon]]),{
-      padding,
-      maxZoom
-    });
+    let maxZoom=8;
+    let padding=[85,85];
+    if(nearestNm<=30)maxZoom=9;
+    if(nearestNm<=20){maxZoom=9;padding=[95,95];}
+    if(nearestNm<=12){maxZoom=10;padding=[105,105];}
+    if(nearestNm<=6){maxZoom=11;padding=[115,115];}
+    if(nearestNm<=2){maxZoom=12;padding=[125,125];}
+
+    const bounds=L.latLngBounds([airport,[priority.lat,priority.lon]]);
+    map.fitBounds(bounds,{padding,maxZoom});
+
+    // Sikkerhet: flyet skal alltid være synlig i kartbildet.
+    if(!map.getBounds().pad(-0.08).contains([priority.lat,priority.lon])){
+      map.fitBounds(bounds,{padding:[135,135],maxZoom:Math.max(7,maxZoom-1)});
+    }
+
     selected=priority;
     select(priority,false);
     return;
