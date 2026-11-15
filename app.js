@@ -540,7 +540,8 @@ function drawTrackAndPrediction(p){
   }
 
   const inferred=inferredRouteLabel(p);
-  if(inferred && !p.routeData){
+  const hasConfirmedRoute=routeText(p.routeData)!=='Rute ikke tilgjengelig';
+  if(inferred && !hasConfirmedRoute){
     const target=airportByCode(inferred.code);
     if(target){
       const targetPos=[target.lat,target.lon];
