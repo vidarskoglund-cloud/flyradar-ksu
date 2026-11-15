@@ -1,6 +1,7 @@
 const $=x=>document.getElementById(x);
 let planes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent'};
 const routeCache=new Map();
+let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
   airport:{label:'Kvernberget',lat:63.1118,lon:7.8245},
@@ -284,6 +285,51 @@ function renderAvinor(){
     </div>`;
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
+async function requestNotifications(){
+  if(!('Notification' in window)){
+    alert('Varsling støttes ikke i denne nettleseren.');
+    return;
+  }
+  const permission=await Notification.requestPermission();
+  const b=$('notify');
+  if(b)b.textContent=permission==='granted'?'Varsling aktiv':'Aktiver varsling';
+  if(permission==='granted'){
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      await reg.showNotification('Flyradar KSU',{
+        body:'Varsling er aktivert for fly innen 50 NM.',
+        tag:'ksu-notify-ready'
+      });
+    }catch(e){}
+  }
+}
+async function notifyAircraft(p){
+  if(!p || !('Notification' in window) || Notification.permission!=='granted')return;
+  const name=p.flight||p.reg||p.hex||'Fly';
+  const body=`${fNm(p.d)} · ${f(p.alt,' ft')}${specialService(p)?' · '+specialService(p):''}`;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    await reg.showNotification('Fly innen 50 NM: '+name,{
+      body,
+      tag:'ksu-50-'+(p.hex||name),
+      renotify:false
+    });
+  }catch(e){}
+}
+function check50NmNotifications(list){
+  const inside=list.filter(p=>nm(p.d)<=50);
+  const current=new Set(inside.map(p=>p.hex||p.flight||p.reg).filter(Boolean));
+  if(!notificationBaselineReady){
+    notified50=new Set(current);
+    notificationBaselineReady=true;
+    return;
+  }
+  inside.forEach(p=>{
+    const key=p.hex||p.flight||p.reg;
+    if(key && !notified50.has(key))notifyAircraft(p);
+  });
+  notified50=current;
+}
 async function refresh(){
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -320,6 +366,7 @@ async function refresh(){
       .sort((a,b)=>a.d-b.d);
 
     lastGoodPlanes=planes.map(p=>({...p}));
+    check50NmNotifications(planes);
     const localCount=planes.filter(localRelevant).length;
     const followed=planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
     const followText=followed?' · følger '+(followed.flight||followed.reg||followed.hex):'';
@@ -444,6 +491,7 @@ if($('radius'))$('radius').onchange=()=>{save();applyMapLevel(settings());refres
 if($('area'))$('area').onchange=()=>{save();applyMapLevel(settings());};
 if($('save'))$('save').onclick=refresh;
 if($('mode'))$('mode').onclick=toggleDisplay;
+if($('notify'))$('notify').onclick=requestNotifications;
 let refreshTimer=null;
 function nextRefreshMs(){
   if(!planes.length)return 120000;
@@ -463,4 +511,4 @@ async function adaptiveRefresh(){
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
 load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);
-if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
