@@ -403,6 +403,39 @@ function renderAvinor(){
     </div>`;
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
+function base64UrlToUint8Array(base64Url){
+  const padding='='.repeat((4-base64Url.length%4)%4);
+  const base64=(base64Url+padding).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(base64);
+  return Uint8Array.from([...raw].map(ch=>ch.charCodeAt(0)));
+}
+async function subscribeBackgroundPush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window))return false;
+  try{
+    const keyResp=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/push/public-key',{cache:'no-store'});
+    if(!keyResp.ok)return false;
+    const keyJson=await keyResp.json();
+    if(!keyJson?.publicKey)return false;
+
+    const reg=await navigator.serviceWorker.ready;
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub){
+      sub=await reg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:base64UrlToUint8Array(keyJson.publicKey)
+      });
+    }
+
+    const save=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/push/subscribe',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(sub)
+    });
+    return save.ok;
+  }catch(e){
+    return false;
+  }
+}
 async function requestNotifications(){
   const standalone=window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
   const isiOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -419,16 +452,21 @@ async function requestNotifications(){
 
   const permission=await Notification.requestPermission();
   const b=$('notify');
-  if(b)b.textContent=permission==='granted'?'Varsling aktiv':'Aktiver varsling';
 
   if(permission==='granted'){
+    const backgroundOk=await subscribeBackgroundPush();
+    if(b)b.textContent=backgroundOk?'Bakgrunnsvarsling aktiv':'Varsling aktiv';
     try{
       const reg=await navigator.serviceWorker.ready;
       await reg.showNotification('Flyradar KSU',{
-        body:'Varsling er aktivert for fly innen 50 NM.',
+        body:backgroundOk
+          ?'Varsling er aktivert. Bakgrunnsvarsling er koblet til.'
+          :'Varsling er aktivert for fly innen 50 NM.',
         tag:'ksu-notify-ready'
       });
     }catch(e){}
+  }else if(b){
+    b.textContent='Aktiver varsling';
   }
 }
 async function notifyAircraft(p){
