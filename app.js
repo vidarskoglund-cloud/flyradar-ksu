@@ -3,6 +3,8 @@ let planes=[], localPlanes=[], remoteKsuPlanes=[], display=false, selected=null,
 let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
+const recentPlaneCache=new Map();
+const LOST_SIGNAL_KEEP_MS=3*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
@@ -159,6 +161,33 @@ function mergeTrackedPlanes(local,remote){
   });
   return [...byKey.values()].sort((a,b)=>a.d-b.d);
 }
+function retainRecentPlanes(current){
+  const now=Date.now();
+  const currentKeys=new Set();
+  current.forEach(p=>{
+    const key=planeKey(p);
+    if(!key)return;
+    currentKeys.add(key);
+    recentPlaneCache.set(key,{plane:{...p,signalLost:false,lastSeenAt:now},lastSeenAt:now});
+  });
+
+  const retained=[...current];
+  for(const [key,entry] of recentPlaneCache){
+    if(currentKeys.has(key))continue;
+    const age=now-entry.lastSeenAt;
+    if(age>LOST_SIGNAL_KEEP_MS){
+      recentPlaneCache.delete(key);
+      continue;
+    }
+    retained.push({...entry.plane,signalLost:true,lastSeenAt:entry.lastSeenAt});
+  }
+  return retained.sort((a,b)=>a.d-b.d);
+}
+function signalStateText(p){
+  if(!p?.signalLost)return '';
+  const ageSec=Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000));
+  return `Signal mistet · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
+}
 function trackingCallsign(flightId){
   const id=compactFlightId(flightId);
   const m=id.match(/^([A-Z]{2,3})(\d+[A-Z]?)$/);
@@ -259,7 +288,7 @@ async function updateRemoteKsuTracking(){
     if(i<candidates.length-1)await new Promise(resolve=>setTimeout(resolve,1100));
   }
   remoteKsuPlanes=found;
-  planes=mergeTrackedPlanes(localPlanes,remoteKsuPlanes);
+  planes=retainRecentPlanes(mergeTrackedPlanes(localPlanes,remoteKsuPlanes));
   attachAvinorMatches();
 }
 
@@ -882,10 +911,15 @@ function renderAvinor(){
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
     const status=f.status_code?(' · '+f.status_code):'';
     const route=dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`;
-    const matched=planes.some(p=>p.ksuFlight&&p.ksuFlight.uniqueId===f.uniqueId);
+    const matched=planes.some(p=>p.ksuFlight&&p.ksuFlight.uniqueId===f.uniqueId&&!p.signalLost);
+    const staleMatched=planes.some(p=>p.ksuFlight&&p.ksuFlight.uniqueId===f.uniqueId&&p.signalLost);
     const statusText=avinorStatusText(f);
-    return `<div class="schedule-row ${heli?'heli':''} ${matched?'matched':''}">
-      <div class="schedule-main"><b>${matched?'● ':''}${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b><span>${route}${statusText?' · '+statusText:''}</span></div>
+    const sched=Date.parse(f.schedule_time||'');
+    const nearWindow=Number.isFinite(sched)&&Math.abs(sched-now)<=120*60*1000;
+    const waitText=!matched&&!staleMatched&&nearWindow&&!statusText?' · venter på ADS-B':'';
+    const lostText=staleMatched?' · signal mistet':'';
+    return `<div class="schedule-row ${heli?'heli':''} ${matched?'matched':''} ${staleMatched?'stale':''}">
+      <div class="schedule-main"><b>${matched?'● ':staleMatched?'◌ ':''}${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b><span>${route}${statusText?' · '+statusText:''}${waitText}${lostText}</span></div>
       <div class="schedule-time">${t}</div>
     </div>`;
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
@@ -1160,7 +1194,7 @@ async function refresh(){
       .filter(p=>nm(p.d)<=150)
       .sort((a,b)=>a.d-b.d);
 
-    planes=mergeTrackedPlanes(localPlanes,remoteKsuPlanes);
+    planes=retainRecentPlanes(mergeTrackedPlanes(localPlanes,remoteKsuPlanes));
     attachAvinorMatches();
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
@@ -1270,7 +1304,7 @@ function render(autoFit=false){
   layer.clearLayers();
   list.forEach(p=>{
     L.marker([p.lat,p.lon],{icon:planeIcon(p)})
-      .bindTooltip(`${p.ksuFlight?'KSU · ':observablePasserby(p)?'SE/HØR · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}${p.remoteTracked?' · fjernsporing':''}`,{direction:'top',offset:[0,-15]})
+      .bindTooltip(`${p.ksuFlight?'KSU · ':observablePasserby(p)?'SE/HØR · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}${p.remoteTracked?' · fjernsporing':''}${p.signalLost?' · SIGNAL MISTET':''}`,{direction:'top',offset:[0,-15]})
       .on('click',()=>{select(p);render(false)})
       .addTo(layer);
   });
@@ -1321,8 +1355,8 @@ function render(autoFit=false){
         <span>${shown.desc||shown.type||'Fly'}</span>
         <span>${shown.reg?('REG. '+shown.reg):''}</span>
       </div>
-      <div class="movement-status ${shown.ksuFlight?'ksu':inferred?'inferred':''}">${shown.ksuFlight?ksuOperationalStatus(shown):(inferred?`Sannsynlig mot ${inferred.code}`:ksuOperationalStatus(shown))}</div>
-      <div class="movement">${movementText(shown)}</div>
+      <div class="movement-status ${shown.ksuFlight?'ksu':inferred?'inferred':''}">${shown.signalLost?signalStateText(shown):(shown.ksuFlight?ksuOperationalStatus(shown):(inferred?`Sannsynlig mot ${inferred.code}`:ksuOperationalStatus(shown)))}</div>
+      <div class="movement">${shown.signalLost?'Viser siste kjente posisjon':movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
     select(shown,false);
