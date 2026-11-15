@@ -21,8 +21,8 @@ function f(v,u=''){return(v===undefined||v===null||v==='ground')?'–':Math.roun
 function fNm(km){return km==null?'–':nm(km).toFixed(1)+' NM'}
 function localRelevant(p){
   const distanceNm=nm(p.d);
-  const alt=typeof p.alt==='number'?p.alt:99999;
-  return distanceNm<=30 && alt<=25000;
+  const alt=Number(p.alt);
+  return distanceNm<=30 && Number.isFinite(alt) && alt<=25000;
 }
 function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value,area:$('area')?.value||'airport'}}
 function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
@@ -32,7 +32,7 @@ function normalize(a,s){
   return{
     hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
-    alt:a.alt_baro??a.alt_geom,gs:a.gs,track:a.track??a.true_heading??a.mag_heading,
+    alt:Number.isFinite(Number(a.alt_baro??a.alt_geom))?Number(a.alt_baro??a.alt_geom):a.alt_baro??a.alt_geom,gs:Number.isFinite(Number(a.gs))?Number(a.gs):a.gs,track:Number.isFinite(Number(a.track??a.true_heading??a.mag_heading))?Number(a.track??a.true_heading??a.mag_heading):a.track??a.true_heading??a.mag_heading,
     vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol'
   }
 }
