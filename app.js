@@ -172,7 +172,7 @@ async function enrichRoute(p){
     const r=routeCache.get(key);
     p.routeData=r||null;
     p.route=routeText(r);
-    render(false);
+    if(selected&&selected.hex===p.hex)select(p,false);
     return;
   }
   try{
@@ -187,12 +187,12 @@ async function enrichRoute(p){
     routeCache.set(key,r);
     p.routeData=r;
     p.route=routeText(r);
-    render(false);
+    if(selected&&selected.hex===p.hex)select(p,false);
   }catch(e){
     routeCache.set(key,null);
     p.routeData=null;
     p.route='Rute ikke tilgjengelig';
-    render(false);
+    if(selected&&selected.hex===p.hex)select(p,false);
   }
 }
 function mergeAircraft(primary,secondary){
@@ -374,10 +374,10 @@ function drawRoute(p){
       .addTo(routeLayer);
   }
 }
-function select(p){
+function select(p,lookupRoute=true){
   if(!p)return;
   selected=p;
-  if(p.flight && !p.routeData && !routeCache.has(p.flight.trim())) setTimeout(()=>enrichRoute(p),0);
+  if(lookupRoute && p.flight && !p.routeData && !routeCache.has(p.flight.trim())) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
@@ -420,7 +420,7 @@ function render(autoFit=false){
         <div><span>VERT.</span><b>${f(shown.vr,' ft/min')}</b></div>
       </div>
     </div>`;
-    select(shown);
+    select(shown,false);
   }else{
     selected=null;
     $('cards').innerHTML='';
