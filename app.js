@@ -688,11 +688,21 @@ function movementText(p){
   const status=ksuMovementStatus(p);
   const preds=predictedPoints(p);
   const dir=courseLabel(getTrackDeg(p));
+  const destination=movementDestination(p);
   const bits=[status.label];
+
   if(status.detail)bits.push(status.detail);
-  bits.push(`retning ${dir}`);
-  const p5=preds.find(x=>x.min===5);
-  if(p5)bits.push(`+5 min ca. ${p5.nmAhead.toFixed(0)} NM`);
+
+  if(destination){
+    const a=destination.airport;
+    const dNm=nm(dist(p.lat,p.lon,a.lat,a.lon));
+    bits.push(`${destination.confirmed?'destinasjon':'sannsynlig destinasjon'} ${a.code}`);
+    bits.push(`${dNm.toFixed(0)} NM til ${a.code}`);
+  }else{
+    bits.push(`retning ${dir}`);
+    const p5=preds.find(x=>x.min===5);
+    if(p5)bits.push(`+5 min ca. ${p5.nmAhead.toFixed(0)} NM`);
+  }
   return bits.join(' · ');
 }
 function destinationPoint(lat,lon,distanceNm,bearingDeg){
