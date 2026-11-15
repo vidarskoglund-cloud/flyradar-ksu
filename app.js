@@ -4,6 +4,7 @@ const routeCache=new Map();
 let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
 let layer=L.layerGroup().addTo(map);
+let rangeLayer=L.layerGroup().addTo(map);
 let home=L.circleMarker([63.1118,7.8245],{radius:7,color:'#6ee7ff',weight:3,fillColor:'#08111f',fillOpacity:1}).bindTooltip('KSU / Kvernberget').addTo(map);
 
 const rad=x=>x*Math.PI/180;
@@ -29,6 +30,33 @@ function planeIcon(p){
     className:'plane-wrap',
     html:`<div class="plane-marker" style="transform:rotate(${tr}deg)">✈</div>`,
     iconSize:[34,34],iconAnchor:[17,17]
+  });
+}
+function destinationPoint(lat,lon,distanceNm,bearingDeg){
+  const R=6371, d=distanceNm*1.852/R, br=rad(bearingDeg), p1=rad(lat), l1=rad(lon);
+  const p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(br));
+  const l2=l1+Math.atan2(Math.sin(br)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));
+  return [p2*180/Math.PI,((l2*180/Math.PI+540)%360)-180];
+}
+function updateRangeRings(s){
+  rangeLayer.clearLayers();
+  [50,100,150].forEach(n=>{
+    const active=+s.r===n;
+    L.circle([s.lat,s.lon],{
+      radius:n*1852,
+      color:active?'#6ee7ff':'#6b8198',
+      weight:active?2.4:1.2,
+      opacity:active?0.9:0.55,
+      fill:false,
+      dashArray:active?null:'6 8',
+      interactive:false
+    }).addTo(rangeLayer);
+    const pos=destinationPoint(s.lat,s.lon,n,0);
+    L.marker(pos,{interactive:false,icon:L.divIcon({
+      className:'range-label-wrap',
+      html:`<div class="range-label ${active?'active':''}">${n} NM</div>`,
+      iconSize:[58,20],iconAnchor:[29,10]
+    })}).addTo(rangeLayer);
   });
 }
 function fitMap(list,s){
@@ -84,6 +112,7 @@ async function refresh(){
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
   home.setLatLng([s.lat,s.lon]);
+  updateRangeRings(s);
   try{
     const upstream=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
     const url='https://proxy.cors.dev/'+upstream;
