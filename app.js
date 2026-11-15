@@ -342,6 +342,13 @@ function genericAirportFocus(p){
     return {airport:near.airport,dNm:near.dNm,mode:'ground',label:`På bakken ved ${near.airport.code}`};
   }
 
+  // Lavt fly tett på en kjent flyplass skal få flyplasszoom selv om
+  // rute/destinasjon ennå ikke er identifisert.
+  if(near && Number.isFinite(alt) && alt<=3000 &&
+     Number.isFinite(gs) && gs<=200 && near.dNm<=5.5){
+    return {airport:near.airport,dNm:near.dNm,mode:'approach',label:`Nær ${near.airport.code} · lav høyde`};
+  }
+
   // Bekreftet eller sannsynlig destinasjon for siste del av innflygingen.
   let target=null;
   const info=ksuFlightInfo(p);
