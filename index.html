@@ -48,7 +48,43 @@ body.display-on details,body.display-on footer{display:none}
   .fs-brand b{font-size:16px}
   .fs-aircraft b{color:var(--a);font-size:16px}
 }
-@media(max-width:700px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}body.display-on main{padding:82px 12px 12px}.hero .grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){
+  html,body{height:100%;overflow-x:hidden}
+  header{position:static;padding:10px 14px 8px;min-height:58px}
+  header h1{font-size:19px;line-height:1.1}
+  header>div:first-child .muted{font-size:10px;line-height:1.1;margin-top:2px;opacity:.75}
+  #status{font-size:11px;text-align:right;max-width:48%;line-height:1.2}
+  main{padding:7px 10px 10px}
+  .local-rule{display:none}
+  .stats{display:flex;gap:0;margin:0 0 7px;background:var(--p);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+  .stats div{flex:1;background:transparent;border:0;border-radius:0;padding:0 6px;text-align:center;border-left:1px solid var(--line)}
+  .stats div:first-child{border-left:0}
+  .stats b{display:inline;font-size:15px;line-height:1}
+  .stats .muted{display:block;font-size:9px;line-height:1.1;margin-top:2px}
+  #map{height:39svh;min-height:280px;max-height:360px;border-radius:12px}
+  .leaflet-control-zoom a{width:30px;height:30px;line-height:30px}
+  .schedule{margin-top:7px;padding:7px 9px;border-radius:11px}
+  .schedule h2{font-size:11px;margin:0 0 2px}
+  .nearest-panel .cards{margin-top:0}
+  .nearest-panel .card{padding:3px 0 0}
+  .top{gap:8px}
+  .call{font-size:16px}
+  .dist{font-size:15px}
+  .nearest-panel .muted{font-size:10px;line-height:1.25}
+  .source{font-size:8px;margin-top:1px}
+  .route{font-size:11px;margin-top:3px;line-height:1.2}
+  .nearest-panel .grid{grid-template-columns:repeat(4,1fr);gap:4px;margin-top:6px}
+  .nearest-panel .grid span{font-size:8px}
+  .nearest-panel .grid b{font-size:10px}
+  .settings-panel{margin-top:7px!important;padding:7px 9px;border-radius:10px}
+  .settings-panel summary{font-size:11px}
+  .settings-grid{grid-template-columns:1fr 1fr}
+  .controls{grid-template-columns:1fr 1fr}
+  .controls input{grid-column:1/-1}
+  footer{display:none}
+  body.display-on main{padding:82px 12px 12px}
+  .hero .grid{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 </head>
 <body>
