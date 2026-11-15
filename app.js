@@ -175,9 +175,44 @@ async function updateRemoteKsuTracking(){
   planes=mergeTrackedPlanes(localPlanes,remoteKsuPlanes);
   attachAvinorMatches();
 }
+
+function airportByCode(code){
+  const c=String(code||'').toUpperCase();
+  if(c==='KSU')return {code:'KSU',name:'Kristiansund Kvernberget',lat:63.1118,lon:7.8245};
+  return norwayAirports.find(a=>a.code===c)||null;
+}
+function isGroundOrTaxi(p){
+  const altRaw=p?.alt;
+  const alt=Number(altRaw);
+  const gs=Number(p?.gs);
+  if(String(altRaw||'').toLowerCase()==='ground')return true;
+  if(Number.isFinite(alt)&&alt<=1200&&Number.isFinite(gs)&&gs<=80)return true;
+  return false;
+}
+function ksuGroundContext(p){
+  const info=ksuFlightInfo(p);
+  const f=p?.ksuFlight;
+  if(!info||!f||!isGroundOrTaxi(p))return null;
+
+  const code=info.direction==='Ankomst KSU' ? f.airport : 'KSU';
+  const airport=airportByCode(code);
+  if(!airport)return null;
+
+  const d=nm(dist(airport.lat,airport.lon,p.lat,p.lon));
+  if(d>6)return null;
+
+  return {
+    airport,
+    label:info.direction==='Ankomst KSU'
+      ? `På bakken ved ${airport.code} før KSU`
+      : 'På bakken ved KSU før avgang'
+  };
+}
+
 function ksuPriorityScore(p){
   const info=ksuFlightInfo(p);
   if(!info)return 0;
+  if(ksuGroundContext(p))return 1100;
   const d=nm(p.d);
   const alt=Number(p.alt);
   if(info.direction==='Ankomst KSU'){
@@ -442,6 +477,21 @@ function followNearest(list,s){
 
   const airport=[63.1118,7.8245];
   const nearestNm=nm(nearest.d);
+  const ground=priority?ksuGroundContext(priority):null;
+
+  if(priority && ground){
+    idleFocusIndex=0;
+    const points=[[ground.airport.lat,ground.airport.lon],[priority.lat,priority.lon]];
+    map.fitBounds(L.latLngBounds(points),{
+      padding:[55,55],
+      maxZoom:14
+    });
+    if(map.getZoom()<12)map.setZoom(12);
+    selected=priority;
+    select(priority,false);
+    if($('fs-status'))$('fs-status').textContent=ground.label+' · '+(priority.flight||priority.reg||priority.hex);
+    return;
+  }
 
   if(priority && nearestNm>50){
     idleFocusIndex=0;
@@ -729,6 +779,8 @@ function ksuOperationalStatus(p){
   const info=ksuFlightInfo(p);
   if(!info)return ksuMovementStatus(p).label;
   const movement=ksuMovementStatus(p).label;
+  const ground=ksuGroundContext(p);
+  if(ground)return ground.label;
   if(info.direction==='Ankomst KSU'){
     if(info.status==='Landet')return 'Landet på Kvernberget';
     if(movement==='Ser ut til å være på innflyging')return 'På innflyging til Kvernberget';
