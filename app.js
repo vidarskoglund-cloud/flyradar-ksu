@@ -196,6 +196,16 @@ function retainRecentPlanes(current){
 function signalStateText(p){
   if(!p?.signalLost)return '';
   const ageSec=Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000));
+  const near=nearestKnownAirport(p,4);
+  const gs=Number(p.gs);
+  const alt=Number(p.alt);
+  if(near){
+    const onGroundLike=(Number.isFinite(gs)&&gs<=25)||(Number.isFinite(alt)&&alt<=1500&&Number.isFinite(gs)&&gs<=45);
+    if(onGroundLike){
+      if(ageSec>=60)return `Parkert ved ${near.airport.code}`;
+      return `Landet ved ${near.airport.code}`;
+    }
+  }
   return `Signal mistet · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
 }
 function trackingCallsign(flightId){
@@ -1545,7 +1555,7 @@ function render(autoFit=false){
       </div>
       <div class="movement-status ${shown.ksuFlight?'ksu':inferred?'inferred':''}">${shown.signalLost?signalStateText(shown):(shown.ksuFlight?ksuOperationalStatus(shown):(inferred?`Sannsynlig mot ${inferred.code}`:ksuOperationalStatus(shown)))}</div>
       ${visibilityHint(shown)?`<div class="movement-status">${visibilityHint(shown)}</div>`:''}
-      <div class="movement">${shown.signalLost?'Viser siste kjente posisjon':movementText(shown)}</div>
+      <div class="movement">${shown.signalLost?(signalStateText(shown).startsWith('Parkert')?'Siste kjente posisjon ved flyplass':signalStateText(shown).startsWith('Landet')?'Siste kjente posisjon etter landing':'Viser siste kjente posisjon'):movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
     select(shown,false);
