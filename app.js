@@ -33,4 +33,4 @@ function render(){
 $('refresh').onclick=refresh;$('filter').oninput=render;$('radius').onchange=refresh;$('save').onclick=refresh;
 $('mode').onclick=()=>{display=!display;$('hero').classList.toggle('on',display);$('map').classList.toggle('hidden',display);$('mode').textContent=display?'Kartmodus':'Displaymodus'};
 load();refresh();setInterval(refresh,180000);
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+if('serviceWorker' in navigator){navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister()));}
