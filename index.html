@@ -26,7 +26,7 @@ button{font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);g
 .hero.on{display:block}.hero .call{font-size:clamp(42px,8vw,86px);line-height:1}.hero .muted{font-size:clamp(14px,2vw,24px);margin-top:8px}.hero .route{font-size:clamp(22px,4vw,44px);margin-top:24px}.hero .dist{font-size:clamp(28px,5vw,56px)}
 .hero .grid{margin-top:30px;gap:16px}.hero .grid>div{background:#08111f99;border:1px solid #284768;border-radius:14px;padding:18px}.hero .grid span{font-size:13px}.hero .grid b{font-size:clamp(22px,4vw,42px)}
 .hidden{display:none!important}.offshore-wrap{background:transparent;border:0}.offshore-marker{color:#ffbf4d;font-size:18px;text-shadow:0 0 3px #001,0 0 8px #001}.offshore-marker.overview{font-size:10px;opacity:.75}.leaflet-overlay-pane svg path{vector-effect:non-scaling-stroke}.overview-map .leaflet-tile-pane{filter:grayscale(.7) saturate(.45) brightness(.72) contrast(.82);opacity:.72}.overview-map .leaflet-overlay-pane{opacity:.9}.plane-marker.local{color:#32ff9a;font-size:31px;text-shadow:0 0 4px #002,0 0 12px #32ff9a88}.range-label-wrap{background:transparent;border:0}.range-label{font-size:11px;font-weight:700;color:#9fb1c3;background:#08111fd9;border:1px solid #52677d;border-radius:10px;padding:2px 6px;text-align:center;white-space:nowrap}.range-label.active{color:#6ee7ff;border-color:#6ee7ff}.plane-wrap{background:transparent;border:0}.plane-marker{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:#00d7ff;font-size:27px;line-height:34px;text-shadow:0 0 3px #001,0 0 8px #001}
-footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}
+footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}.atc-link{color:#64778c;text-decoration:none;margin-left:8px;font-size:10px;opacity:.55}.atc-link:hover{opacity:1;color:var(--a)}
 body.display-on{overflow:hidden}body.display-on header{position:fixed;left:0;right:0;top:0}body.display-on main{max-width:none;height:100vh;padding:90px 24px 24px}body.display-on .controls{position:fixed;right:18px;top:14px;z-index:1200;display:block}body.display-on .controls>*{display:none}body.display-on #mode{display:block}body.display-on .hero{height:calc(100vh - 114px);margin:0;display:flex;flex-direction:column;justify-content:center}
 body.display-on details,body.display-on footer{display:none}
 @media(max-width:700px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}body.display-on main{padding:82px 12px 12px}.hero .grid{grid-template-columns:repeat(2,1fr)}}
@@ -59,8 +59,8 @@ body.display-on details,body.display-on footer{display:none}
 <button id="save">Lagre</button>
 </div></details>
 </main>
-<footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere.</footer>
+<footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=20"></script>
+<script src="app.js?v=21"></script>
 </body></html>
