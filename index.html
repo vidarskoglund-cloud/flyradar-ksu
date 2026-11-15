@@ -21,7 +21,7 @@ button{font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);g
 .route{margin-top:7px;color:var(--a);font-weight:700;font-size:13px}.source{margin-top:4px;color:#70869c;font-size:10px;text-transform:uppercase;letter-spacing:.04em}.local-card{border-color:#32d98b;box-shadow:0 0 0 1px #32d98b33 inset}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}.grid span{display:block;color:var(--m);font-size:9px}.grid b{font-size:12px}
 .settings-panel{background:var(--p);border:1px solid var(--line);border-radius:12px;padding:10px}.settings-panel summary{cursor:pointer;color:var(--m);font-size:12px}.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.settings-grid input,.settings-grid select,.settings-grid button{width:100%}
-.schedule{margin-top:12px;background:var(--p);border:1px solid var(--line);border-radius:14px;padding:10px 12px}.nearest-panel .cards{margin-top:4px}.nearest-panel .card{border:0;padding:8px 0 2px;background:transparent}.schedule h2{font-size:13px;margin:0 0 4px;color:var(--m);font-weight:700}.schedule-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid #1b2d43}.schedule-row:first-child{border-top:0}.schedule-main{display:flex;align-items:center;gap:8px;min-width:0}.schedule-row b{font-size:13px;white-space:nowrap}.schedule-row span{color:var(--m);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.schedule-row.heli{border-left:2px solid #32ff9a;padding-left:7px}.schedule-time{font-weight:700;white-space:nowrap;color:var(--a);font-size:12px}.schedule-empty{color:var(--m);font-size:12px}
+.schedule{margin-top:12px;background:var(--p);border:1px solid var(--line);border-radius:14px;padding:10px 12px}.nearest-panel .cards{margin-top:4px}.nearest-panel .card{border:0;padding:8px 0 2px;background:transparent}.fullscreen-strip{display:none}.schedule h2{font-size:13px;margin:0 0 4px;color:var(--m);font-weight:700}.schedule-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-top:1px solid #1b2d43}.schedule-row:first-child{border-top:0}.schedule-main{display:flex;align-items:center;gap:8px;min-width:0}.schedule-row b{font-size:13px;white-space:nowrap}.schedule-row span{color:var(--m);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.schedule-row.heli{border-left:2px solid #32ff9a;padding-left:7px}.schedule-time{font-weight:700;white-space:nowrap;color:var(--a);font-size:12px}.schedule-empty{color:var(--m);font-size:12px}
 .hero{display:none;background:linear-gradient(135deg,#0d1b2e,#143357);border:1px solid #2d557c;border-radius:18px;padding:28px;margin-bottom:10px}
 .hero.on{display:block}.hero .call{font-size:clamp(42px,8vw,86px);line-height:1}.hero .muted{font-size:clamp(14px,2vw,24px);margin-top:8px}.hero .route{font-size:clamp(22px,4vw,44px);margin-top:24px}.hero .dist{font-size:clamp(28px,5vw,56px)}
 .hero .grid{margin-top:30px;gap:16px}.hero .grid>div{background:#08111f99;border:1px solid #284768;border-radius:14px;padding:18px}.hero .grid span{font-size:13px}.hero .grid b{font-size:clamp(22px,4vw,42px)}
@@ -38,13 +38,14 @@ body.display-on details,body.display-on footer{display:none}
 }
 @media(min-width:900px) and (display-mode:fullscreen){
   html,body{height:100%;overflow:hidden}
-  header{position:static;padding:10px 16px}
-  main{height:calc(100vh - 58px);padding:8px 18px 8px;display:grid;grid-template-rows:auto 1fr auto;gap:8px;overflow:hidden}
-  .local-rule{display:none}
-  #stats{margin-bottom:0}
+  header,#stats,.local-rule,.settings-panel,footer{display:none}
+  main{height:100vh;padding:8px 18px;display:grid;grid-template-rows:1fr auto auto;gap:8px;overflow:hidden}
   #map{height:100%;min-height:0}
+  .fullscreen-strip{display:grid;grid-template-columns:2fr repeat(3,1fr);gap:8px;max-width:1000px;width:100%;margin:0 auto}
+  .fullscreen-strip>div{background:var(--p);border:1px solid var(--line);border-radius:10px;padding:7px 10px;min-width:0}
+  .fullscreen-strip b{display:block;font-size:14px}
+  .fullscreen-strip span{display:block;color:var(--m);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .nearest-panel{margin-top:0}
-  .settings-panel,footer{display:none}
 }
 @media(max-width:700px){.controls{grid-template-columns:1fr 1fr}.controls input{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}body.display-on main{padding:82px 12px 12px}.hero .grid{grid-template-columns:repeat(2,1fr)}}
 </style>
@@ -56,6 +57,12 @@ body.display-on details,body.display-on footer{display:none}
 <section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div><div id="hroute" class="route">Rute ikke tilgjengelig</div></div><div id="hdist" class="dist">–</div></div>
 <div class="grid"><div><span>HØYDE</span><b id="halt">–</b></div><div><span>FART</span><b id="hspd">–</b></div><div><span>KURS</span><b id="htrk">–</b></div><div><span>VERTIKAL</span><b id="hvr">–</b></div></div></section>
 <div id="map"></div>
+<div class="fullscreen-strip">
+  <div><b>Flyradar KSU</b><span id="fs-status">–</span></div>
+  <div><b id="fs-count">0</b><span>nærtrafikk</span></div>
+  <div><b id="fs-closest">–</b><span>nærmest</span></div>
+  <div><b id="fs-updated">–</b><span>oppdatert</span></div>
+</div>
 <section class="schedule nearest-panel"><h2>Nærmeste fly</h2><div id="cards" class="cards"></div></section>
 <details class="settings-panel" style="margin-top:12px"><summary>Innstillinger</summary>
 <div class="settings-grid">
@@ -80,5 +87,5 @@ body.display-on details,body.display-on footer{display:none}
 <footer>Flydata: adsb.lol + Airplanes.live. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=39"></script>
+<script src="app.js?v=40"></script>
 </body></html>
