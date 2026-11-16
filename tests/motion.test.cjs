@@ -115,3 +115,16 @@ test('estimated status marks only later times as delayed',()=>{
  assert.equal(c.avinorStatusText({status_code:'D'}),'Avreist');
  assert.equal(c.avinorStatusText({status_code:'C'}),'Innstilt');
 });
+
+test('route misses retry on entering 25 NM, throttle repeats and prevent concurrent requests',()=>{
+ const c=vm.createContext({Date,routeCache:new Map(),routeAttempts:new Map(),routeRequests:new Set(),local25Traffic:p=>p.distance<=25,observablePasserby:()=>false});
+ vm.runInContext(section('function routeLookupScope','async function enrichRoute'),c);
+ const p={flight:'TEST',distance:45};
+ c.routeCache.set('TEST',null);c.routeAttempts.set('TEST',{scope:'',at:1000});
+ assert.equal(c.canLookupRoute(p,2000),false);
+ p.distance=24;assert.equal(c.canLookupRoute(p,2000),true);
+ c.routeAttempts.set('TEST',{scope:'zone25',at:2000});assert.equal(c.canLookupRoute(p,3000),false);
+ assert.equal(c.canLookupRoute(p,302000),true);
+ c.routeRequests.add('TEST');assert.equal(c.canLookupRoute(p,302000),false);c.routeRequests.clear();
+ c.routeCache.set('TEST',{airport_codes:'OSL-KSU'});assert.equal(c.canLookupRoute(p,302000),false);
+});

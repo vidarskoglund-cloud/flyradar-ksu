@@ -3,6 +3,8 @@ let planes=[], localPlanes=[], remoteKsuPlanes=[], vessels=[], display=false, se
 let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
+const routeAttempts=new Map();
+const routeRequests=new Set();
 const aircraftRouteCache=new Map();
 const recentPlaneCache=new Map();
 const remoteKsuIdentityCache=new Map();
@@ -137,7 +139,7 @@ function local25Traffic(p){
 }
 function queueLocal25RouteLookups(list){
   const candidates=list
-    .filter(p=>local25Traffic(p)&&p.flight&&!specialService(p)&&!p.routeData&&!routeCache.has(p.flight.trim()))
+    .filter(p=>local25Traffic(p)&&p.flight&&!specialService(p)&&!p.routeData&&canLookupRoute(p))
     .sort((a,b)=>a.d-b.d)
     .slice(0,2);
   candidates.forEach((p,i)=>setTimeout(()=>enrichRoute(p),i*700));
@@ -323,6 +325,10 @@ async function fetchRemoteCallsign(callsign){
   return null;
 }
 async function routeForCallsign(callsign,lat,lon){
+  if(!canLookupRoute(p))return;
+  const scope=routeLookupScope(p);
+  routeRequests.add(key);
+  routeAttempts.set(key,{scope,at:Date.now()});
   try{
     const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
     u.searchParams.set('callsign',callsign);
@@ -1281,10 +1287,25 @@ function displayRoute(p){
   if(inferred)return `${inferred.label} · ${inferred.name}`;
   return 'Rute ikke tilgjengelig';
 }
+function routeLookupScope(p){
+  if(p.ksuFlight)return 'ksu';
+  if(local25Traffic(p))return 'zone25';
+  if(observablePasserby(p))return 'local';
+  return '';
+}
+function canLookupRoute(p,now=Date.now()){
+  const key=p?.flight?.trim();
+  if(!key||routeRequests.has(key)||routeCache.get(key))return false;
+  const last=routeAttempts.get(key);
+  if(!last)return true;
+  // Entering paid-lookup eligibility must bypass an earlier free-only miss.
+  const rank={ '':0,local:1,zone25:1,ksu:2 };
+  return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
+}
 async function enrichRoute(p){
   if(!p||!p.flight)return;
   const key=p.flight.trim();
-  if(routeCache.has(key)){
+  if(routeCache.get(key)){
     const r=routeCache.get(key);
     if(r)rememberAircraftRoute(p,r);
     p.routeData=r||null;
@@ -1292,16 +1313,18 @@ async function enrichRoute(p){
     if(selected&&selected.hex===p.hex)select(p,false);
     return;
   }
+  if(!canLookupRoute(p))return;
+  const scope=routeLookupScope(p);
+  routeRequests.add(key);
+  routeAttempts.set(key,{scope,at:Date.now()});
   try{
     const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
     u.searchParams.set('callsign',key);
     u.searchParams.set('lat',p.lat);
     u.searchParams.set('lon',p.lon);
     if(Number.isFinite(Number(p.alt)))u.searchParams.set('alt',Number(p.alt));
-    if(p.ksuFlight)u.searchParams.set('fa_scope','ksu');
-    else if(local25Traffic(p))u.searchParams.set('fa_scope','zone25');
-    else if(observablePasserby(p))u.searchParams.set('fa_scope','local');
-    const resp=await fetch(u,{cache:'no-store',credentials:'omit'});
+    if(scope)u.searchParams.set('fa_scope',scope);
+    const resp=await fetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const j=await resp.json();
     const r=j?.route||null;
@@ -1315,6 +1338,8 @@ async function enrichRoute(p){
     p.routeData=null;
     p.route='Rute ikke tilgjengelig';
     if(selected&&selected.hex===p.hex)select(p,false);
+  }finally{
+    routeRequests.delete(key);
   }
 }
 function mergeAircraft(primary,secondary){
@@ -1987,7 +2012,7 @@ function select(p,lookupRoute=true){
   if(!p)return;
   selected=p;
   highlightSelectedAircraft();
-  if(lookupRoute && p.flight && !p.routeData && !routeCache.has(p.flight.trim()) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
+  if(lookupRoute && p.flight && !p.routeData && canLookupRoute(p) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   drawTrackAndPrediction(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
