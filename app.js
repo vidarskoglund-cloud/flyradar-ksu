@@ -1099,6 +1099,88 @@ function focusLocalRoute(p){
   if($('fs-status'))$('fs-status').textContent='lokal passerende rute · '+(p.flight||p.reg||p.hex);
   return true;
 }
+function ksuApproachContext(p){
+  if(!p||!confirmedKsuArrival(p)||p.signalLost)return null;
+
+  const dNm=ksuDistanceNm(p);
+  const alt=Number(p.alt);
+  const gs=Number(p.gs);
+  const vr=Number(p.vr);
+  const tr=getTrackDeg(p);
+  const ksu=airportByCode('KSU');
+  const toKsu=bearingBetween(p.lat,p.lon,ksu.lat,ksu.lon);
+  const toward=tr!==null&&angleDiff(tr,toKsu)<=65;
+  const descending=Number.isFinite(vr)&&vr<-150;
+
+  let etaMin=null;
+  if(Number.isFinite(gs)&&gs>120)etaMin=(dNm/gs)*60;
+
+  const descentStarted=
+    descending ||
+    (Number.isFinite(alt)&&alt<=18000&&dNm<=85) ||
+    (etaMin!==null&&etaMin<=18&&toward);
+
+  if(!descentStarted)return null;
+
+  let maxZoom=7;
+  let padding=[70,70];
+  let label='Starter innflyging mot KSU';
+
+  if(dNm<=70 || (etaMin!==null&&etaMin<=15)){
+    maxZoom=8;
+    padding=[75,75];
+    label='Nedstigning mot KSU';
+  }
+  if(dNm<=45 || (etaMin!==null&&etaMin<=10)){
+    maxZoom=9;
+    padding=[85,85];
+    label='Nærmer seg KSU';
+  }
+  if(dNm<=28 || (etaMin!==null&&etaMin<=7)){
+    maxZoom=10;
+    padding=[95,95];
+    label='Innflyging mot KSU';
+  }
+  if(dNm<=15 || (etaMin!==null&&etaMin<=4)){
+    maxZoom=11;
+    padding=[105,105];
+    label='Siste del av innflygingen';
+  }
+  if(dNm<=8){
+    maxZoom=12;
+    padding=[115,115];
+    label='Kort finale mot KSU';
+  }
+
+  return {dNm,etaMin,maxZoom,padding,label};
+}
+function focusKsuApproach(p,ctx){
+  if(!p||!ctx)return false;
+  const ksu=airportByCode('KSU');
+  const points=[[ksu.lat,ksu.lon],[p.lat,p.lon]];
+  const targetBounds=L.latLngBounds(points);
+
+  // Unngå brå hopp: bare juster når flyet nærmer seg kanten eller zoomnivået er for grovt.
+  const inset=map.getBounds().pad(-0.12);
+  const needsMove=!points.every(pos=>inset.contains(pos)) || map.getZoom()<ctx.maxZoom-1 || map.getZoom()>ctx.maxZoom+1;
+  if(needsMove){
+    map.fitBounds(targetBounds,{
+      padding:ctx.padding,
+      maxZoom:ctx.maxZoom,
+      animate:true,
+      duration:0.8
+    });
+  }
+
+  selected=p;
+  select(p,false);
+  if($('fs-status')){
+    const eta=ctx.etaMin!==null&&ctx.etaMin<25?(' · ca. '+Math.max(1,Math.round(ctx.etaMin))+' min til KSU'):'';
+    $('fs-status').textContent=ctx.label+eta+' · '+(p.flight||p.reg||p.hex);
+  }
+  return true;
+}
+
 function followNearest(list,s){
   if(focusIdleCandidate(list))return;
   const sorted=list.filter(p=>(!p.signalLost&&ksuDistanceNm(p)<=50)||confirmedKsuArrival(p)).sort((a,b)=>a.d-b.d);
@@ -1117,11 +1199,18 @@ function followNearest(list,s){
   const nearestNm=nm(nearest.d);
   const ground=priority&&!localWins?ksuGroundContext(priority):null;
   const remoteDeparture=priority&&!localWins?remoteKsuDepartureContext(priority):null;
+  const approach=priority&&!localWins?ksuApproachContext(priority):null;
   const airportFocus=genericAirportFocus(nearest);
 
   // Bekreftede KSU-ankomster ved avgangsflyplassen får tett flyplassfokus.
   // Når flyet er ordentlig i lufta, faller denne konteksten bort automatisk.
   if(priority && !localWins && remoteDeparture && focusRemoteKsuDeparture(priority,remoteDeparture)){
+    idleFocusIndex=0;
+    return;
+  }
+
+  // Når nedstigningen mot KSU begynner, trekk kartet gradvis inn.
+  if(priority && !localWins && approach && focusKsuApproach(priority,approach)){
     idleFocusIndex=0;
     return;
   }
@@ -2348,6 +2437,14 @@ function nextRefreshMs(){
     if(near.dNm<=3 && hasAlt && alt<=3000)return 5000;
     if(near.dNm<=6 && hasAlt && alt<=6000)return 10000;
     if(near.dNm<=8 && hasAlt && alt<=10000 && (!Number.isFinite(gs)||gs<=250))return 20000;
+  }
+
+  const approachKsu=planes.find(p=>ksuApproachContext(p));
+  if(approachKsu){
+    const ctx=ksuApproachContext(approachKsu);
+    if(ctx?.dNm<=15)return 5000;
+    if(ctx?.dNm<=35)return 10000;
+    return 15000;
   }
 
   const trackedKsu=planes.find(p=>confirmedKsuArrival(p)&&ksuDistanceNm(p)<=12);
