@@ -929,7 +929,7 @@ function updateRangeRings(s){
     const isLookup=n===25;
     L.circle([s.lat,s.lon],{
       radius:n*1852,
-      color:isAlert?'#6ee7ff':isLookup?'#ffd166':'#6b8198',
+      color:isAlert?'#ff5c5c':isLookup?'#ffd166':'#6b8198',
       weight:isAlert?2.2:1.6,
       opacity:isAlert?0.82:0.72,
       fill:false,
@@ -938,7 +938,7 @@ function updateRangeRings(s){
     }).addTo(rangeLayer);
 
     const pos=destinationPoint(s.lat,s.lon,n,0);
-    const label=isAlert?'50 NM · VARSEL':'25 NM · MER INFO';
+    const label=isAlert?'50 NM':'25 NM · MER INFO';
     L.marker(pos,{interactive:false,icon:L.divIcon({
       className:'range-label-wrap',
       html:`<div class="range-label ${isAlert?'alert-zone':'lookup-zone'}">${label}</div>`,
