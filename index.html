@@ -302,7 +302,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </style>
 </head>
 <body>
-<header><div><h1>Flyradar KSU</h1><div class="muted">Kristiansund / Kvernberget</div></div><div id="status" class="muted">Starter…</div></header>
+<header><div><h1>Flyradar KSU</h1><div class="muted">Kristiansund / Kvernberget</div></div><div style="text-align:right"><div id="status" class="muted">Starter…</div><div id="adsb-source-label" class="muted" style="font-size:10px;max-width:350px;margin-top:3px">Flydata: kontrollerer kilder…</div></div></header>
 <main>
 <div id="stats" class="stats"><div><b id="count">0</b><span class="muted">innen 50 NM</span></div><div><b id="closest">–</b><span class="muted">nærmest</span></div><div><b id="updated">–</b><span class="muted">oppdatert</span></div></div>
 <section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div><div id="hroute" class="route">Rute ikke tilgjengelig</div></div><div id="hdist" class="dist">–</div></div>
@@ -337,6 +337,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=134"></script>
+<script src="app.js?v=135"></script>
 <script src="flightaware-status.js?v=1"></script>
 </body></html>
