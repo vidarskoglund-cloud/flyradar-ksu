@@ -575,13 +575,21 @@ function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
 function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r;if(s.area&&$('area'))$('area').value=s.area}catch(e){}}
 function normalize(a,s){
   let lat=a.lat,lon=a.lon;
+  const flight=(a.flight||'').trim();
   const previous=recentPlaneCache.get(planeKey({hex:a.hex,reg:a.r,flight:a.flight}))?.plane;
   const sameFix=previous && previous.lat===lat && previous.lon===lon;
+
+  // Behold kjent rute gjennom nye ADS-B-posisjonsobjekter.
+  // Uten dette veksler kortet mellom "Henter rute…" og den bekreftede ruten.
+  const cachedRoute=flight&&routeCache.has(flight)?routeCache.get(flight):null;
+  const routeData=previous?.routeData||cachedRoute||null;
+  const route=routeData?routeText(routeData):(previous?.route||null);
+
   return{
-    hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
+    hex:a.hex||'',flight,reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:Number.isFinite(Number(a.alt_baro??a.alt_geom))?Number(a.alt_baro??a.alt_geom):a.alt_baro??a.alt_geom,gs:Number.isFinite(Number(a.gs))?Number(a.gs):a.gs,track:Number.isFinite(Number(a.track??a.true_heading??a.mag_heading))?Number(a.track??a.true_heading??a.mag_heading):a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol',
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route,routeData,source:a._source||'adsb.lol',
     positionAt:sameFix?previous.positionAt:Date.now()
   }
 }
