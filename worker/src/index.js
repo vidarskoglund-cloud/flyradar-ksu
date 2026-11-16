@@ -600,6 +600,8 @@ export default {
       const faScope = (url.searchParams.get("fa_scope") || "").toLowerCase();
       const allowFlightAware =
         faScope === "ksu" ||
+        (faScope === "active50" && Number.isFinite(lat) && Number.isFinite(lon) &&
+          distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50) ||
         (faScope === "zone25" && Number.isFinite(lat) && Number.isFinite(lon) &&
           distanceNm(KSU.lat, KSU.lon, lat, lon) <= 25) ||
         (faScope === "local" && localFlightAwareEligible(lat, lon, alt));
