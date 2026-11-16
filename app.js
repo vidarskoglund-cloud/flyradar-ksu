@@ -1293,6 +1293,9 @@ function displayRoute(p){
 }
 function routeLookupScope(p){
   if(p.ksuFlight)return 'ksu';
+  const activeKey=selected?planeKey(selected):'';
+  const isActive50=Boolean(activeKey&&activeKey===planeKey(p)&&nm(p.d)<=50&&!p.signalLost);
+  if(isActive50)return 'active50';
   if(local25Traffic(p))return 'zone25';
   if(observablePasserby(p))return 'local';
   return '';
@@ -1303,7 +1306,7 @@ function canLookupRoute(p,now=Date.now()){
   const last=routeAttempts.get(key);
   if(!last)return true;
   // Entering paid-lookup eligibility must bypass an earlier free-only miss.
-  const rank={ '':0,local:1,zone25:1,ksu:2 };
+  const rank={ '':0,local:1,zone25:1,active50:2,ksu:3 };
   return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
 }
 async function enrichRoute(p){
