@@ -104,3 +104,14 @@ test('schedule hides completed flights and uses revised time for delays',()=>{
  assert.equal(c.scheduleDisplayTime(delayed),Date.parse(delayed.status_time));
  assert.equal(c.upcomingSchedule({schedule_time:'2026-11-16T15:00:00Z'},now),false);
 });
+
+test('estimated status marks only later times as delayed',()=>{
+ const c=vm.createContext({Date,Number,String});vm.runInContext(section('function avinorStatusText','function pointToSegmentNm'),c);
+ const row={status_code:'E',schedule_time:'2026-11-16T18:00:00Z'};
+ assert.equal(c.avinorStatusText({...row,status_time:'2026-11-16T18:05:00Z'}),'Forsinket');
+ for(const status_time of ['2026-11-16T18:00:00Z','2026-11-16T17:55:00Z','', 'invalid'])assert.equal(c.avinorStatusText({...row,status_time}),'');
+ assert.equal(c.avinorStatusText({...row,schedule_time:'',status_time:'2026-11-16T18:05:00Z'}),'');
+ assert.equal(c.avinorStatusText({status_code:'A'}),'Landet');
+ assert.equal(c.avinorStatusText({status_code:'D'}),'Avreist');
+ assert.equal(c.avinorStatusText({status_code:'C'}),'Innstilt');
+});

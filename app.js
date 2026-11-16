@@ -1532,7 +1532,12 @@ function flightAliases(value){
 }
 function avinorStatusText(f){
   const code=String(f?.status_code||'').trim().toUpperCase();
-  const known={A:'Landet',D:'Avreist',C:'Innstilt',E:'Ny tid'};
+  if(code==='E'){
+    const scheduled=Date.parse(f.schedule_time||'');
+    const estimated=Date.parse(f.status_time||'');
+    return Number.isFinite(scheduled)&&Number.isFinite(estimated)&&estimated>scheduled?'Forsinket':'';
+  }
+  const known={A:'Landet',D:'Avreist',C:'Innstilt'};
   return known[code]||'';
 }
 
