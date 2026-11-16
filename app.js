@@ -128,6 +128,16 @@ function localRelevant(p){
   const alt=Number(p.alt);
   return distanceNm<=30 && Number.isFinite(alt) && alt<=25000;
 }
+function local25Traffic(p){
+  return Boolean(p && !p.signalLost && !p.ksuFlight && nm(p.d)<=25);
+}
+function queueLocal25RouteLookups(list){
+  const candidates=list
+    .filter(p=>local25Traffic(p)&&p.flight&&!p.routeData&&!routeCache.has(p.flight.trim()))
+    .sort((a,b)=>a.d-b.d)
+    .slice(0,2);
+  candidates.forEach((p,i)=>setTimeout(()=>enrichRoute(p),i*700));
+}
 function observablePasserby(p){
   if(!p || p.ksuFlight)return false;
   const distanceNm=nm(p.d);
@@ -902,26 +912,59 @@ function focusIdleCandidate(list,advance=false){
   if($('fs-status'))$('fs-status').textContent=`rolig visning · fly ${idleFocusIndex+1}/${candidates.length}`;
   return true;
 }
+function focusLocalRoute(p){
+  if(!p||!local25Traffic(p))return false;
+  const aps=Array.isArray(p.routeData?._airports)?p.routeData._airports:[];
+  if(aps.length<2)return false;
+  const from=airportCoords(aps[0]);
+  const to=airportCoords(aps[aps.length-1]);
+  if(!from||!to)return false;
+
+  const plane=[p.lat,p.lon];
+  const bounds=L.latLngBounds([from,plane,to]);
+  map.fitBounds(bounds,{padding:[55,55],maxZoom:7});
+
+  // Lange ruter skal ikke gjøre hele lokalområdet mikroskopisk.
+  // Zoom aldri lenger ut enn nivå 5; rutelinjene viser fortsatt retningen.
+  if(map.getZoom()<5)map.setView(plane,5);
+
+  selected=p;
+  select(p,false);
+  if($('fs-status'))$('fs-status').textContent='lokal passerende rute · '+(p.flight||p.reg||p.hex);
+  return true;
+}
 function followNearest(list,s){
   const sorted=list.slice().sort((a,b)=>a.d-b.d);
   const priority=priorityKsuAircraft(sorted);
-  const passerby=!priority?priorityPasserby(sorted):null;
-  const nearest=priority||passerby||sorted[0];
+  const local25=sorted.filter(local25Traffic).sort((a,b)=>a.d-b.d)[0]||null;
+  const priorityNm=priority?nm(priority.d):Infinity;
+
+  // Lokal-first: trafikk innen 25 NM får kartfokus foran et KSU-fly som
+  // fortsatt er mer enn 50 NM unna. KSU-flyet spores fortsatt i bakgrunnen.
+  const localWins=Boolean(local25 && (!priority || priorityNm>50));
+  const passerby=!priority&&!local25?priorityPasserby(sorted):null;
+  const nearest=localWins?local25:(priority||local25||passerby||sorted[0]);
   if(!nearest){ applyMapLevel(s); return; }
 
   const airport=[63.1118,7.8245];
   const nearestNm=nm(nearest.d);
-  const ground=priority?ksuGroundContext(priority):null;
+  const ground=priority&&!localWins?ksuGroundContext(priority):null;
   const airportFocus=genericAirportFocus(nearest);
 
-  // KSU-prioritet beholdes. For andre fly får siste del av innflyging / bakken
-  // tett flyplassutsnitt i stedet for vanlig oversiktszoom.
-  if(!priority && airportFocus && focusAirportArrival(nearest,airportFocus)){
+  // Når et passerende lokalfly har bekreftet rute, vis avgang → fly → mål.
+  if(localWins && focusLocalRoute(nearest)){
     idleFocusIndex=0;
     return;
   }
 
-  if(priority && ground){
+  // KSU-prioritet beholdes. For andre fly får siste del av innflyging / bakken
+  // tett flyplassutsnitt i stedet for vanlig oversiktszoom.
+  if((!priority||localWins) && airportFocus && focusAirportArrival(nearest,airportFocus)){
+    idleFocusIndex=0;
+    return;
+  }
+
+  if(priority && !localWins && ground){
     idleFocusIndex=0;
     const points=[[ground.airport.lat,ground.airport.lon],[priority.lat,priority.lon]];
     if(map.getZoom()<12 || !points.every(pos=>map.getBounds().pad(-0.2).contains(pos))){
@@ -934,7 +977,7 @@ function followNearest(list,s){
     return;
   }
 
-  if(priority && nearestNm>50){
+  if(priority && !localWins && nearestNm>50){
     idleFocusIndex=0;
     map.fitBounds(L.latLngBounds([airport,[priority.lat,priority.lon]]),{
       padding:[55,55],
@@ -946,7 +989,7 @@ function followNearest(list,s){
     return;
   }
 
-  if(priority && nearestNm<=50){
+  if(priority && !localWins && nearestNm<=50){
     idleFocusIndex=0;
     let maxZoom=8;
     let padding=[85,85];
@@ -1628,6 +1671,7 @@ async function refresh(){
     planes=preserveKsuLastKnown(planes);
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
+    queueLocal25RouteLookups(planes);
     check50NmNotifications(planes);
     const localCount=planes.filter(localRelevant).length;
     const priority=priorityKsuAircraft(planes);
