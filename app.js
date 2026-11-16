@@ -11,7 +11,7 @@ const remoteKsuIdentityCache=new Map();
 const ksuLastKnownCache=new Map();
 const liveDistanceState=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
-const KSU_LOST_SIGNAL_KEEP_MS=30*60*1000;
+const KSU_LOST_SIGNAL_KEEP_MS=60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
@@ -1561,12 +1561,12 @@ function mergeAircraft(primary,secondary){
 }
 async function fetchJson(url){
   try{
-    const r=await fetch(url,{credentials:'omit'});
+    const r=await fetch(url,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
     if(!r.ok)throw new Error('HTTP '+r.status);
     return await r.json();
   }catch(e){
     const proxied='https://proxy.cors.dev/'+url;
-    const r=await fetch(proxied,{credentials:'omit'});
+    const r=await fetch(proxied,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
     if(!r.ok)throw new Error('HTTP '+r.status);
     return await r.json();
   }
@@ -2102,7 +2102,7 @@ async function refresh(){
   try{
     let merged=[], workerOk=false, sharedTracks=null;
     try{
-      const wr=await fetch(WORKER_URL,{cache:'no-store',credentials:'omit'});
+      const wr=await fetch(WORKER_URL,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
       if(!wr.ok)throw new Error('Worker HTTP '+wr.status);
       const w=await wr.json();
       if(!w||w.ok!==true||!Array.isArray(w.ac))throw new Error('Ugyldig Worker-svar');
