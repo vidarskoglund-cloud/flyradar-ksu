@@ -10,7 +10,7 @@ const recentPlaneCache=new Map();
 const remoteKsuIdentityCache=new Map();
 const ksuLastKnownCache=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
-const KSU_LOST_SIGNAL_KEEP_MS=10*60*1000;
+const KSU_LOST_SIGNAL_KEEP_MS=30*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
@@ -256,19 +256,33 @@ function preserveKsuLastKnown(list){
 
   return out.sort((a,b)=>a.d-b.d);
 }
+function ksuParkedState(p){
+  if(!p?.ksuFlight||!confirmedKsuArrival(p))return null;
+  const ksu=airportByCode('KSU');
+  const dNm=nm(dist(ksu.lat,ksu.lon,p.lat,p.lon));
+  if(dNm>3.5)return null;
+
+  const gs=Number(p.gs);
+  const alt=Number(p.alt);
+  const groundLike=
+    String(p.alt||'').toLowerCase()==='ground' ||
+    (Number.isFinite(gs)&&gs<=25&&(!Number.isFinite(alt)||alt<=1500));
+
+  if(!groundLike)return null;
+
+  const ageSec=p.signalLost
+    ? Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000))
+    : 0;
+
+  if(p.signalLost&&ageSec>=60)return {label:'Parkert ved KSU',ageSec};
+  return {label:'På bakken ved KSU',ageSec};
+}
+
 function signalStateText(p){
   if(!p?.signalLost)return '';
   const ageSec=Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000));
-  const near=nearestKnownAirport(p,4);
-  const gs=Number(p.gs);
-  const alt=Number(p.alt);
-  if(near){
-    const onGroundLike=(Number.isFinite(gs)&&gs<=25)||(Number.isFinite(alt)&&alt<=1500&&Number.isFinite(gs)&&gs<=45);
-    if(onGroundLike){
-      if(ageSec>=60)return `Parkert ved ${near.airport.code}`;
-      return `Landet ved ${near.airport.code}`;
-    }
-  }
+  const parked=ksuParkedState(p);
+  if(parked)return parked.label;
   if(p.ksuFlight)return `Signal midlertidig mistet · siste kjente posisjon · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
   return `Signal mistet · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
 }
@@ -641,7 +655,11 @@ function ksuPriorityScore(p){
       const physicallyDown=nearKsu &&
         ((!Number.isFinite(gs)||gs<=80) &&
          (!Number.isFinite(alt)||alt<=2500));
-      if(physicallyDown)return 0;
+      if(physicallyDown){
+        const parked=ksuParkedState(p);
+        if(parked?.label==='Parkert ved KSU')return 720;
+        return 1080;
+      }
       // Avinor-status alene skal ikke få oss til å slippe et fly som fortsatt
       // er i lufta eller fortsatt sender på innflygingen.
     }
@@ -1083,7 +1101,7 @@ function focusLocalRoute(p){
 }
 function followNearest(list,s){
   if(focusIdleCandidate(list))return;
-  const sorted=list.filter(p=>!p.signalLost && (ksuDistanceNm(p)<=50 || confirmedKsuArrival(p))).sort((a,b)=>a.d-b.d);
+  const sorted=list.filter(p=>(!p.signalLost&&ksuDistanceNm(p)<=50)||confirmedKsuArrival(p)).sort((a,b)=>a.d-b.d);
   const priority=priorityKsuAircraft(sorted);
   const local25=sorted.filter(local25Traffic).sort((a,b)=>a.d-b.d)[0]||null;
   const priorityNm=priority?nm(priority.d):Infinity;
@@ -1821,6 +1839,8 @@ function ksuOperationalStatus(p){
   const info=ksuFlightInfo(p);
   if(!info)return ksuMovementStatus(p).label;
   const movement=ksuMovementStatus(p).label;
+  const parked=ksuParkedState(p);
+  if(parked)return parked.label;
   const ground=ksuGroundContext(p);
   if(ground)return ground.label;
   if(info.direction==='Ankomst KSU'){
@@ -2328,6 +2348,16 @@ function nextRefreshMs(){
     if(near.dNm<=3 && hasAlt && alt<=3000)return 5000;
     if(near.dNm<=6 && hasAlt && alt<=6000)return 10000;
     if(near.dNm<=8 && hasAlt && alt<=10000 && (!Number.isFinite(gs)||gs<=250))return 20000;
+  }
+
+  const trackedKsu=planes.find(p=>confirmedKsuArrival(p)&&ksuDistanceNm(p)<=12);
+  if(trackedKsu){
+    const d=ksuDistanceNm(trackedKsu);
+    const gs=Number(trackedKsu.gs);
+    const alt=Number(trackedKsu.alt);
+    if(d<=3.5 && (!Number.isFinite(gs)||gs<=80) && (!Number.isFinite(alt)||alt<=2500))return 3000;
+    if(d<=6)return 5000;
+    return 10000;
   }
 
   const nearest=planes.slice().sort((a,b)=>a.d-b.d)[0];
