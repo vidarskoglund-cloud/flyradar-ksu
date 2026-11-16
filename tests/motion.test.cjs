@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../app.js'),'utf8');
 function section(start,end){return source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)));}
 function setup(){
-  const context=vm.createContext({Math,Number,Date,Map,Set,rad:x=>x*Math.PI/180,recentPlaneCache:new Map(),dist:()=>0});
+  const context=vm.createContext({Math,Number,Date,Map,Set,rad:x=>x*Math.PI/180,recentPlaneCache:new Map(),aircraftRouteCache:new Map(),dist:()=>0});
   vm.runInContext(section('function isGroundOrTaxi','function nearestKnownAirport')+
     section('function getTrackDeg','function planeIcon')+
     section('function interpolatedPlanePosition','let lastMotionFrame')+
@@ -49,4 +49,12 @@ test('render keeps markers, updates click data and removes filtered aircraft',()
  render();const original=c.motionMarkers.get('abc').marker;
  c.list=[{...plane,lat:63.1101}];render();assert.equal(creates,1);assert.equal(c.motionMarkers.get('abc').marker,original);
  original.click();assert.equal(c.clicked,c.list[0]);c.list=[];render();assert.equal(c.motionMarkers.size,0);assert.equal(removed.length,1);
+});
+
+test('selection highlight moves between existing markers without resetting motion',()=>{
+ const c=context();const states={};
+ c.motionMarkers=new Map(['abc','def'].map(key=>[key,{marker:{getElement:()=>({classList:{toggle:(name,on)=>{states[key]=on}}}),setZIndexOffset:z=>{states[key+'Z']=z}}}]));
+ vm.runInContext(section('function highlightSelectedAircraft','function select'),c);
+ c.selected={hex:'abc'};c.highlightSelectedAircraft();assert.equal(states.abc,true);assert.equal(states.def,false);assert.equal(states.abcZ,1200);
+ c.selected={hex:'def'};c.highlightSelectedAircraft();assert.equal(states.abc,false);assert.equal(states.def,true);assert.equal(states.abcZ,100);
 });

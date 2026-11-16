@@ -228,7 +228,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   header>div:first-child .muted{font-size:10px;line-height:1.1;margin-top:2px;opacity:.75}
   #status{font-size:10px;text-align:right;max-width:50%;line-height:1.15}
   main{padding:7px 10px 10px}
-  .local-rule{display:none}
+  .local-rule{display:block;font-size:10px;margin:6px 0}
   .stats{display:flex;gap:0;margin:0 0 7px;background:var(--p);border:1px solid var(--line);border-radius:10px;padding:6px 8px}
   .stats div{flex:1;background:transparent;border:0;border-radius:0;padding:0 6px;text-align:center;border-left:1px solid var(--line)}
   .stats div:first-child{border-left:0}
@@ -278,6 +278,19 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   body.display-on main{padding:82px 12px 12px}
   .hero .grid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Explicit SVG sizing and fill also work in mobile Safari. */
+.plane-marker{width:34px;height:34px;color:#7b91a5;filter:drop-shadow(0 1px 1px #061321);text-shadow:none}
+.plane-marker svg{display:block;width:22px;height:22px;fill:currentColor;stroke:#0b2030;stroke-width:1;stroke-linejoin:round}
+.plane-marker.local{color:#45ad86;text-shadow:none}
+.plane-wrap.is-selected .plane-marker{color:#6ee7ff;background:#092637c9;border:1px solid #6ee7ff;border-radius:50%;box-shadow:0 0 0 3px #6ee7ff25;box-sizing:border-box}
+.plane-wrap.is-selected .plane-marker svg{width:28px;height:28px}
+.plane-wrap.is-selected .plane-marker.ksu-stale{opacity:.65}
+.wide-map .offshore-marker{font-size:6px;opacity:.65;text-shadow:none}
+.offshore-marker{line-height:12px;text-align:center}
+.airport-marker.network .airport-symbol{display:none}
+.airport-marker.network{padding:3px 5px;box-shadow:none;opacity:.75}
+@media(max-width:600px){.airport-marker.network b{font-size:9px}.fa-usage{gap:5px;padding:8px}.fa-usage span{font-size:8px}}
 </style>
 </head>
 <body>
@@ -296,6 +309,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </div>
 <section class="schedule nearest-panel"><h2>Aktivt fly</h2><div id="cards" class="cards"></div><div class="fs-schedule"><h3>Neste på KSU</h3><div id="avinor-list-side"></div></div></section>
 <section class="schedule"><h2>Kvernberget · kommende ankomster og avganger</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
+
+<details class="settings-panel" style="margin-top:12px"><summary>Innstillinger</summary>
 <section class="fa-usage" id="fa-usage">
   <div><span>FLIGHTAWARE</span><b id="fa-state" class="fa-ok">Aktiv</b></div>
   <div><span>OPPSLAG</span><b id="fa-calls">–</b></div>
@@ -305,7 +320,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div class="fa-bar"><i id="fa-progress"></i></div>
   <div class="fa-note" id="fa-note">Henter FlightAware-bruk…</div>
 </section>
-<details class="settings-panel" style="margin-top:12px"><summary>Innstillinger</summary>
 <div class="settings-grid">
 <select id="radius" aria-label="Kartnivå">
 <option value="10">Flyplass · 10 NM</option>
@@ -328,5 +342,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=116"></script>\n<script src="flightaware-status.js?v=1"></script>
+<script src="app.js?v=117"></script>
+<script src="flightaware-status.js?v=1"></script>
 </body></html>

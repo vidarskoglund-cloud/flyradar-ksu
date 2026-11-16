@@ -79,7 +79,8 @@ function renderNorwayAirports(){
   const zoom=map.getZoom();
   norwayAirports.forEach(a=>{
     if(a.code==='KSU')return;
-    if(zoom<6 && !a.major)return;
+    if(zoom<8 && !a.major)return;
+    if(zoom<7)return;
     const marker=L.marker([a.lat,a.lon],{
       icon:airportIcon(a.code,a.name,'network'),
       zIndexOffset:300
@@ -113,12 +114,13 @@ function updateHomeAirportMarker(){
     return;
   }
   if(!map.hasLayer(home))home.addTo(map);
-  const compact=zoom>=11;
+  const compact=zoom>=11 || window.innerWidth<=600;
   home.setIcon(airportIcon('KSU','Kvernberget','home',compact));
 }
-map.on('zoomend',()=>{try{updateRangeRings(settings());renderNorwayAirports();updateHomeAirportMarker()}catch(e){}});
+map.on('zoomend',()=>{document.getElementById('map').classList.toggle('wide-map',map.getZoom()<9);try{updateRangeRings(settings());renderNorwayAirports();updateHomeAirportMarker()}catch(e){}});
 renderNorwayAirports();
 updateHomeAirportMarker();
+document.getElementById('map').classList.toggle('wide-map',map.getZoom()<9);
 
 const rad=x=>x*Math.PI/180;
 const nm=km=>km/1.852;
@@ -1392,10 +1394,11 @@ async function loadOffshore(){
 async function loadAvinor(){
   try{
     const bucket=Math.floor(Date.now()/600000);
-    const r=await fetch('data/avinor-ksu.json?v='+bucket,{cache:'no-store'});
+    const r=await fetch('data/avinor-ksu.json?v='+bucket,{cache:'no-store',signal:AbortSignal.timeout(12000)});
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
     avinorFlights=Array.isArray(j.flights)?j.flights:[];
+    renderAvinor();
     await updateRemoteKsuTracking();
     attachAvinorMatches();
     renderAvinor();
@@ -1820,7 +1823,7 @@ async function refresh(){
     const passerby=!priority?priorityPasserby(planes):null;
     const followed=priority||passerby||planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
     const followText=followed?' · følger '+(priority?'KSU ':passerby?'lokalt ':'')+(followed.flight||followed.reg||followed.hex):'';
-    $('status').textContent=`${localCount} fly i området${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`${localCount} fly i nærtrafikken${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
     render(true);
@@ -1829,7 +1832,7 @@ async function refresh(){
     if(lastGoodPlanes.length){
       planes=lastGoodPlanes.map(p=>({...p}));
       const localCount=planes.filter(localRelevant).length;
-      $('status').textContent=`${localCount} fly i området · viser sist kjente data`;
+      $('status').textContent=`${localCount} fly i nærtrafikken · viser sist kjente data`;
       $('status').className='muted';
       render(false);
       return;
@@ -1876,9 +1879,18 @@ function drawRoute(p){
     }).bindTooltip('Til: '+airportLabel(a),{direction:'top'}).addTo(routeLayer);
   }
 }
+function highlightSelectedAircraft(){
+  const activeKey=selected?planeKey(selected):null;
+  for(const [key,entry] of motionMarkers){
+    const active=key===activeKey;
+    entry.marker.getElement()?.classList.toggle('is-selected',active);
+    entry.marker.setZIndexOffset(active?1200:100);
+  }
+}
 function select(p,lookupRoute=true){
   if(!p)return;
   selected=p;
+  highlightSelectedAircraft();
   if(lookupRoute && p.flight && !p.routeData && !routeCache.has(p.flight.trim()) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   drawTrackAndPrediction(p);
@@ -1958,7 +1970,7 @@ function render(autoFit=false){
     selected=shown;
     const localCountNow=list.filter(localRelevant).length;
     const activePrefix=shown.ksuFlight?'KSU ':observablePasserby(shown)?'lokalt ':'';
-    $('status').textContent=`${localCountNow} fly i området · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`${localCountNow} fly i nærtrafikken · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     const rp=routeCardParts(shown);
     const service=specialService(shown);
@@ -2011,7 +2023,7 @@ function render(autoFit=false){
     select(shown,false);
   }else{
     selected=null;
-    $('status').textContent=`0 fly i området · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`0 fly i nærtrafikken · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     $('cards').innerHTML='';
     routeLayer.clearLayers();
