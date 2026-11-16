@@ -223,7 +223,8 @@ function remoteArrivalCandidates(){
   return avinorFlights
     .filter(f=>{
       if(f.arr_dep==='D')return false;
-      if(String(f.status_code||'').toUpperCase()==='C')return false;
+      const status=String(f.status_code||'').toUpperCase();
+      if(status==='C'||status==='A')return false;
       const t=Date.parse(f.schedule_time||'');
       return Number.isFinite(t)&&t>=now-25*60*1000&&t<=now+120*60*1000;
     })
@@ -1206,6 +1207,33 @@ function plausibleKsuRouteCorridor(p,f){
   return corridorNm<=45 || endDist<=30;
 }
 
+function avinorMatchPlausible(p,f,exact=false){
+  if(!p||!f)return false;
+  const status=String(f.status_code||'').toUpperCase();
+  const dNm=nm(p.d);
+  const alt=Number(p.alt);
+  const gs=Number(p.gs);
+
+  if(status==='C')return false;
+
+  // En Avinor-rad som allerede er landet skal bare kunne kobles til et fly
+  // helt ved KSU og med bakke-/lavfartskarakter. Den skal aldri kapre et
+  // nytt fly i lufta.
+  if(status==='A'){
+    const nearKsu=dNm<=5;
+    const low=!Number.isFinite(alt)||alt<=2500;
+    const slow=!Number.isFinite(gs)||gs<=100;
+    return nearKsu&&low&&slow;
+  }
+
+  // For ikke-eksakte matcher må flyet være i et realistisk KSU-vindu.
+  if(!exact && f.arr_dep!=='D'){
+    if(dNm>35)return false;
+    if(Number.isFinite(alt)&&alt>18000)return false;
+  }
+  return true;
+}
+
 function findKsuFlight(p){
   if(!p?.flight||!avinorFlights.length)return null;
   const aliases=flightAliases(p.flight);
@@ -1216,6 +1244,7 @@ function findKsuFlight(p){
     const avAliases=flightAliases(f.flight_id);
     const same=[...aliases].some(x=>avAliases.has(x));
     if(!same)return false;
+    if(!avinorMatchPlausible(p,f,true))return false;
     const t=Date.parse(f.schedule_time||'');
     return !Number.isFinite(t)||Math.abs(t-now)<=8*60*60*1000;
   });
@@ -1233,34 +1262,24 @@ function findKsuFlight(p){
   const carrier=callsign.startsWith('WIF')?'WF':callsign.startsWith('SAS')?'SK':'';
   if(!carrier)return null;
 
-  const movement=ksuMovementStatus(p).label;
-  const approaching=['Ser ut til å være på innflyging','Nærmer seg KSU'].includes(movement);
-  const leaving=movement==='Forlater KSU';
+  // Ankomster skal ikke lenger matches bare på flyselskap/tidsvindu.
+  // De fanges via eksakt flightnummer eller fjernsporing/rutekontroll.
+  // Dette hindrer f.eks. at et BGO→TOS-fly blir koblet til en gammel BGO→KSU-rad.
   const dNm=nm(p.d);
+  const leaving=ksuMovementStatus(p).label==='Har forlatt KSU';
 
   const fallback=avinorFlights.filter(f=>{
+    if(f.arr_dep!=='D')return false;
     if(!compactFlightId(f.flight_id).startsWith(carrier))return false;
-    if(String(f.status_code||'').toUpperCase()==='C')return false;
+    if(!avinorMatchPlausible(p,f,false))return false;
     const t=Date.parse(f.schedule_time||'');
     if(!Number.isFinite(t))return false;
-    if(!plausibleKsuRouteCorridor(p,f))return false;
-
-    if(f.arr_dep!=='D'){
-      if(dNm>150)return false;
-      if(!approaching && dNm>30)return false;
-      return t>=now-75*60*1000 && t<=now+75*60*1000;
-    }
-
-    if(dNm>75)return false;
-    if(!leaving && dNm>15)return false;
-    return t>=now-45*60*1000 && t<=now+75*60*1000;
+    if(dNm>20)return false;
+    if(!leaving && dNm>8)return false;
+    return t>=now-30*60*1000 && t<=now+60*60*1000;
   });
 
-  if(!fallback.length)return null;
-  fallback.sort((a,b)=>{
-    const ta=Date.parse(a.schedule_time||''),tb=Date.parse(b.schedule_time||'');
-    return Math.abs(ta-now)-Math.abs(tb-now);
-  });
+  if(fallback.length!==1)return null;
   return fallback[0];
 }
 function attachAvinorMatches(){
