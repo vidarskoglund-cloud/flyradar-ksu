@@ -37,7 +37,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     max-width:1500px;
     padding:14px 24px 24px;
     display:grid;
-    grid-template-columns:minmax(0,2fr) minmax(340px,1fr);
+    grid-template-columns:minmax(0,2.35fr) minmax(320px,.95fr);
     grid-template-areas:
       "rule rule"
       "stats stats"
@@ -49,7 +49,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     align-items:start
   }
   .local-rule{grid-area:rule;max-width:none;width:100%;margin:0;padding:0 4px}
-  .stats{grid-area:stats;max-width:none;width:100%;margin:0}
+  .stats{grid-area:stats;max-width:none;width:100%;margin:0;gap:6px}.stats div{padding:7px 10px}.stats b{font-size:18px}
   #map{grid-area:map;height:64vh;min-height:520px}
   .fullscreen-strip{grid-area:map}
   .schedule:not(.nearest-panel){grid-area:schedule;margin-top:0;padding:12px 14px}
@@ -59,7 +59,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     max-width:none;
     margin:0;
     padding:14px;
-    min-height:520px;
     display:flex;
     flex-direction:column
   }
@@ -232,5 +231,5 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=88"></script>\n<script src="flightaware-status.js?v=1"></script>
+<script src="app.js?v=89"></script>\n<script src="flightaware-status.js?v=1"></script>
 </body></html>
