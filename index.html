@@ -105,7 +105,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 @media(min-width:900px) and (display-mode:fullscreen){
   html,body{height:100%;overflow:hidden}
   header,.local-rule,.settings-panel,footer{display:none}
-  main{height:100vh;padding:8px 18px;display:grid;grid-template-rows:auto 1fr auto auto;gap:6px;overflow:hidden}
+  main{height:100vh;padding:8px 18px;display:grid;grid-template-columns:1fr;grid-template-areas:none;grid-template-rows:auto 1fr auto auto;gap:6px;overflow:hidden}
   #stats{display:grid;margin:0 auto;width:min(100%,1000px)}
   #map{height:100%;min-height:0}
   .fullscreen-strip{display:none}
