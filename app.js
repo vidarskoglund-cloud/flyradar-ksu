@@ -961,20 +961,15 @@ function idleCandidates(list){
   return list.slice().sort((a,b)=>a.d-b.d).filter(p=>nm(p.d)>50).slice(0,3);
 }
 function focusIdleCandidate(list,advance=false){
-  const candidates=idleCandidates(list);
-  if(!candidates.length)return false;
-  if(advance)idleFocusIndex=(idleFocusIndex+1)%candidates.length;
-  if(idleFocusIndex>=candidates.length)idleFocusIndex=0;
-  const p=candidates[idleFocusIndex];
-  selected=p;
-  map.setView([p.lat,p.lon],8);
-  select(p,false);
-  if($('fs-status'))$('fs-status').textContent=`rolig visning · fly ${idleFocusIndex+1}/${candidates.length}`;
-  return true;
+  // Lokal-first: vanlige fly utenfor 50 NM skal ikke flytte kartet bort
+  // fra Kristiansund. De kan fortsatt finnes i datasettet, men får ikke kartfokus.
+  return false;
 }
 function confirmedKsuArrival(p){
   const info=ksuFlightInfo(p);
-  return Boolean(info && info.direction==='Ankomst KSU');
+  if(info && info.direction==='Ankomst KSU' && info.status!=='Innstilt')return true;
+  const destination=confirmedRouteDestination(p);
+  return Boolean(destination && destination.code==='KSU');
 }
 function kristiansundPoint(){
   return [mapAreas.city.lat,mapAreas.city.lon];
@@ -1257,7 +1252,7 @@ function displayRoute(p){
   }
   const inferred=inferredRouteLabel(p);
   if(inferred)return `${inferred.label} · ${inferred.name}`;
-  return p.route||'Henter rute…';
+  return 'Rute ikke tilgjengelig';
 }
 async function enrichRoute(p){
   if(!p||!p.flight)return;
