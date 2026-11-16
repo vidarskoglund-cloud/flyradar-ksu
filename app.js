@@ -9,6 +9,7 @@ const aircraftRouteCache=new Map();
 const recentPlaneCache=new Map();
 const remoteKsuIdentityCache=new Map();
 const ksuLastKnownCache=new Map();
+const liveDistanceState=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
 const KSU_LOST_SIGNAL_KEEP_MS=30*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
@@ -2283,7 +2284,11 @@ function render(autoFit=false){
     else marker.bindTooltip(tooltip,{direction:'top',offset:[0,-15]});
   });
   for(const [key,entry] of motionMarkers){
-    if(!visibleKeys.has(key)){layer.removeLayer(entry.marker);motionMarkers.delete(key);}
+    if(!visibleKeys.has(key)){
+      layer.removeLayer(entry.marker);
+      motionMarkers.delete(key);
+      liveDistanceState.delete(key);
+    }
   }
   const nearest=list[0]||null;
   const current=selected&&list.find(p=>p.hex===selected.hex);
@@ -2323,7 +2328,7 @@ function render(autoFit=false){
           </div>
           <div class="operator">${shown.operator||service||shown.desc||''}</div>
         </div>
-        <div class="dist">${fNm(shown.d)}</div>
+        <div class="dist">${liveDistanceText(shown)}</div>
       </div>
       ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
@@ -2384,6 +2389,42 @@ function interpolatedPlanePosition(p,now=Date.now()){
     horizon+tail*(1-Math.exp(-(ageSec-horizon)/tail));
   return destinationPoint(p.lat,p.lon,gs*effectiveSec/3600,tr);
 }
+function rawLiveDistanceNm(p,now=Date.now()){
+  if(!p)return null;
+  const key=planeKey(p);
+  const entry=key?motionMarkers.get(key):null;
+  const pos=entry?motionPosition(entry,now):interpolatedPlanePosition(p,now);
+  if(!pos)return Number.isFinite(Number(p.d))?nm(p.d):null;
+  return nm(dist(63.1118,7.8245,pos[0],pos[1]));
+}
+function smoothedLiveDistanceNm(p,now=Date.now()){
+  const target=rawLiveDistanceNm(p,now);
+  if(target===null||!Number.isFinite(target))return null;
+
+  const key=planeKey(p)||'selected';
+  const old=liveDistanceState.get(key);
+  if(!old){
+    liveDistanceState.set(key,{value:target,at:now});
+    return target;
+  }
+
+  const dt=Math.max(0.05,Math.min(2,(now-old.at)/1000));
+  const gs=Number(p.gs);
+  const physicalRate=Number.isFinite(gs)&&gs>0 ? gs/3600 : 0.03;
+  // Tillat litt ekstra korreksjon mot ny ADS-B-posisjon, men unngå synlige hopp.
+  const maxRate=Math.max(0.03,physicalRate*1.18);
+  const maxStep=maxRate*dt;
+  const diff=target-old.value;
+  const step=Math.max(-maxStep,Math.min(maxStep,diff));
+  const value=old.value+step;
+
+  liveDistanceState.set(key,{value,at:now});
+  return value;
+}
+function liveDistanceText(p,now=Date.now()){
+  const d=smoothedLiveDistanceNm(p,now);
+  return d===null?'–':d.toFixed(1)+' NM';
+}
 function motionPosition(entry,now){
   const target=interpolatedPlanePosition(entry.plane,now);
   if(!target||!entry.offset)return target;
@@ -2392,6 +2433,7 @@ function motionPosition(entry,now){
   return [target[0]+entry.offset[0]*remaining,target[1]+entry.offset[1]*remaining];
 }
 let lastMotionFrame=null;
+let lastLiveDistancePaint=0;
 function animateAircraftMotion(frameAt){
   requestAnimationFrame(animateAircraftMotion);
   if(document.hidden){lastMotionFrame=null;return;}
@@ -2406,6 +2448,28 @@ function animateAircraftMotion(frameAt){
     entry.heading=(entry.heading+turn*(1-Math.exp(-dt/0.5))+360)%360;
     const icon=entry.marker.getElement()?.querySelector('.plane-marker');
     if(icon)icon.style.transform=`rotate(${entry.heading}deg)`;
+  }
+
+  // Oppdater NM-visningen jevnt mellom nye ADS-B-fikser, uten ekstra API-kall.
+  if(now-lastLiveDistancePaint>=200){
+    lastLiveDistancePaint=now;
+
+    if(selected){
+      const liveText=liveDistanceText(selected,now);
+      const cardDist=document.querySelector('.aircraft-card .dist');
+      if(cardDist)cardDist.textContent=liveText;
+      if($('hdist'))$('hdist').textContent=liveText;
+    }
+
+    let closest=Infinity;
+    for(const p of planes){
+      if(p.signalLost)continue;
+      const d=smoothedLiveDistanceNm(p,now);
+      if(d!==null&&d<closest)closest=d;
+    }
+    const closestText=Number.isFinite(closest)?closest.toFixed(1)+' NM':'–';
+    if($('closest'))$('closest').textContent=closestText;
+    if($('fs-closest'))$('fs-closest').textContent=closestText;
   }
 }
 function nextRefreshMs(){
