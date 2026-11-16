@@ -52,6 +52,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .stats{grid-area:stats;max-width:none;width:100%;margin:0;gap:6px}.stats div{padding:7px 10px}.stats b{font-size:18px}
   #map{grid-area:map;height:64vh;min-height:520px}
   .fullscreen-strip{grid-area:map}
+  main > .schedule:not(.nearest-panel){display:none}
   .schedule:not(.nearest-panel){grid-area:schedule;margin-top:0;padding:12px 14px}
   .nearest-panel{
     grid-area:aircraft;
@@ -68,6 +69,32 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     letter-spacing:.04em;
     text-transform:uppercase
   }
+  .nearest-panel .fs-schedule{
+    display:flex;
+    flex-direction:column;
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px solid #1b2d43
+  }
+  .nearest-panel .fs-schedule h3{
+    margin:0 0 7px;
+    color:var(--m);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.04em
+  }
+  .nearest-panel #avinor-list-side{display:block}
+  .nearest-panel .fs-schedule .schedule-row{
+    grid-template-columns:34px minmax(0,1fr) auto;
+    gap:7px;
+    padding:5px 0
+  }
+  .nearest-panel .fs-schedule .schedule-row b{font-size:11px}
+  .nearest-panel .fs-schedule .schedule-route,
+  .nearest-panel .fs-schedule .schedule-time,
+  .nearest-panel .fs-schedule .schedule-status{font-size:9px}
+  .nearest-panel .fs-schedule .schedule-direction{height:19px;font-size:8px}
+  .nearest-panel .fs-schedule .schedule-status{height:19px;padding:0 6px}
   .nearest-panel .cards{margin-top:0;display:block}
   .nearest-panel .card{padding:0;background:transparent;border:0}
   .nearest-panel .aircraft-card{padding:0}
@@ -198,6 +225,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .stats .muted{display:block;font-size:9px;line-height:1.1;margin-top:2px}
   #map{height:39svh;min-height:280px;max-height:360px;border-radius:12px}
   .leaflet-control-zoom a{width:30px;height:30px;line-height:30px}
+  main > .schedule:not(.nearest-panel){display:block}
+  .nearest-panel .fs-schedule{display:none}
   .schedule{margin-top:7px;padding:7px 9px;border-radius:11px}
   .schedule h2{font-size:11px;margin:0 0 2px}
   .nearest-panel .cards{margin-top:0}
@@ -288,5 +317,5 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=96"></script>\n<script src="flightaware-status.js?v=1"></script>
+<script src="app.js?v=97"></script>\n<script src="flightaware-status.js?v=1"></script>
 </body></html>
