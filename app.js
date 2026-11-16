@@ -701,7 +701,7 @@ function normalize(a,s){
     hex:a.hex||'',flight,reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:Number.isFinite(Number(a.alt_baro??a.alt_geom))?Number(a.alt_baro??a.alt_geom):a.alt_baro??a.alt_geom,gs:Number.isFinite(Number(a.gs))?Number(a.gs):a.gs,track:Number.isFinite(Number(a.track??a.true_heading??a.mag_heading))?Number(a.track??a.true_heading??a.mag_heading):a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route,routeData,source:a._source||'adsb.lol',
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route,routeData,source:a._source||'Kombinerte data (Worker)',
     positionAt:sameFix?previous.positionAt:Date.now()
   }
 }
@@ -2109,6 +2109,15 @@ function recordAdsbDiagnostics(rawAircraft, sourceName){
     localStorage.setItem(key,JSON.stringify(rows.slice(-500)));
   }catch(e){console.warn('ADS-B diagnostics unavailable',e);}
 }
+function updateAdsbSourceLabel(mode){
+  const el=$('adsb-source-label');
+  if(!el)return;
+  const names=[['fi','adsb.fi'],['adsb','adsb.lol'],['apl','Airplanes.live']];
+  const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
+  const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
+  el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
+  el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.';
+}
 async function refresh(){
   let s=settings();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -2140,6 +2149,7 @@ async function refresh(){
       merged=mergeAircraft(fiData,adsbData,'adsb.fi','adsb.lol');
     }
 
+    updateAdsbSourceLabel(workerOk?'worker':'direct');
     recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
     localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
@@ -2235,7 +2245,7 @@ function select(p,lookupRoute=true){
   drawRoute(p);
   drawTrackAndPrediction(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
-  $('hmeta').textContent=[p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex;
+  $('hmeta').textContent=([p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex)+(p.source?' · Kilde: '+p.source:'');
   $('hroute').textContent=displayRoute(p);
   $('hdist').textContent=fNm(p.d);
   $('halt').textContent=f(p.alt,' ft');
