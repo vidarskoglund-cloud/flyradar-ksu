@@ -2094,6 +2094,20 @@ function renderProximityAlert(list){
   if(banner.textContent!==text)banner.textContent=text;
   banner.classList.toggle('close',d<=25);
 }
+// Lightweight local diagnostics; no extra ADS-B API requests.
+function recordAdsbDiagnostics(rawAircraft, sourceName){
+  try{
+    const key='flyradar-ksu-source-diagnostics-v1';
+    const rows=JSON.parse(localStorage.getItem(key)||'[]');
+    const now=Date.now();
+    const valid=(rawAircraft||[]).filter(a=>Number.isFinite(Number(a.lat))&&Number.isFinite(Number(a.lon)));
+    const ksu=mapAreas.airport;
+    const near=valid.filter(a=>dist(ksu.lat,ksu.lon,Number(a.lat),Number(a.lon))<=50*1.852);
+    const ages=near.map(a=>Number(a.seen_pos??a.seen)).filter(v=>Number.isFinite(v)&&v>=0);
+    rows.push({time:new Date(now).toISOString(),source:sourceName,adsb:sourceState.adsb,airplanes:sourceState.apl,fi:sourceState.fi,near:near.length,fresh:ages.filter(v=>v<=30).length,oldestSeconds:ages.length?Math.round(Math.max(...ages)):null});
+    localStorage.setItem(key,JSON.stringify(rows.slice(-500)));
+  }catch(e){console.warn('ADS-B diagnostics unavailable',e);}
+}
 async function refresh(){
   let s=settings();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -2125,6 +2139,7 @@ async function refresh(){
       merged=mergeAircraft(adsbData,aplData);
     }
 
+    recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
     localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
       .map(a=>normalize(a,s))
