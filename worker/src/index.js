@@ -615,8 +615,13 @@ export default {
 
       let route = null;
       let source = null;
+      let adsbLolAttempted = false;
+      let adsbLolResult = "not-tried";
+      let flightAwareAttempted = false;
+      let flightAwareResult = "not-tried";
 
       try {
+        adsbLolAttempted = true;
         const body = {
           planes: [{
             callsign,
@@ -637,18 +642,33 @@ export default {
         if (r.ok) {
           const rows = await r.json();
           route = Array.isArray(rows) ? (rows[0] || null) : null;
-          if (routeUsable(route)) source = "adsb.lol";
+          if (routeUsable(route)) {
+            source = "adsb.lol";
+            adsbLolResult = "found";
+          } else {
+            adsbLolResult = "no-route";
+          }
+        } else {
+          adsbLolResult = "http-" + r.status;
         }
-      } catch (error) {}
+      } catch (error) {
+        adsbLolResult = "error";
+      }
 
       if (!routeUsable(route) && allowFlightAware) {
+        flightAwareAttempted = true;
         try {
           const faRoute = await flightAwareRoute(env, callsign);
           if (routeUsable(faRoute)) {
             route = faRoute;
             source = "flightaware";
+            flightAwareResult = "found";
+          } else {
+            flightAwareResult = "no-route";
           }
-        } catch (error) {}
+        } catch (error) {
+          flightAwareResult = "error";
+        }
       }
 
       return new Response(JSON.stringify({
@@ -656,6 +676,12 @@ export default {
         callsign,
         source,
         flightaware_allowed: allowFlightAware,
+        diagnostics: {
+          adsb_lol_attempted: adsbLolAttempted,
+          adsb_lol_result: adsbLolResult,
+          flightaware_attempted: flightAwareAttempted,
+          flightaware_result: flightAwareResult,
+        },
         route: routeUsable(route) ? route : null,
       }), {
         status: 200,
