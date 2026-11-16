@@ -17,6 +17,7 @@ const mapAreas={
 let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
 let layer=L.layerGroup().addTo(map);
+const motionMarkers=new Map();
 let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
@@ -565,7 +566,8 @@ function normalize(a,s){
     hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:Number.isFinite(Number(a.alt_baro??a.alt_geom))?Number(a.alt_baro??a.alt_geom):a.alt_baro??a.alt_geom,gs:Number.isFinite(Number(a.gs))?Number(a.gs):a.gs,track:Number.isFinite(Number(a.track??a.true_heading??a.mag_heading))?Number(a.track??a.true_heading??a.mag_heading):a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol'
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol',
+    positionAt:Date.now()
   }
 }
 function getTrackDeg(p){
@@ -1727,11 +1729,14 @@ function render(autoFit=false){
   if(priority && (!selected || ksuPriorityScore(priority)>ksuPriorityScore(selected)))selected=priority;
   else if(passerby && (!selected || !selected.ksuFlight))selected=passerby;
   layer.clearLayers();
+  motionMarkers.clear();
   list.forEach(p=>{
-    L.marker([p.lat,p.lon],{icon:planeIcon(p)})
+    const marker=L.marker([p.lat,p.lon],{icon:planeIcon(p)})
       .bindTooltip(`${p.ksuFlight?'KSU · ':observablePasserby(p)?'SE/HØR · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}${p.remoteTracked?' · fjernsporing':''}${p.signalLost?' · SIGNAL MISTET':''}`,{direction:'top',offset:[0,-15]})
       .on('click',()=>{select(p);render(false)})
       .addTo(layer);
+    const key=planeKey(p);
+    if(key)motionMarkers.set(key,{marker,plane:p});
   });
   const nearest=list[0]||null;
   const current=selected&&list.find(p=>p.hex===selected.hex);
@@ -1819,6 +1824,47 @@ if($('save'))$('save').onclick=refresh;
 if($('mode'))$('mode').onclick=toggleDisplay;
 if($('notify'))$('notify').onclick=requestNotifications;
 let refreshTimer=null;
+function interpolatedPlanePosition(p,now=Date.now()){
+  if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return null;
+  const gs=Number(p.gs);
+  const tr=getTrackDeg(p);
+  if(!Number.isFinite(gs)||gs<=0||tr===null)return [p.lat,p.lon];
+
+  const baseAt=p.signalLost
+    ? Number(p.lastSeenAt||p.positionAt||now)
+    : Number(p.positionAt||now);
+  let ageSec=Math.max(0,(now-baseAt)/1000);
+
+  // 0-20 s: full local dead-reckoning.
+  // 20-60 s: slow the extrapolation markedly so we do not run far away
+  // from the next real ADS-B fix. After 60 s, stop movement entirely.
+  if(ageSec>60)ageSec=60;
+  let effectiveSec=ageSec<=20?ageSec:20+(ageSec-20)*0.35;
+
+  // KSU arrivals get a gentle bearing bias toward Kvernberget near destination.
+  let bearing=tr;
+  const info=ksuFlightInfo(p);
+  if(info?.direction==='Ankomst KSU'){
+    const dKsu=nm(dist(p.lat,p.lon,63.1118,7.8245));
+    if(dKsu<=35){
+      const toKsu=bearingBetween(p.lat,p.lon,63.1118,7.8245);
+      const diff=((toKsu-tr+540)%360)-180;
+      const blend=Math.max(0,Math.min(0.28,(35-dKsu)/35*0.28));
+      bearing=(tr+diff*blend+360)%360;
+    }
+  }
+
+  const nmAhead=gs*(effectiveSec/3600);
+  return destinationPoint(p.lat,p.lon,nmAhead,bearing);
+}
+function animateAircraftMotion(){
+  if(document.hidden||!motionMarkers.size)return;
+  const now=Date.now();
+  for(const {marker,plane} of motionMarkers.values()){
+    const pos=interpolatedPlanePosition(plane,now);
+    if(pos)marker.setLatLng(pos);
+  }
+}
 function nextRefreshMs(){
   if(!planes.length)return 120000;
 
@@ -1865,7 +1911,7 @@ async function adaptiveRefresh(){
   await refresh();
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
-load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);
+load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(animateAircraftMotion,1000);
 setInterval(()=>{
   if(document.hidden)return;
   const sorted=planes.slice().sort((a,b)=>a.d-b.d);
