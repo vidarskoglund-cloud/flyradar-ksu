@@ -1683,10 +1683,20 @@ function nextRefreshMs(){
     if(!near)continue;
     const alt=Number(p.alt);
     const gs=Number(p.gs);
-    if(near.dNm<=1.5 && Number.isFinite(alt) && alt<=2000)return 3000;
-    if(near.dNm<=3 && Number.isFinite(alt) && alt<=3000)return 5000;
-    if(near.dNm<=6 && Number.isFinite(alt) && alt<=6000)return 10000;
-    if(near.dNm<=8 && Number.isFinite(alt) && alt<=10000 && (!Number.isFinite(gs)||gs<=250))return 20000;
+    const hasAlt=Number.isFinite(alt);
+
+    // Bekreftede KSU-fly på/tett ved avgangsflyplass skal følges tett selv
+    // når ADS-B ikke rapporterer høyde på bakken.
+    if(p.ksuFlight){
+      if(near.dNm<=1.5 && (!Number.isFinite(gs)||gs<=45) && (!hasAlt||alt<=2500))return 3000;
+      if(near.dNm<=3 && (!Number.isFinite(gs)||gs<=120) && (!hasAlt||alt<=4000))return 5000;
+      if(near.dNm<=6 && (!Number.isFinite(gs)||gs<=220) && (!hasAlt||alt<=8000))return 10000;
+    }
+
+    if(near.dNm<=1.5 && hasAlt && alt<=2000)return 3000;
+    if(near.dNm<=3 && hasAlt && alt<=3000)return 5000;
+    if(near.dNm<=6 && hasAlt && alt<=6000)return 10000;
+    if(near.dNm<=8 && hasAlt && alt<=10000 && (!Number.isFinite(gs)||gs<=250))return 20000;
   }
 
   const nearest=planes.slice().sort((a,b)=>a.d-b.d)[0];
