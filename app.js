@@ -1817,8 +1817,15 @@ function render(autoFit=false){
       : '<b>Ingen fly</b><span>–</span>';
   }
   const priority=priorityKsuAircraft(list);
-  const passerby=!priority?priorityPasserby(list):null;
-  if(priority && (!selected || ksuPriorityScore(priority)>ksuPriorityScore(selected)))selected=priority;
+  const local25=list.filter(local25Traffic).sort((a,b)=>a.d-b.d)[0]||null;
+  const priorityNm=priority?nm(priority.d):Infinity;
+  const localWins=Boolean(local25 && (!priority || priorityNm>50));
+  const passerby=!priority&&!local25?priorityPasserby(list):null;
+
+  // Lokal-first gjelder også aktivt fly, ikke bare kartzoom.
+  // Et fly innen 25 NM skal erstatte et gammelt/fjernt valgt fly.
+  if(localWins)selected=local25;
+  else if(priority && (!selected || ksuPriorityScore(priority)>ksuPriorityScore(selected)))selected=priority;
   else if(passerby && (!selected || !selected.ksuFlight))selected=passerby;
   const visibleKeys=new Set();
   const motionNow=Date.now();
