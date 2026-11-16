@@ -102,29 +102,84 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .settings-panel{grid-area:settings;max-width:none;width:100%;margin:0!important}
 }
 @media(min-width:900px) and (display-mode:fullscreen){
-  html,body{height:100%;overflow:hidden}
-  header,.local-rule,.settings-panel,footer{display:none}
-  main{height:100vh;padding:8px 18px;display:grid;grid-template-columns:1fr;grid-template-areas:none;grid-template-rows:auto 1fr auto auto;gap:6px;overflow:hidden}
-  #stats{display:grid;margin:0 auto;width:min(100%,1000px)}
-  #map{height:100%;min-height:0}
-  .fullscreen-strip{display:none}
-  .schedule{margin-top:0}
-  .schedule:not(.nearest-panel){display:block;max-width:1400px;width:100%;margin-left:auto;margin-right:auto;padding:7px 10px}
-  .nearest-panel{display:block;max-width:1400px;width:100%;margin:0 auto;padding:7px 10px}
-  .nearest-panel h2{display:none}
+  html,body{width:100%;height:100%;overflow:hidden}
+  body{background:var(--bg)}
+  header,.local-rule,.settings-panel,footer,#hero,.fullscreen-strip{display:none!important}
+  main{
+    width:100vw;
+    max-width:none;
+    height:100vh;
+    margin:0;
+    padding:10px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 360px;
+    grid-template-rows:44px minmax(0,1fr) auto;
+    grid-template-areas:
+      "stats stats"
+      "map aircraft"
+      "schedule schedule";
+    gap:8px;
+    overflow:hidden
+  }
+  #stats{
+    grid-area:stats;
+    width:100%;
+    max-width:none;
+    margin:0;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:8px
+  }
+  #stats div{padding:6px 10px}
+  #stats b{font-size:18px}
+  #map{
+    grid-area:map;
+    width:100%;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+    border-radius:12px
+  }
+  .nearest-panel{
+    grid-area:aircraft;
+    display:block;
+    width:100%;
+    max-width:none;
+    height:auto;
+    margin:0;
+    padding:10px;
+    align-self:start
+  }
+  .nearest-panel h2{display:block;font-size:11px;margin:0 0 6px}
   .nearest-panel .cards{margin-top:0}
   .nearest-panel .card{padding:0;background:transparent;border:0}
   .aircraft-card{padding:0}
   .aircraft-head{align-items:center}
-  .flight-route{margin-top:5px;padding:6px 8px}
-  .aircraft-metrics{margin-top:5px}
+  .aircraft-title .call{font-size:22px}
+  .dist{font-size:18px}
+  .flight-route{margin-top:6px;padding:8px 10px}
+  .route-end b{font-size:22px}
+  .aircraft-metrics{margin-top:6px;gap:5px}
+  .aircraft-metrics>div{padding:6px}
   .aircraft-foot,.movement,.source{display:none}
-  .movement-status{margin-top:5px}
-  .ksu-flight{margin-top:5px;padding:5px 8px}
-  .schedule h2{font-size:11px;margin-bottom:2px}
+  .movement-status{margin-top:6px}
+  .ksu-flight{margin-top:6px;padding:6px 8px}
+  .schedule:not(.nearest-panel){
+    grid-area:schedule;
+    display:block;
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:7px 10px;
+    max-height:150px;
+    overflow:hidden
+  }
+  .schedule h2{font-size:11px;margin-bottom:3px}
   .schedule-row{padding:3px 0}
-  .schedule-row b{font-size:12px}
-  .schedule-row span,.schedule-time{font-size:10px}
+  .schedule-row b{font-size:11px}
+  .schedule-route,.schedule-time,.schedule-status{font-size:9px}
+  .schedule-direction{height:19px;font-size:8px}
+  .fa-usage{display:none!important}
 }
 @media(max-width:700px){
   html,body{height:100%;overflow-x:hidden}
@@ -231,5 +286,5 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=93"></script>\n<script src="flightaware-status.js?v=1"></script>
+<script src="app.js?v=94"></script>\n<script src="flightaware-status.js?v=1"></script>
 </body></html>
