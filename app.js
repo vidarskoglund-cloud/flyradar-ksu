@@ -135,7 +135,7 @@ function local25Traffic(p){
 }
 function queueLocal25RouteLookups(list){
   const candidates=list
-    .filter(p=>local25Traffic(p)&&p.flight&&!p.routeData&&!routeCache.has(p.flight.trim()))
+    .filter(p=>local25Traffic(p)&&p.flight&&!specialService(p)&&!p.routeData&&!routeCache.has(p.flight.trim()))
     .sort((a,b)=>a.d-b.d)
     .slice(0,2);
   candidates.forEach((p,i)=>setTimeout(()=>enrichRoute(p),i*700));
@@ -1155,6 +1155,32 @@ function routeCardParts(p){
   }
   return null;
 }
+function militaryAircraftLabel(p){
+  const f=(p?.flight||'').toUpperCase();
+  const type=(p?.type||'').toUpperCase();
+  const op=((p?.operator||'')+' '+(p?.desc||'')).toLowerCase();
+
+  const militaryCall=/^(RANGR|RCH|RRR|GAF|IAM|BAF|NAF|NATO|CNV|DUKE|REACH)/.test(f);
+  const militaryType=/^(C30J|C130|A400|C17|KC46|K35R|F16|F35|EUFI|HAWK|P3|P8|E3CF|GLF5|GLF6)$/.test(type);
+  const militaryText=/military|air force|forsvaret|army|navy|marine corps/.test(op);
+  if(!(militaryCall||militaryType||militaryText))return '';
+
+  const names={
+    C30J:'KC-130J Hercules',
+    C130:'C-130 Hercules',
+    A400:'Airbus A400M',
+    C17:'C-17 Globemaster III',
+    KC46:'KC-46 Pegasus',
+    K35R:'KC-135 Stratotanker',
+    F16:'F-16 Fighting Falcon',
+    F35:'F-35 Lightning II',
+    EUFI:'Eurofighter Typhoon',
+    P3:'P-3 Orion',
+    P8:'P-8 Poseidon',
+    E3CF:'E-3 AWACS'
+  };
+  return names[type]?'Militærfly · '+names[type]:'Militærfly';
+}
 function specialService(p){
   const f=(p.flight||'').toUpperCase();
   const op=(p.operator||'').toLowerCase();
@@ -1164,7 +1190,8 @@ function specialService(p){
   if(f==='BNOV' || /babcock|luftambulanse|air ambulance|ambulance/.test(op+' '+desc)) return 'Ambulansefly';
   if(/politi|police/.test(op+' '+desc) || /^POL/.test(f)) return 'Politi';
   if(/redning|rescue|sar/.test(op+' '+desc) || /^SAR/.test(f)) return 'Redning';
-  if(/military|air force|forsvaret/.test(op+' '+desc)) return 'Militær';
+  const military=militaryAircraftLabel(p);
+  if(military)return military;
   if(/helicopter|helikopter|chc/.test(op+' '+desc) || /^HK[SM]/.test(f) || type.startsWith('S92')) return 'Offshorehelikopter';
   return '';
 }
@@ -1868,7 +1895,7 @@ function drawRoute(p){
 function select(p,lookupRoute=true){
   if(!p)return;
   selected=p;
-  if(lookupRoute && p.flight && !p.routeData && !routeCache.has(p.flight.trim())) setTimeout(()=>enrichRoute(p),0);
+  if(lookupRoute && p.flight && !p.routeData && !routeCache.has(p.flight.trim()) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   drawTrackAndPrediction(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
