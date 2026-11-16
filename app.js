@@ -1390,7 +1390,8 @@ async function loadAvinor(){
     renderAvinor();
     render(true);
   }catch(e){
-    avinorFlights=[];
+    // Behold siste gode Avinor-data ved midlertidige nett-/filfeil.
+    // Ikke nullstill KSU-match eller "Neste på KSU" mens live ADS-B fortsatt går.
     attachAvinorMatches();
     renderAvinor();
   }
@@ -1813,7 +1814,6 @@ async function refresh(){
     document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
     render(true);
     if(selected)enrichRoute(selected);
-    loadAvinor();
   }catch(e){
     if(lastGoodPlanes.length){
       planes=lastGoodPlanes.map(p=>({...p}));
@@ -1821,7 +1821,6 @@ async function refresh(){
       $('status').textContent=`${localCount} fly i området · viser sist kjente data`;
       $('status').className='muted';
       render(false);
-      loadAvinor();
       return;
     }
     $('status').textContent='Feil: '+e.message;$('status').className='err';
@@ -2115,7 +2114,7 @@ async function adaptiveRefresh(){
   await refresh();
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
-load();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
+load();loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 setInterval(()=>{
   if(document.hidden)return;
   const sorted=planes.slice().sort((a,b)=>a.d-b.d);
