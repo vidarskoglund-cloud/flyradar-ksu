@@ -962,11 +962,35 @@ function applyMapLevel(s){
 function idleCandidates(list){
   return list.slice().sort((a,b)=>a.d-b.d).filter(p=>nm(p.d)>50).slice(0,3);
 }
-function focusIdleCandidate(list,advance=false){
-  // Lokal-first: vanlige fly utenfor 50 NM skal ikke flytte kartet bort
-  // fra Kristiansund. De kan fortsatt finnes i datasettet, men får ikke kartfokus.
-  return false;
+let idleViewStartedAt=null, idleViewPhase=-1, manualMapUntil=0;
+function idleViewPlan(elapsedMs){
+  const seconds=(elapsedMs/1000)%60;
+  if(seconds<32)return {phase:0,radius:35};
+  if(seconds<54)return {phase:1,radius:45};
+  return {phase:2,radius:60}; // Only six seconds of wider overview.
 }
+function hasMapTraffic(list){
+  return list.some(p=>!p.signalLost && (ksuDistanceNm(p)<=50 || confirmedKsuArrival(p)));
+}
+function focusIdleCandidate(list,advance=false){
+  if(hasMapTraffic(list)){
+    idleViewStartedAt=null;idleViewPhase=-1;
+    return false;
+  }
+  const now=Date.now();
+  if(now<manualMapUntil)return true;
+  if(idleViewStartedAt===null)idleViewStartedAt=now;
+  const view=idleViewPlan(now-idleViewStartedAt);
+  if(view.phase!==idleViewPhase){
+    idleViewPhase=view.phase;
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const bounds=areaBounds(63.1118,7.8245,view.radius);
+    const options={padding:[16,16],maxZoom:10,animate:!reduced,duration:2};
+    if(reduced)map.fitBounds(bounds,options);else map.flyToBounds(bounds,options);
+  }
+  return true;
+}
+map.on('dragstart',()=>{manualMapUntil=Date.now()+30000;idleViewStartedAt=null;idleViewPhase=-1;});
 function confirmedKsuArrival(p){
   const info=ksuFlightInfo(p);
   if(info && info.direction==='Ankomst KSU' && info.status!=='Innstilt')return true;
@@ -997,7 +1021,8 @@ function focusLocalRoute(p){
   return true;
 }
 function followNearest(list,s){
-  const sorted=list.slice().sort((a,b)=>a.d-b.d);
+  if(focusIdleCandidate(list))return;
+  const sorted=list.filter(p=>!p.signalLost && (ksuDistanceNm(p)<=50 || confirmedKsuArrival(p))).sort((a,b)=>a.d-b.d);
   const priority=priorityKsuAircraft(sorted);
   const local25=sorted.filter(local25Traffic).sort((a,b)=>a.d-b.d)[0]||null;
   const priorityNm=priority?nm(priority.d):Infinity;
@@ -2195,14 +2220,8 @@ async function adaptiveRefresh(){
 load();loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 setInterval(()=>{
   if(document.hidden)return;
-  const sorted=planes.slice().sort((a,b)=>a.d-b.d);
-  const priority=priorityKsuAircraft(sorted);
-  if(priority)return;
-  const passerby=priorityPasserby(sorted);
-  if(passerby)return;
-  const nearest=sorted[0];
-  if(nearest && nm(nearest.d)>50)focusIdleCandidate(sorted,true);
-},20000);
+  focusIdleCandidate(planes,true);
+},2000);
 document.addEventListener('fullscreenchange',()=>{
   setTimeout(()=>{
     try{

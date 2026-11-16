@@ -75,3 +75,19 @@ test('initial aircraft within the area do not cause an arrival sound',()=>{
  assert.equal(c.proximityCrossings([{hex:'abc',distance:20}]).length,0);
  assert.equal(c.proximityCrossings([{hex:'abc',distance:20}]).length,0);
 });
+
+test('idle overview lasts only six seconds and returns to KSU close view',()=>{
+ const c=vm.createContext({});vm.runInContext(section('function idleViewPlan','function hasMapTraffic'),c);
+ assert.equal(c.idleViewPlan(0).radius,35);assert.equal(c.idleViewPlan(32000).radius,45);
+ assert.equal(c.idleViewPlan(54000).radius,60);assert.equal(c.idleViewPlan(59000).radius,60);
+ assert.equal(c.idleViewPlan(60000).radius,35);
+});
+test('distant unrelated and lost aircraft do not hold the map zoomed out',()=>{
+ const c=vm.createContext({ksuDistanceNm:p=>p.distance,confirmedKsuArrival:p=>p.arrival===true});
+ vm.runInContext(section('function hasMapTraffic','function focusIdleCandidate'),c);
+ assert.equal(c.hasMapTraffic([]),false);
+ assert.equal(c.hasMapTraffic([{distance:57}]),false);
+ assert.equal(c.hasMapTraffic([{distance:20,signalLost:true}]),false);
+ assert.equal(c.hasMapTraffic([{distance:25}]),true);
+ assert.equal(c.hasMapTraffic([{distance:100,arrival:true}]),true);
+});
