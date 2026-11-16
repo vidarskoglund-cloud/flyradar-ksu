@@ -1380,7 +1380,7 @@ async function loadOffshore(){
       const icon=L.divIcon({
         className:'offshore-wrap',
         html:'<div class="offshore-marker '+(settings().r>=150?'overview':'')+'">◆</div>',
-        iconSize:[18,18],iconAnchor:[9,9]
+        iconSize:[12,12],iconAnchor:[6,6]
       });
       L.marker([c[1],c[0]],{icon})
         .bindTooltip(name,{direction:'top'})
