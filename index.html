@@ -113,11 +113,10 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     padding:10px;
     display:grid;
     grid-template-columns:minmax(0,1fr) 360px;
-    grid-template-rows:44px minmax(0,1fr) auto;
+    grid-template-rows:44px minmax(0,1fr);
     grid-template-areas:
       "stats stats"
-      "map aircraft"
-      "schedule schedule";
+      "map aircraft";
     gap:8px;
     overflow:hidden
   }
@@ -145,13 +144,16 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     display:block;
     width:100%;
     max-width:none;
-    height:auto;
+    height:100%;
+    min-height:0;
     margin:0;
     padding:10px;
-    align-self:start
+    align-self:stretch;
+    overflow:hidden
   }
   .nearest-panel h2{display:block;font-size:11px;margin:0 0 6px}
-  .fs-schedule{display:block;margin-top:10px;padding-top:9px;border-top:1px solid #1b2d43}
+  .fs-schedule{display:flex;flex-direction:column;min-height:0;max-height:42vh;margin-top:10px;padding-top:9px;border-top:1px solid #1b2d43;overflow:hidden}
+  #avinor-list-side{display:block;min-height:0;overflow:auto;padding-right:2px}
   .fs-schedule h3{margin:0 0 5px;color:var(--m);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
   .fs-schedule .schedule-row{grid-template-columns:30px minmax(0,1fr) auto;gap:6px;padding:4px 0}
   .fs-schedule .schedule-direction{height:18px;font-size:7px}
@@ -173,16 +175,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .aircraft-foot,.movement,.source{display:none}
   .movement-status{margin-top:6px}
   .ksu-flight{margin-top:6px;padding:6px 8px}
-  .schedule:not(.nearest-panel){
-    grid-area:schedule;
-    display:block;
-    width:100%;
-    max-width:none;
-    margin:0;
-    padding:7px 10px;
-    max-height:150px;
-    overflow:hidden
-  }
+  main > .schedule:not(.nearest-panel){display:none!important}
   .schedule h2{font-size:11px;margin-bottom:3px}
   .schedule-row{padding:3px 0}
   .schedule-row b{font-size:11px}
@@ -295,5 +288,5 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=94"></script>\n<script src="flightaware-status.js?v=1"></script>
+<script src="app.js?v=95"></script>\n<script src="flightaware-status.js?v=1"></script>
 </body></html>
