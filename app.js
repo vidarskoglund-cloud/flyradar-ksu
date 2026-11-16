@@ -5,6 +5,7 @@ const trackHistory=new Map();
 const routeCache=new Map();
 const recentPlaneCache=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
+const KSU_LOST_SIGNAL_KEEP_MS=10*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
@@ -185,7 +186,8 @@ function retainRecentPlanes(current){
   for(const [key,entry] of recentPlaneCache){
     if(currentKeys.has(key))continue;
     const age=now-entry.lastSeenAt;
-    if(age>LOST_SIGNAL_KEEP_MS){
+    const keepMs=entry.plane.ksuFlight?KSU_LOST_SIGNAL_KEEP_MS:LOST_SIGNAL_KEEP_MS;
+    if(age>keepMs){
       recentPlaneCache.delete(key);
       continue;
     }
@@ -206,6 +208,7 @@ function signalStateText(p){
       return `Landet ved ${near.airport.code}`;
     }
   }
+  if(p.ksuFlight)return `Signal midlertidig mistet · KSU-fly · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
   return `Signal mistet · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
 }
 function trackingCallsign(flightId){
@@ -225,18 +228,23 @@ function remoteArrivalCandidates(){
       return Number.isFinite(t)&&t>=now-25*60*1000&&t<=now+120*60*1000;
     })
     .sort((a,b)=>Date.parse(a.schedule_time)-Date.parse(b.schedule_time))
-    .slice(0,2);
+    .slice(0,4);
 }
 async function fetchRemoteCallsign(callsign){
   if(!callsign)return null;
-  try{
-    const url='https://api.airplanes.live/v2/callsign/'+encodeURIComponent(callsign);
-    const j=await fetchJson(url);
-    const rows=Array.isArray(j?.ac)?j.ac:[];
-    return rows.find(a=>compactFlightId(a.flight)===compactFlightId(callsign))||rows[0]||null;
-  }catch(e){
-    return null;
+  const urls=[
+    'https://api.airplanes.live/v2/callsign/'+encodeURIComponent(callsign),
+    'https://api.adsb.lol/v2/callsign/'+encodeURIComponent(callsign)
+  ];
+  for(const url of urls){
+    try{
+      const j=await fetchJson(url);
+      const rows=Array.isArray(j?.ac)?j.ac:[];
+      const found=rows.find(a=>compactFlightId(a.flight)===compactFlightId(callsign))||rows[0]||null;
+      if(found)return found;
+    }catch(e){}
   }
+  return null;
 }
 async function routeForCallsign(callsign,lat,lon){
   try{
@@ -935,39 +943,54 @@ function specialService(p){
   return '';
 }
 function inferredAirportCandidate(p){
-  if(!p||p.ksuFlight)return null;
+  if(!p||p.ksuFlight||p.signalLost)return null;
   const tr=getTrackDeg(p);
   const alt=Number(p.alt);
   const vr=Number(p.vr);
   if(tr===null)return null;
 
+  // Ikke gjett destinasjon fra én enkelt kursmåling. Krev et stabilt spor
+  // over minst 30 sekunder som faktisk beveger seg mot samme flyplass.
+  const hist=(trackHistory.get(planeKey(p))||[])
+    .filter(x=>Date.now()-x.t<=2*60*1000)
+    .sort((a,b)=>a.t-b.t);
+  if(hist.length<3)return null;
+  const first=hist[0], last=hist[hist.length-1];
+  if(last.t-first.t<30000)return null;
+
   const candidates=norwayAirports.map(a=>{
     const dNm=nm(dist(p.lat,p.lon,a.lat,a.lon));
-    if(dNm>90)return null;
+    if(dNm>45)return null;
     const bearing=bearingBetween(p.lat,p.lon,a.lat,a.lon);
     const diff=angleDiff(tr,bearing);
-    if(diff>35)return null;
+    if(diff>22)return null;
+
+    const firstD=nm(dist(first.lat,first.lon,a.lat,a.lon));
+    const lastD=nm(dist(last.lat,last.lon,a.lat,a.lon));
+    const closing=firstD-lastD;
+    if(closing<0.8)return null;
+
+    // Høyt fly i marsjhøyde skal ikke få tidlig flyplassgjetning.
+    const descending=Number.isFinite(vr)&&vr<-250;
+    if(Number.isFinite(alt)&&alt>18000&&!descending)return null;
 
     let score=0;
-    score += Math.max(0,70-dNm);
-    score += Math.max(0,35-diff);
-
-    if(Number.isFinite(vr)&&vr<-150)score+=20;
+    score += Math.max(0,55-dNm);
+    score += Math.max(0,30-diff)*1.5;
+    score += Math.min(20,closing*6);
+    if(descending)score+=15;
     if(Number.isFinite(alt)){
-      if(dNm<=30&&alt<=12000)score+=20;
-      if(dNm<=15&&alt<=8000)score+=20;
+      if(dNm<=25&&alt<=12000)score+=15;
+      if(dNm<=12&&alt<=7000)score+=15;
     }
-    if(a.major)score+=4;
-
-    return {airport:a,dNm,diff,score};
+    if(a.major)score+=3;
+    return {airport:a,dNm,diff,score,closing};
   }).filter(Boolean).sort((a,b)=>b.score-a.score);
 
   const best=candidates[0];
-  if(!best||best.score<55)return null;
-
+  if(!best||best.score<75)return null;
   const second=candidates[1];
-  if(second && best.score-second.score<8)return null;
-
+  if(second && best.score-second.score<12)return null;
   return best;
 }
 function inferredRouteLabel(p){
@@ -1228,7 +1251,16 @@ function findKsuFlight(p){
   return fallback[0];
 }
 function attachAvinorMatches(){
-  planes.forEach(p=>{p.ksuFlight=findKsuFlight(p);});
+  planes.forEach(p=>{
+    // En allerede bekreftet KSU-kobling fra Avinor/fjernsporing skal aldri
+    // overskrives av svakere lokal gjetning.
+    p.ksuFlight=p.ksuFlight||findKsuFlight(p);
+    if(p.ksuFlight){
+      const key=planeKey(p);
+      const cached=recentPlaneCache.get(key);
+      if(cached)cached.plane.ksuFlight=p.ksuFlight;
+    }
+  });
 }
 function ksuFlightInfo(p){
   const f=p?.ksuFlight;
