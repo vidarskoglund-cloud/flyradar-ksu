@@ -1757,4 +1757,12 @@ setInterval(()=>{
   const nearest=sorted[0];
   if(nearest && nm(nearest.d)>50)focusIdleCandidate(sorted,true);
 },20000);
+document.addEventListener('fullscreenchange',()=>{
+  setTimeout(()=>{
+    try{
+      map.invalidateSize(true);
+      if(planes.length)fitMap(planes,settings());
+    }catch(e){}
+  },120);
+});
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
