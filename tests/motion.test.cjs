@@ -52,9 +52,26 @@ test('render keeps markers, updates click data and removes filtered aircraft',()
 });
 
 test('selection highlight moves between existing markers without resetting motion',()=>{
- const c=context();const states={};
- c.motionMarkers=new Map(['abc','def'].map(key=>[key,{marker:{getElement:()=>({classList:{toggle:(name,on)=>{states[key]=on}}}),setZIndexOffset:z=>{states[key+'Z']=z}}}]));
+ const c=context();const states={};c.ksuDistanceNm=()=>100;
+ c.motionMarkers=new Map(['abc','def'].map(key=>[key,{marker:{getElement:()=>({classList:{toggle:(name,on)=>{if(name==='is-selected')states[key]=on}}}),setZIndexOffset:z=>{states[key+'Z']=z}}}]));
  vm.runInContext(section('function highlightSelectedAircraft','function select'),c);
  c.selected={hex:'abc'};c.highlightSelectedAircraft();assert.equal(states.abc,true);assert.equal(states.def,false);assert.equal(states.abcZ,1200);
  c.selected={hex:'def'};c.highlightSelectedAircraft();assert.equal(states.abc,false);assert.equal(states.def,true);assert.equal(states.abcZ,100);
+});
+
+test('proximity sounds once per boundary with hysteresis and no replay after missing signal',()=>{
+ const c=vm.createContext({Map,Number,planeKey:p=>p.hex,ksuDistanceNm:p=>p.distance});
+ vm.runInContext('const proximityState=new Map();let proximityReady=false;'+section('function proximityCrossings','function playProximityTone'),c);
+ const update=(distance,signalLost=false)=>c.proximityCrossings([{hex:'abc',distance,signalLost}]).length;
+ assert.equal(update(60),0);assert.equal(update(49),1);assert.equal(update(48),0);
+ assert.equal(update(51),0);assert.equal(update(49),0);
+ assert.equal(update(24),1);assert.equal(update(26),0);assert.equal(update(24),0);
+ assert.equal(update(24,true),0);assert.equal(c.proximityCrossings([]).length,0);assert.equal(update(24),0);
+ assert.equal(update(53),0);assert.equal(update(49),1);
+});
+test('initial aircraft within the area do not cause an arrival sound',()=>{
+ const c=vm.createContext({Map,Number,planeKey:p=>p.hex,ksuDistanceNm:p=>p.distance});
+ vm.runInContext('const proximityState=new Map();let proximityReady=false;'+section('function proximityCrossings','function playProximityTone'),c);
+ assert.equal(c.proximityCrossings([{hex:'abc',distance:20}]).length,0);
+ assert.equal(c.proximityCrossings([{hex:'abc',distance:20}]).length,0);
 });

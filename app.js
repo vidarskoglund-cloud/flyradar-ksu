@@ -1774,6 +1774,56 @@ function check50NmNotifications(list){
   });
   notified50=current;
 }
+// Proximity is always measured from KSU, independent of map centre and filters.
+const proximityState=new Map();
+let proximityReady=false, proximityAudio=null, proximitySound=false;
+function ksuDistanceNm(p){return nm(dist(63.1118,7.8245,Number(p.lat),Number(p.lon)))}
+function proximityCrossings(list){
+  const events=[];
+  for(const p of list){
+    const key=planeKey(p), d=ksuDistanceNm(p);
+    if(!key||p.signalLost||!Number.isFinite(d))continue;
+    const old=proximityState.get(key)||{inside50:false,inside25:false};
+    const inside50=d<=50 || (old.inside50&&d<=52);
+    const inside25=d<=25 || (old.inside25&&d<=27);
+    if(proximityReady && ((inside50&&!old.inside50)||(inside25&&!old.inside25)))events.push(p);
+    proximityState.set(key,{inside50,inside25});
+  }
+  proximityReady=true;
+  return events;
+}
+function playProximityTone(){
+  if(!proximitySound||!proximityAudio||proximityAudio.state!=='running')return;
+  const t=proximityAudio.currentTime, oscillator=proximityAudio.createOscillator(), gain=proximityAudio.createGain();
+  oscillator.frequency.setValueAtTime(740,t);
+  oscillator.frequency.setValueAtTime(880,t+.12);
+  gain.gain.setValueAtTime(0,t);gain.gain.linearRampToValueAtTime(.12,t+.02);
+  gain.gain.exponentialRampToValueAtTime(.001,t+.35);
+  oscillator.connect(gain);gain.connect(proximityAudio.destination);
+  oscillator.start(t);oscillator.stop(t+.36);
+}
+async function toggleProximitySound(){
+  const button=$('proximity-sound');
+  if(proximitySound){proximitySound=false;button.textContent='Nærhetslyd: av';button.setAttribute('aria-pressed','false');return;}
+  try{
+    const Audio=window.AudioContext||window.webkitAudioContext;
+    proximityAudio=proximityAudio||new Audio();
+    await proximityAudio.resume();
+    proximitySound=true;button.textContent='Nærhetslyd: på';button.setAttribute('aria-pressed','true');playProximityTone();
+  }catch(e){button.textContent='Lyd kunne ikke aktiveres';}
+}
+function renderProximityAlert(list){
+  const banner=$('proximity-alert');
+  if(!banner)return;
+  const near=list.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
+  banner.hidden=!near.length;
+  if(!near.length)return;
+  const p=near[0],d=ksuDistanceNm(p),name=p.flight||p.reg||p.hex||'Fly';
+  const title=confirmedKsuArrival(p)?'På vei til Kvernberget':'Fly nær KSU';
+  const text=`✈ ${title} · ${name} · ${d.toFixed(1)} NM${near.length>1?' · +'+(near.length-1)+' fly':''}`;
+  if(banner.textContent!==text)banner.textContent=text;
+  banner.classList.toggle('close',d<=25);
+}
 async function refresh(){
   let s=settings();save();
   $('status').textContent='Henter…';$('status').className='muted';
@@ -1818,6 +1868,8 @@ async function refresh(){
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
     queueLocal25RouteLookups(planes);
     check50NmNotifications(planes);
+    if(proximityCrossings(planes).length)playProximityTone();
+    renderProximityAlert(planes);
     const localCount=planes.filter(localRelevant).length;
     const priority=priorityKsuAircraft(planes);
     const passerby=!priority?priorityPasserby(planes):null;
@@ -1829,6 +1881,7 @@ async function refresh(){
     render(true);
     if(selected)enrichRoute(selected);
   }catch(e){
+    if($('proximity-alert'))$('proximity-alert').hidden=true;
     if(lastGoodPlanes.length){
       planes=lastGoodPlanes.map(p=>({...p}));
       const localCount=planes.filter(localRelevant).length;
@@ -1885,6 +1938,7 @@ function highlightSelectedAircraft(){
     const active=key===activeKey;
     entry.marker.getElement()?.classList.toggle('is-selected',active);
     entry.marker.setZIndexOffset(active?1200:100);
+    entry.marker.getElement()?.classList.toggle('proximity-close',!entry.plane?.signalLost&&ksuDistanceNm(entry.plane||{})<=25);
   }
 }
 function select(p,lookupRoute=true){
@@ -2048,6 +2102,7 @@ if($('area'))$('area').onchange=()=>{save();applyMapLevel(settings());};
 if($('save'))$('save').onclick=refresh;
 if($('mode'))$('mode').onclick=toggleDisplay;
 if($('notify'))$('notify').onclick=requestNotifications;
+if($('proximity-sound'))$('proximity-sound').onclick=toggleProximitySound;
 let refreshTimer=null;
 function interpolatedPlanePosition(p,now=Date.now()){
   if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return null;
