@@ -33,11 +33,74 @@ footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}.
 body.display-on{overflow:hidden}body.display-on header{position:fixed;left:0;right:0;top:0}body.display-on main{max-width:none;height:100vh;padding:90px 24px 24px}body.display-on .controls{position:fixed;right:18px;top:14px;z-index:1200;display:block}body.display-on .controls>*{display:none}body.display-on #mode{display:block}body.display-on .hero{height:calc(100vh - 114px);margin:0;display:flex;flex-direction:column;justify-content:center}
 body.display-on details,body.display-on footer{display:none}.fa-usage{grid-template-columns:repeat(5,1fr);padding:7px 9px;margin-top:7px}.fa-usage span{font-size:7px}.fa-usage b{font-size:10px}.fa-note{font-size:8px}
 @media(min-width:900px){
-  main{max-width:1500px;padding-left:24px;padding-right:24px}
-  #map{height:68vh;min-height:560px}
-  .stats{max-width:1000px;margin-left:auto;margin-right:auto}
-  .local-rule{max-width:1000px}
-  .nearest-panel,.settings-panel{max-width:1000px;margin-left:auto;margin-right:auto}
+  main{
+    max-width:1500px;
+    padding:14px 24px 24px;
+    display:grid;
+    grid-template-columns:minmax(0,2fr) minmax(340px,1fr);
+    grid-template-areas:
+      "rule rule"
+      "stats stats"
+      "map aircraft"
+      "schedule schedule"
+      "fa fa"
+      "settings settings";
+    gap:12px 14px;
+    align-items:start
+  }
+  .local-rule{grid-area:rule;max-width:none;width:100%;margin:0;padding:0 4px}
+  .stats{grid-area:stats;max-width:none;width:100%;margin:0}
+  #map{grid-area:map;height:64vh;min-height:520px}
+  .fullscreen-strip{grid-area:map}
+  .schedule:not(.nearest-panel){grid-area:schedule;margin-top:0;padding:12px 14px}
+  .nearest-panel{
+    grid-area:aircraft;
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:14px;
+    min-height:520px;
+    display:flex;
+    flex-direction:column
+  }
+  .nearest-panel h2{
+    margin:0 0 10px;
+    font-size:12px;
+    letter-spacing:.04em;
+    text-transform:uppercase
+  }
+  .nearest-panel .cards{margin-top:0;display:block}
+  .nearest-panel .card{padding:0;background:transparent;border:0}
+  .nearest-panel .aircraft-card{padding:0}
+  .nearest-panel .aircraft-title .call{font-size:26px}
+  .nearest-panel .type-pill{font-size:11px}
+  .nearest-panel .dist{font-size:20px}
+  .nearest-panel .flight-route{margin-top:14px;padding:14px 16px}
+  .nearest-panel .route-end b{font-size:28px}
+  .nearest-panel .route-end span{font-size:11px}
+  .nearest-panel .aircraft-metrics{margin-top:12px;gap:8px}
+  .nearest-panel .aircraft-metrics>div{padding:10px}
+  .nearest-panel .aircraft-metrics span{font-size:9px}
+  .nearest-panel .aircraft-metrics b{font-size:14px}
+  .nearest-panel .movement-status{font-size:12px;padding:5px 9px}
+  .nearest-panel .movement{font-size:11px;line-height:1.35;margin-top:7px}
+  .nearest-panel .source{font-size:9px;margin-top:6px}
+  .schedule h2{font-size:12px;margin-bottom:6px}
+  .schedule-row{padding:7px 0}
+  .schedule-row b{font-size:14px}
+  .schedule-row span,.schedule-time{font-size:12px}
+  .fa-usage{
+    grid-area:fa;
+    margin-top:0;
+    padding:10px 14px;
+    grid-template-columns:1.25fr repeat(4,minmax(90px,1fr));
+    gap:10px 16px;
+    align-items:center
+  }
+  .fa-usage span{font-size:9px}
+  .fa-usage b{font-size:13px}
+  .fa-note{font-size:10px}
+  .settings-panel{grid-area:settings;max-width:none;width:100%;margin:0!important}
 }
 @media(min-width:900px) and (display-mode:fullscreen){
   html,body{height:100%;overflow:hidden}
@@ -136,7 +199,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
 <section class="schedule"><h2>Kvernberget · kommende ankomster og avganger</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
-<section class="schedule nearest-panel"><h2>Nærmeste fly</h2><div id="cards" class="cards"></div></section>
+<section class="schedule nearest-panel"><h2>Aktivt fly</h2><div id="cards" class="cards"></div></section>
 <section class="fa-usage" id="fa-usage">
   <div><span>FLIGHTAWARE</span><b id="fa-state" class="fa-ok">Aktiv</b></div>
   <div><span>OPPSLAG</span><b id="fa-calls">–</b></div>
@@ -169,5 +232,5 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=87"></script>\n<script src="flightaware-status.js?v=1"></script>
+<script src="app.js?v=88"></script>\n<script src="flightaware-status.js?v=1"></script>
 </body></html>
