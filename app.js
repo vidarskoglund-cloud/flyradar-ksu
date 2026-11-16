@@ -922,7 +922,7 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 function updateRangeRings(s){
   rangeLayer.clearLayers();
   const zoom=map.getZoom();
-  const rings=zoom<8?[50]:[25,50];
+  const rings=[25,50];
 
   rings.forEach(n=>{
     const isAlert=n===50;
