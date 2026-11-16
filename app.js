@@ -224,9 +224,13 @@ function remoteArrivalCandidates(){
     .filter(f=>{
       if(f.arr_dep==='D')return false;
       const status=String(f.status_code||'').toUpperCase();
-      if(status==='C'||status==='A')return false;
+      if(status==='C')return false;
       const t=Date.parse(f.schedule_time||'');
-      return Number.isFinite(t)&&t>=now-25*60*1000&&t<=now+120*60*1000;
+      if(!Number.isFinite(t))return false;
+      // Avinor kan markere "Landet" før ADS-B-sporingen er ferdig.
+      // Behold ankomsten i fjernsporing en kort stund etter planlagt/ny tid.
+      if(status==='A')return t>=now-45*60*1000&&t<=now+20*60*1000;
+      return t>=now-25*60*1000&&t<=now+120*60*1000;
     })
     .sort((a,b)=>Date.parse(a.schedule_time)-Date.parse(b.schedule_time))
     .slice(0,4);
@@ -444,7 +448,17 @@ function ksuPriorityScore(p){
   const d=nm(p.d);
   const alt=Number(p.alt);
   if(info.direction==='Ankomst KSU'){
-    if(info.status==='Landet')return 0;
+    if(info.status==='Landet'){
+      const nearKsu=d<=5;
+      const gs=Number(p.gs);
+      const alt=Number(p.alt);
+      const physicallyDown=nearKsu &&
+        ((!Number.isFinite(gs)||gs<=80) &&
+         (!Number.isFinite(alt)||alt<=2500));
+      if(physicallyDown)return 0;
+      // Avinor-status alene skal ikke få oss til å slippe et fly som fortsatt
+      // er i lufta eller fortsatt sender på innflygingen.
+    }
     if(d<=20)return 1000;
     if(d<=50)return 950;
     if(d<=150)return 900;
@@ -1366,10 +1380,16 @@ function ksuOperationalStatus(p){
   const ground=ksuGroundContext(p);
   if(ground)return ground.label;
   if(info.direction==='Ankomst KSU'){
-    if(info.status==='Landet')return 'Landet på Kvernberget';
+    if(info.status==='Landet'){
+      const d=nm(p.d),gs=Number(p.gs),alt=Number(p.alt);
+      const physicallyDown=d<=5 &&
+        ((!Number.isFinite(gs)||gs<=80) &&
+         (!Number.isFinite(alt)||alt<=2500));
+      if(physicallyDown)return 'Landet på Kvernberget';
+    }
     if(movement==='Ser ut til å være på innflyging')return 'På innflyging til Kvernberget';
     if(movement==='Nærmer seg KSU')return 'KSU-ankomst nærmer seg';
-    return 'Planlagt ankomst KSU';
+    return info.status==='Landet'?'Avinor: landet · følger fortsatt signal':'Planlagt ankomst KSU';
   }
   if(info.status==='Avreist')return 'Avreist fra Kvernberget';
   if(movement==='Forlater KSU')return 'Har forlatt Kvernberget';
