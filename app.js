@@ -484,7 +484,9 @@ function focusAirportArrival(p,ctx){
 
   if(ctx.mode==='ground'){
     // Omtrent samme utsnitt som manuelt nærzoom på HOV/TRD.
-    map.setView(planePos,15);
+    if(map.getZoom()<15 || !map.getBounds().pad(-0.25).contains(planePos)){
+      map.setView(planePos,15);
+    }
   }else{
     let zoom=11;
     if(ctx.dNm<=8)zoom=12;
@@ -562,12 +564,14 @@ function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
 function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r;if(s.area&&$('area'))$('area').value=s.area}catch(e){}}
 function normalize(a,s){
   let lat=a.lat,lon=a.lon;
+  const previous=recentPlaneCache.get(planeKey({hex:a.hex,reg:a.r,flight:a.flight}))?.plane;
+  const sameFix=previous && previous.lat===lat && previous.lon===lon;
   return{
     hex:a.hex||'',flight:(a.flight||'').trim(),reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:Number.isFinite(Number(a.alt_baro??a.alt_geom))?Number(a.alt_baro??a.alt_geom):a.alt_baro??a.alt_geom,gs:Number.isFinite(Number(a.gs))?Number(a.gs):a.gs,track:Number.isFinite(Number(a.track??a.true_heading??a.mag_heading))?Number(a.track??a.true_heading??a.mag_heading):a.track??a.true_heading??a.mag_heading,
     vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route:null,routeData:null,source:a._source||'adsb.lol',
-    positionAt:Date.now()
+    positionAt:sameFix?previous.positionAt:Date.now()
   }
 }
 function getTrackDeg(p){
@@ -920,10 +924,9 @@ function followNearest(list,s){
   if(priority && ground){
     idleFocusIndex=0;
     const points=[[ground.airport.lat,ground.airport.lon],[priority.lat,priority.lon]];
-    map.fitBounds(L.latLngBounds(points),{
-      padding:[55,55],
-      maxZoom:14
-    });
+    if(map.getZoom()<12 || !points.every(pos=>map.getBounds().pad(-0.2).contains(pos))){
+      map.fitBounds(L.latLngBounds(points),{padding:[55,55],maxZoom:14});
+    }
     if(map.getZoom()<12)map.setZoom(12);
     selected=priority;
     select(priority,false);
@@ -1728,16 +1731,35 @@ function render(autoFit=false){
   const passerby=!priority?priorityPasserby(list):null;
   if(priority && (!selected || ksuPriorityScore(priority)>ksuPriorityScore(selected)))selected=priority;
   else if(passerby && (!selected || !selected.ksuFlight))selected=passerby;
-  layer.clearLayers();
-  motionMarkers.clear();
+  const visibleKeys=new Set();
+  const motionNow=Date.now();
   list.forEach(p=>{
-    const marker=L.marker([p.lat,p.lon],{icon:planeIcon(p)})
-      .bindTooltip(`${p.ksuFlight?'KSU · ':observablePasserby(p)?'SE/HØR · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}${p.remoteTracked?' · fjernsporing':''}${p.signalLost?' · SIGNAL MISTET':''}`,{direction:'top',offset:[0,-15]})
-      .on('click',()=>{select(p);render(false)})
-      .addTo(layer);
     const key=planeKey(p);
-    if(key)motionMarkers.set(key,{marker,plane:p});
+    if(!key)return;
+    visibleKeys.add(key);
+    let entry=motionMarkers.get(key);
+    if(!entry){
+      entry={marker:L.marker(interpolatedPlanePosition(p,motionNow),{icon:planeIcon(p)}).addTo(layer),plane:p,heading:getTrackDeg(p)??0};
+      entry.marker.on('click',()=>{select(entry.plane);render(false)});
+      motionMarkers.set(key,entry);
+    }else if(entry.plane!==p){
+      const current=motionPosition(entry,motionNow);
+      const target=interpolatedPlanePosition(p,motionNow);
+      // Preserve the displayed position when a new fix arrives, then blend out
+      // the correction instead of snapping back to the raw ADS-B coordinates.
+      entry.offset=[current[0]-target[0],current[1]-target[1]];
+      entry.correctedAt=motionNow;
+      entry.plane=p;
+      entry.marker.setIcon(planeIcon({...p,track:entry.heading}));
+    }
+    const marker=entry.marker;
+    const tooltip=`${p.ksuFlight?'KSU · ':observablePasserby(p)?'SE/HØR · ':localRelevant(p)?'NÆR · ':''}${p.flight||p.reg||p.hex} · ${fNm(p.d)}${p.remoteTracked?' · fjernsporing':''}${p.signalLost?' · SIGNAL MISTET':''}`;
+    if(marker.getTooltip())marker.setTooltipContent(tooltip);
+    else marker.bindTooltip(tooltip,{direction:'top',offset:[0,-15]});
   });
+  for(const [key,entry] of motionMarkers){
+    if(!visibleKeys.has(key)){layer.removeLayer(entry.marker);motionMarkers.delete(key);}
+  }
   const nearest=list[0]||null;
   const current=selected&&list.find(p=>p.hex===selected.hex);
   const shown=current||nearest;
@@ -1830,39 +1852,40 @@ function interpolatedPlanePosition(p,now=Date.now()){
   const tr=getTrackDeg(p);
   if(!Number.isFinite(gs)||gs<=0||tr===null)return [p.lat,p.lon];
 
-  const baseAt=p.signalLost
-    ? Number(p.lastSeenAt||p.positionAt||now)
-    : Number(p.positionAt||now);
-  let ageSec=Math.max(0,(now-baseAt)/1000);
-
-  // 0-20 s: full local dead-reckoning.
-  // 20-60 s: slow the extrapolation markedly so we do not run far away
-  // from the next real ADS-B fix. After 60 s, stop movement entirely.
-  if(ageSec>60)ageSec=60;
-  let effectiveSec=ageSec<=20?ageSec:20+(ageSec-20)*0.35;
-
-  // KSU arrivals get a gentle bearing bias toward Kvernberget near destination.
-  let bearing=tr;
-  const info=ksuFlightInfo(p);
-  if(info?.direction==='Ankomst KSU'){
-    const dKsu=nm(dist(p.lat,p.lon,63.1118,7.8245));
-    if(dKsu<=35){
-      const toKsu=bearingBetween(p.lat,p.lon,63.1118,7.8245);
-      const diff=((toKsu-tr+540)%360)-180;
-      const blend=Math.max(0,Math.min(0.28,(35-dKsu)/35*0.28));
-      bearing=(tr+diff*blend+360)%360;
-    }
-  }
-
-  const nmAhead=gs*(effectiveSec/3600);
-  return destinationPoint(p.lat,p.lon,nmAhead,bearing);
+  // Lost signals stay at the last fix. Ground tracks get only a short
+  // prediction horizon: taxiing aircraft may stop or turn at any moment.
+  if(p.signalLost)return [p.lat,p.lon];
+  const ageSec=Math.max(0,(now-Number(p.positionAt||now))/1000);
+  const ground=isGroundOrTaxi(p);
+  const horizon=ground?3:20;
+  const tail=ground?2:10;
+  // Smoothly approach a bounded prediction distance, without an abrupt stop.
+  const effectiveSec=ageSec<=horizon?ageSec:
+    horizon+tail*(1-Math.exp(-(ageSec-horizon)/tail));
+  return destinationPoint(p.lat,p.lon,gs*effectiveSec/3600,tr);
 }
-function animateAircraftMotion(){
-  if(document.hidden||!motionMarkers.size)return;
+function motionPosition(entry,now){
+  const target=interpolatedPlanePosition(entry.plane,now);
+  if(!target||!entry.offset)return target;
+  const t=Math.max(0,Math.min(1,(now-entry.correctedAt)/3000));
+  const remaining=1-t*t*(3-2*t);
+  return [target[0]+entry.offset[0]*remaining,target[1]+entry.offset[1]*remaining];
+}
+let lastMotionFrame=null;
+function animateAircraftMotion(frameAt){
+  requestAnimationFrame(animateAircraftMotion);
+  if(document.hidden){lastMotionFrame=null;return;}
+  const dt=lastMotionFrame===null?0:Math.min(0.1,(frameAt-lastMotionFrame)/1000);
+  lastMotionFrame=frameAt;
   const now=Date.now();
-  for(const {marker,plane} of motionMarkers.values()){
-    const pos=interpolatedPlanePosition(plane,now);
-    if(pos)marker.setLatLng(pos);
+  for(const entry of motionMarkers.values()){
+    const pos=motionPosition(entry,now);
+    if(pos)entry.marker.setLatLng(pos);
+    const heading=getTrackDeg(entry.plane)??entry.heading;
+    const turn=((heading-entry.heading+540)%360)-180;
+    entry.heading=(entry.heading+turn*(1-Math.exp(-dt/0.5))+360)%360;
+    const icon=entry.marker.getElement()?.querySelector('.plane-marker');
+    if(icon)icon.style.transform=`rotate(${entry.heading}deg)`;
   }
 }
 function nextRefreshMs(){
@@ -1911,7 +1934,7 @@ async function adaptiveRefresh(){
   await refresh();
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
-load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(animateAircraftMotion,1000);
+load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);requestAnimationFrame(animateAircraftMotion);
 setInterval(()=>{
   if(document.hidden)return;
   const sorted=planes.slice().sort((a,b)=>a.d-b.d);
@@ -1931,3 +1954,4 @@ document.addEventListener('fullscreenchange',()=>{
   },120);
 });
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
+
