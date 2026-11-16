@@ -530,7 +530,7 @@ function focusAirportArrival(p,ctx){
   if(ctx.mode==='ground'){
     // Omtrent samme utsnitt som manuelt nærzoom på HOV/TRD.
     if(map.getZoom()<15 || !map.getBounds().pad(-0.25).contains(planePos)){
-      map.setView(planePos,15);
+      if(confirmedKsuArrival(p))map.setView(planePos,15); else fitWithKristiansund(p,[planePos,airportPos],{padding:[70,70],maxZoom:13});
     }
   }else{
     let zoom=11;
@@ -538,7 +538,7 @@ function focusAirportArrival(p,ctx){
     if(ctx.dNm<=5)zoom=13;
     if(ctx.dNm<=2.5)zoom=14;
     if(ctx.dNm<=1)zoom=15;
-    map.fitBounds(L.latLngBounds([airportPos,planePos]),{padding:[70,70],maxZoom:zoom});
+    fitWithKristiansund(p,[airportPos,planePos],{padding:[70,70],maxZoom:zoom});
     if(map.getZoom()<Math.min(zoom,12))map.setZoom(Math.min(zoom,12));
   }
 
@@ -972,21 +972,27 @@ function focusIdleCandidate(list,advance=false){
   if($('fs-status'))$('fs-status').textContent=`rolig visning · fly ${idleFocusIndex+1}/${candidates.length}`;
   return true;
 }
+function confirmedKsuArrival(p){
+  const info=ksuFlightInfo(p);
+  return Boolean(info && info.direction==='Ankomst KSU');
+}
+function kristiansundPoint(){
+  return [mapAreas.city.lat,mapAreas.city.lon];
+}
+function fitWithKristiansund(p,points,options={}){
+  const pts=[...points];
+  if(!confirmedKsuArrival(p))pts.push(kristiansundPoint());
+  map.fitBounds(L.latLngBounds(pts),options);
+}
 function focusLocalRoute(p){
   if(!p||!local25Traffic(p))return false;
   const aps=Array.isArray(p.routeData?._airports)?p.routeData._airports:[];
   if(aps.length<2)return false;
-  const from=airportCoords(aps[0]);
-  const to=airportCoords(aps[aps.length-1]);
-  if(!from||!to)return false;
 
   const plane=[p.lat,p.lon];
-  const bounds=L.latLngBounds([from,plane,to]);
-  map.fitBounds(bounds,{padding:[55,55],maxZoom:7});
-
-  // Lange ruter skal ikke gjøre hele lokalområdet mikroskopisk.
-  // Zoom aldri lenger ut enn nivå 5; rutelinjene viser fortsatt retningen.
-  if(map.getZoom()<5)map.setView(plane,5);
+  // Lokal-first: følg flyet, men Kristiansund sentrum skal alltid være synlig.
+  // Selve rutelinjene tegnes fortsatt helt til avgang/destinasjon.
+  fitWithKristiansund(p,[plane],{padding:[65,65],maxZoom:10});
 
   selected=p;
   select(p,false);
@@ -1028,7 +1034,7 @@ function followNearest(list,s){
     idleFocusIndex=0;
     const points=[[ground.airport.lat,ground.airport.lon],[priority.lat,priority.lon]];
     if(map.getZoom()<12 || !points.every(pos=>map.getBounds().pad(-0.2).contains(pos))){
-      map.fitBounds(L.latLngBounds(points),{padding:[55,55],maxZoom:14});
+      fitWithKristiansund(priority,points,{padding:[55,55],maxZoom:14});
     }
     if(map.getZoom()<12)map.setZoom(12);
     selected=priority;
@@ -1039,7 +1045,7 @@ function followNearest(list,s){
 
   if(priority && !localWins && nearestNm>50){
     idleFocusIndex=0;
-    map.fitBounds(L.latLngBounds([airport,[priority.lat,priority.lon]]),{
+    fitWithKristiansund(priority,[airport,[priority.lat,priority.lon]],{
       padding:[55,55],
       maxZoom:7
     });
@@ -1059,12 +1065,12 @@ function followNearest(list,s){
     if(nearestNm<=6){maxZoom=11;padding=[115,115];}
     if(nearestNm<=2){maxZoom=12;padding=[125,125];}
 
-    const bounds=L.latLngBounds([airport,[priority.lat,priority.lon]]);
-    map.fitBounds(bounds,{padding,maxZoom});
+    const focusPoints=[airport,[priority.lat,priority.lon]];
+    fitWithKristiansund(priority,focusPoints,{padding,maxZoom});
 
     // Sikkerhet: flyet skal alltid være synlig i kartbildet.
     if(!map.getBounds().pad(-0.08).contains([priority.lat,priority.lon])){
-      map.fitBounds(bounds,{padding:[135,135],maxZoom:Math.max(7,maxZoom-1)});
+      fitWithKristiansund(priority,focusPoints,{padding:[135,135],maxZoom:Math.max(7,maxZoom-1)});
     }
 
     selected=priority;
@@ -1077,7 +1083,7 @@ function followNearest(list,s){
     let maxZoom=11;
     if(nearestNm<=5)maxZoom=12;
     if(nearestNm<=2)maxZoom=13;
-    map.fitBounds(L.latLngBounds([airport,[nearest.lat,nearest.lon]]),{
+    fitWithKristiansund(nearest,[airport,[nearest.lat,nearest.lon]],{
       padding:[70,70],
       maxZoom
     });
@@ -1088,7 +1094,7 @@ function followNearest(list,s){
     idleFocusIndex=0;
     const nearby=sorted.filter(p=>nm(p.d)<=50);
     const points=[airport,...nearby.map(p=>[p.lat,p.lon])];
-    map.fitBounds(L.latLngBounds(points),{
+    fitWithKristiansund(nearest,points,{
       padding:[60,60],
       maxZoom:9
     });
