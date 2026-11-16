@@ -1546,7 +1546,8 @@ function render(autoFit=false){
     const rp=routeCardParts(shown);
     const service=specialService(shown);
     const ksuInfo=ksuFlightInfo(shown);
-    const inferred=inferredRouteLabel(shown);
+    const hasConfirmedRoute=Boolean(ksuInfo||rp);
+    const inferred=hasConfirmedRoute?null:inferredRouteLabel(shown);
     const routeBlock=ksuInfo
       ? `<div class="flight-route">
           <div class="route-end"><b>${ksuInfo.direction==='Ankomst KSU'?(shown.ksuFlight?.airport||'–'):'KSU'}</b><span>${ksuInfo.direction==='Ankomst KSU'?'Avgang':'Kristiansund'}</span></div>
