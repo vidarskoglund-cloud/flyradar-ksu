@@ -3,6 +3,7 @@ let planes=[], localPlanes=[], remoteKsuPlanes=[], vessels=[], display=false, se
 let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
+const aircraftRouteCache=new Map();
 const recentPlaneCache=new Map();
 const remoteKsuIdentityCache=new Map();
 const ksuLastKnownCache=new Map();
@@ -581,7 +582,9 @@ function normalize(a,s){
 
   // Behold kjent rute gjennom nye ADS-B-posisjonsobjekter.
   // Uten dette veksler kortet mellom "Henter rute…" og den bekreftede ruten.
-  const cachedRoute=flight&&routeCache.has(flight)?routeCache.get(flight):null;
+  const cachedRoute=(flight&&routeCache.has(flight)?routeCache.get(flight):null) || cachedAircraftRoute({
+    hex:a.hex,reg:a.r,flight
+  });
   const routeData=previous?.routeData||cachedRoute||null;
   const route=routeData?routeText(routeData):(previous?.route||null);
 
@@ -614,6 +617,24 @@ function planeIcon(p){
   });
 }
 function planeKey(p){return String(p.hex||p.reg||p.flight||'').trim().toLowerCase()}
+function routeIdentityKeys(p){
+  return [
+    p?.hex?String(p.hex).trim().toLowerCase():'',
+    p?.reg?String(p.reg).trim().toLowerCase():'',
+    p?.flight?String(p.flight).trim().toLowerCase():''
+  ].filter(Boolean);
+}
+function cachedAircraftRoute(p){
+  for(const key of routeIdentityKeys(p)){
+    if(aircraftRouteCache.has(key))return aircraftRouteCache.get(key);
+  }
+  return null;
+}
+function rememberAircraftRoute(p,r){
+  if(!r)return;
+  for(const key of routeIdentityKeys(p))aircraftRouteCache.set(key,r);
+}
+
 function ingestSharedTracks(shared){
   if(!shared||typeof shared!=='object')return false;
   const cutoff=Date.now()-5*60*1000;
@@ -1165,6 +1186,12 @@ function displayRoute(p){
   const service=specialService(p);
   if(service)return service;
   if(p.route&&p.route!=='Rute ikke tilgjengelig'&&p.route!=='Henter rute…')return p.route;
+  const stable=cachedAircraftRoute(p);
+  if(stable){
+    p.routeData=p.routeData||stable;
+    p.route=routeText(stable);
+    return p.route;
+  }
   const inferred=inferredRouteLabel(p);
   if(inferred)return `${inferred.label} · ${inferred.name}`;
   return p.route||'Henter rute…';
@@ -1174,6 +1201,7 @@ async function enrichRoute(p){
   const key=p.flight.trim();
   if(routeCache.has(key)){
     const r=routeCache.get(key);
+    if(r)rememberAircraftRoute(p,r);
     p.routeData=r||null;
     p.route=routeText(r);
     if(selected&&selected.hex===p.hex)select(p,false);
@@ -1193,6 +1221,7 @@ async function enrichRoute(p){
     const j=await resp.json();
     const r=j?.route||null;
     routeCache.set(key,r);
+    if(r)rememberAircraftRoute(p,r);
     p.routeData=r;
     p.route=routeText(r);
     if(selected&&selected.hex===p.hex)select(p,false);
