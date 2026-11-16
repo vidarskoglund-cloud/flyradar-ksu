@@ -559,6 +559,57 @@ function focusAirportArrival(p,ctx){
   return true;
 }
 
+function remoteKsuDepartureContext(p){
+  const info=ksuFlightInfo(p);
+  const f=p?.ksuFlight;
+  if(!info||!f||info.direction!=='Ankomst KSU'||info.status==='Innstilt')return null;
+
+  const origin=airportByCode(f.airport);
+  if(!origin||origin.code==='KSU')return null;
+
+  const dNm=nm(dist(origin.lat,origin.lon,p.lat,p.lon));
+  if(dNm>6)return null;
+
+  const altRaw=p.alt;
+  const alt=Number(altRaw);
+  const gs=Number(p.gs);
+  const onGround=String(altRaw||'').toLowerCase()==='ground' ||
+    (!Number.isFinite(alt) && (!Number.isFinite(gs)||gs<=90)) ||
+    (Number.isFinite(alt)&&alt<=1500&&(!Number.isFinite(gs)||gs<=120));
+
+  const takeoffRoll=Number.isFinite(gs)&&gs>90&&gs<=190&&
+    (!Number.isFinite(alt)||alt<=1800)&&dNm<=3.5;
+
+  if(!onGround&&!takeoffRoll)return null;
+
+  return {
+    airport:origin,
+    dNm,
+    mode:takeoffRoll?'takeoff':'ground',
+    label:takeoffRoll?('Tar av fra '+origin.code):('Klar for avgang fra '+origin.code)
+  };
+}
+function focusRemoteKsuDeparture(p,ctx){
+  if(!p||!ctx)return false;
+  const airportPos=[ctx.airport.lat,ctx.airport.lon];
+  const planePos=[p.lat,p.lon];
+
+  let zoom=14;
+  if(ctx.dNm<=2.5)zoom=15;
+  if(ctx.mode==='takeoff')zoom=14;
+
+  const points=[airportPos,planePos];
+  if(map.getZoom()<zoom || !points.every(pos=>map.getBounds().pad(-0.18).contains(pos))){
+    map.fitBounds(L.latLngBounds(points),{padding:[70,70],maxZoom:zoom});
+    if(map.getZoom()<13)map.setZoom(13);
+  }
+
+  selected=p;
+  select(p,false);
+  if($('fs-status'))$('fs-status').textContent=ctx.label+' · '+(p.flight||p.reg||p.hex);
+  return true;
+}
+
 function ksuGroundContext(p){
   const info=ksuFlightInfo(p);
   const f=p?.ksuFlight;
@@ -1047,7 +1098,15 @@ function followNearest(list,s){
   const airport=[63.1118,7.8245];
   const nearestNm=nm(nearest.d);
   const ground=priority&&!localWins?ksuGroundContext(priority):null;
+  const remoteDeparture=priority&&!localWins?remoteKsuDepartureContext(priority):null;
   const airportFocus=genericAirportFocus(nearest);
+
+  // Bekreftede KSU-ankomster ved avgangsflyplassen får tett flyplassfokus.
+  // Når flyet er ordentlig i lufta, faller denne konteksten bort automatisk.
+  if(priority && !localWins && remoteDeparture && focusRemoteKsuDeparture(priority,remoteDeparture)){
+    idleFocusIndex=0;
+    return;
+  }
 
   // Når et passerende lokalfly har bekreftet rute, vis avgang → fly → mål.
   if(localWins && focusLocalRoute(nearest)){
