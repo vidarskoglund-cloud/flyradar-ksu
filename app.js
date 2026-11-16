@@ -615,16 +615,23 @@ function bearingBetween(lat1,lon1,lat2,lon2){
 function angleDiff(a,b){
   return Math.abs((((a-b)+540)%360)-180);
 }
+function confirmedRouteDestination(p){
+  const aps=Array.isArray(p?.routeData?._airports)?p.routeData._airports:[];
+  if(aps.length<2 || routeText(p.routeData)==='Rute ikke tilgjengelig')return null;
+  const last=aps[aps.length-1];
+  const code=String(last.iata||last.code||last.icao||'').toUpperCase();
+  const airport=airportByCode(code);
+  return airport||null;
+}
 function movementDestination(p){
-  if(!p||p.ksuFlight)return null;
+  if(!p)return null;
 
-  const aps=Array.isArray(p.routeData?._airports)?p.routeData._airports:[];
-  if(aps.length>=2 && routeText(p.routeData)!=='Rute ikke tilgjengelig'){
-    const last=aps[aps.length-1];
-    const code=String(last.iata||last.code||'').toUpperCase();
-    const airport=airportByCode(code);
-    if(airport && airport.code!=='KSU')return {airport,confirmed:true};
-  }
+  // Bekreftet rutedata vinner alltid over retning/gjetting.
+  const confirmed=confirmedRouteDestination(p);
+  if(confirmed && confirmed.code!=='KSU')return {airport:confirmed,confirmed:true};
+
+  // Avinor-bekreftet KSU-rute håndteres av KSU-logikken.
+  if(p.ksuFlight)return null;
 
   const inferred=inferredRouteLabel(p);
   if(inferred){
@@ -1116,6 +1123,11 @@ async function loadAvinor(){
     renderAvinor();
   }
 }
+function avinorFlightKey(f){
+  if(!f)return '';
+  if(f.uniqueId)return String(f.uniqueId);
+  return [f.flight_id||'',f.schedule_time||'',f.arr_dep||'',f.airport||''].join('|');
+}
 function renderAvinor(){
   const el=$('avinor-list'); if(!el)return;
   if(!avinorFlights.length){
@@ -1132,8 +1144,9 @@ function renderAvinor(){
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
     const status=f.status_code?(' · '+f.status_code):'';
     const route=dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`;
-    const matched=planes.some(p=>p.ksuFlight&&p.ksuFlight.uniqueId===f.uniqueId&&!p.signalLost);
-    const staleMatched=planes.some(p=>p.ksuFlight&&p.ksuFlight.uniqueId===f.uniqueId&&p.signalLost);
+    const key=avinorFlightKey(f);
+    const matched=planes.some(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&!p.signalLost);
+    const staleMatched=planes.some(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&p.signalLost);
     const statusText=avinorStatusText(f);
     const sched=Date.parse(f.schedule_time||'');
     const nearWindow=Number.isFinite(sched)&&Math.abs(sched-now)<=120*60*1000;
@@ -1252,9 +1265,26 @@ function findKsuFlight(p){
 }
 function attachAvinorMatches(){
   planes.forEach(p=>{
-    // En allerede bekreftet KSU-kobling fra Avinor/fjernsporing skal aldri
-    // overskrives av svakere lokal gjetning.
+    const routeDest=confirmedRouteDestination(p);
+    const existing=p.ksuFlight||null;
+    const exactExisting=existing
+      ? [...flightAliases(p.flight)].some(x=>flightAliases(existing.flight_id).has(x))
+      : false;
+
+    // Hvis bekreftet rutedata sier en annen destinasjon enn KSU, skal en
+    // svak Avinor-fallback ikke få merke flyet som KSU-fly.
+    if(routeDest && routeDest.code!=='KSU' && existing && !exactExisting){
+      p.ksuFlight=null;
+    }
+
     p.ksuFlight=p.ksuFlight||findKsuFlight(p);
+
+    const matched=p.ksuFlight;
+    if(matched && routeDest && routeDest.code!=='KSU'){
+      const exact=[...flightAliases(p.flight)].some(x=>flightAliases(matched.flight_id).has(x));
+      if(!exact)p.ksuFlight=null;
+    }
+
     if(p.ksuFlight){
       const key=planeKey(p);
       const cached=recentPlaneCache.get(key);
@@ -1543,6 +1573,10 @@ function render(autoFit=false){
   const shown=current||nearest;
   if(shown){
     selected=shown;
+    const localCountNow=list.filter(localRelevant).length;
+    const activePrefix=shown.ksuFlight?'KSU ':observablePasserby(shown)?'lokalt ':'';
+    $('status').textContent=`${localCountNow} fly i området · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').className='ok';
     const rp=routeCardParts(shown);
     const service=specialService(shown);
     const ksuInfo=ksuFlightInfo(shown);
@@ -1594,6 +1628,8 @@ function render(autoFit=false){
     select(shown,false);
   }else{
     selected=null;
+    $('status').textContent=`0 fly i området · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').className='ok';
     $('cards').innerHTML='';
     routeLayer.clearLayers();
   }
