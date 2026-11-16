@@ -1277,6 +1277,16 @@ function inferredRouteLabel(p){
     label:`Sannsynlig ${best.airport.code}`
   };
 }
+function routeLookupLabel(p){
+  if(!p)return'';
+  if(p.routeData)return p.routeLookupSource?('Rute funnet via '+p.routeLookupSource):'Rute funnet';
+  if(p.routeLookupState==='trying')return'Ruteoppslag pågår…';
+  if(p.routeLookupState==='not-found')return'Oppslag utført · ingen rute funnet';
+  if(p.routeLookupState==='error')return'Ruteoppslag feilet';
+  const scope=routeLookupScope(p);
+  if(scope)return'Ruteoppslag ikke forsøkt ennå';
+  return'Ikke kvalifisert for ekstra ruteoppslag';
+}
 function displayRoute(p){
   const service=specialService(p);
   if(service)return service;
@@ -1324,6 +1334,8 @@ async function enrichRoute(p){
   const scope=routeLookupScope(p);
   routeRequests.add(key);
   routeAttempts.set(key,{scope,at:Date.now()});
+  p.routeLookupState='trying';
+  p.routeLookupSource='';
   try{
     const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
     u.searchParams.set('callsign',key);
@@ -1338,11 +1350,15 @@ async function enrichRoute(p){
     routeCache.set(key,r);
     if(r)rememberAircraftRoute(p,r);
     p.routeData=r;
+    p.routeLookupSource=j?.source||'';
+    p.routeLookupState=r?'found':'not-found';
     p.route=routeText(r);
     if(selected&&selected.hex===p.hex)select(p,false);
   }catch(e){
     routeCache.set(key,null);
     p.routeData=null;
+    p.routeLookupState='error';
+    p.routeLookupSource='';
     p.route='Rute ikke tilgjengelig';
     if(selected&&selected.hex===p.hex)select(p,false);
   }finally{
@@ -2118,7 +2134,7 @@ function render(autoFit=false){
           </div>`
         : inferred
           ? `<div class="flight-route fallback inferred"><div class="route-loading">${inferred.label} · ${inferred.name}</div></div>`
-          : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div></div>`;
+          : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div><div class="route-state">${routeLookupLabel(shown)}</div></div>`;
     $('cards').innerHTML=`<div class="card aircraft-card ${localRelevant(shown)?'local-card':''}">
       <div class="aircraft-head">
         <div>
