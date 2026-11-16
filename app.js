@@ -289,6 +289,21 @@ function remoteArrivalCandidates(){
     .sort((a,b)=>Date.parse(a.schedule_time)-Date.parse(b.schedule_time))
     .slice(0,4);
 }
+function remoteDepartureCandidates(){
+  const now=Date.now();
+  return avinorFlights
+    .filter(f=>{
+      if(f.arr_dep!=='D')return false;
+      const status=String(f.status_code||'').toUpperCase();
+      if(status==='C')return false;
+      const t=Date.parse(f.schedule_time||'');
+      if(!Number.isFinite(t))return false;
+      return t>=now-40*60*1000&&t<=now+90*60*1000;
+    })
+    .sort((a,b)=>Date.parse(a.schedule_time)-Date.parse(b.schedule_time))
+    .slice(0,4);
+}
+
 async function fetchRemoteCallsign(callsign){
   if(!callsign)return null;
   const urls=[
@@ -352,11 +367,41 @@ async function discoverKsuAircraftFromDeparture(f){
   }catch(e){}
   return null;
 }
+async function discoverKsuDepartureAircraft(f){
+  const destination=airportByCode(f?.airport);
+  const ksu=airportByCode('KSU');
+  if(!destination||!ksu)return null;
+  try{
+    const url=`https://api.airplanes.live/v2/point/${ksu.lat}/${ksu.lon}/25`;
+    const j=await fetchJson(url);
+    const rows=(Array.isArray(j?.ac)?j.ac:[]).filter(a=>{
+      const cs=compactFlightId(a.flight);
+      if(!cs)return false;
+      if(/^WF/.test(compactFlightId(f.flight_id||'')))return cs.startsWith('WIF');
+      if(/^SK/.test(compactFlightId(f.flight_id||'')))return cs.startsWith('SAS');
+      return true;
+    }).slice(0,8);
+
+    for(const a of rows){
+      const callsign=String(a.flight||'').trim();
+      const route=await routeForCallsign(callsign,a.lat,a.lon);
+      if(routeContainsAirport(route,'KSU')&&routeContainsAirport(route,destination.code)){
+        a._matchedRoute=route;
+        return a;
+      }
+    }
+  }catch(e){}
+  return null;
+}
 async function updateRemoteKsuTracking(){
   if(!avinorFlights.length)return;
   const s=settings();
   const found=[];
-  const candidates=remoteArrivalCandidates();
+  const candidates=[
+    ...remoteArrivalCandidates(),
+    ...remoteDepartureCandidates()
+  ].sort((a,b)=>Date.parse(a.schedule_time||'')-Date.parse(b.schedule_time||''))
+   .slice(0,6);
 
   for(let i=0;i<candidates.length;i++){
     const f=candidates[i];
@@ -377,7 +422,9 @@ async function updateRemoteKsuTracking(){
     }
 
     if(!raw){
-      raw=await discoverKsuAircraftFromDeparture(f);
+      raw=f.arr_dep==='D'
+        ? await discoverKsuDepartureAircraft(f)
+        : await discoverKsuAircraftFromDeparture(f);
     }
 
     if(raw&&raw.lat!=null&&raw.lon!=null){
@@ -1615,7 +1662,7 @@ function ksuOperationalStatus(p){
     return info.status==='Landet'?'Avinor: landet · følger fortsatt signal':'Planlagt ankomst KSU';
   }
   if(info.status==='Avreist')return 'Avreist fra Kvernberget';
-  if(movement==='Forlater KSU')return 'Har forlatt Kvernberget';
+  if(movement==='Har forlatt KSU')return 'Har forlatt Kvernberget';
   return 'Planlagt avgang KSU';
 }
 
