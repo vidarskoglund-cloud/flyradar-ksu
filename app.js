@@ -324,17 +324,17 @@ async function fetchRemoteCallsign(callsign){
   }
   return null;
 }
-async function routeForCallsign(callsign,lat,lon){
-  if(!canLookupRoute(p))return;
-  const scope=routeLookupScope(p);
-  routeRequests.add(key);
-  routeAttempts.set(key,{scope,at:Date.now()});
+async function routeForCallsign(callsign,lat,lon,alt=null,faScope=''){
+  const key=String(callsign||'').trim();
+  if(!key)return null;
   try{
     const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
-    u.searchParams.set('callsign',callsign);
+    u.searchParams.set('callsign',key);
     if(Number.isFinite(Number(lat)))u.searchParams.set('lat',lat);
     if(Number.isFinite(Number(lon)))u.searchParams.set('lon',lon);
-    const r=await fetch(u,{cache:'no-store',credentials:'omit'});
+    if(Number.isFinite(Number(alt)))u.searchParams.set('alt',Number(alt));
+    if(faScope)u.searchParams.set('fa_scope',faScope);
+    const r=await fetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
     if(!r.ok)return null;
     const j=await r.json();
     return j?.route||null;
@@ -922,25 +922,27 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 function updateRangeRings(s){
   rangeLayer.clearLayers();
   const zoom=map.getZoom();
-  const rings=zoom<8?[50]:zoom<10?[25,50]:[10,25,50];
+  const rings=zoom<8?[50]:[25,50];
 
   rings.forEach(n=>{
-    const active=+s.r===n;
+    const isAlert=n===50;
+    const isLookup=n===25;
     L.circle([s.lat,s.lon],{
       radius:n*1852,
-      color:active?'#6ee7ff':'#6b8198',
-      weight:active?2.4:1.2,
-      opacity:active?0.9:0.55,
+      color:isAlert?'#6ee7ff':isLookup?'#ffd166':'#6b8198',
+      weight:isAlert?2.2:1.6,
+      opacity:isAlert?0.82:0.72,
       fill:false,
-      dashArray:active?null:'6 8',
+      dashArray:isAlert?'7 8':'4 7',
       interactive:false
     }).addTo(rangeLayer);
 
     const pos=destinationPoint(s.lat,s.lon,n,0);
+    const label=isAlert?'50 NM · VARSEL':'25 NM · MER INFO';
     L.marker(pos,{interactive:false,icon:L.divIcon({
       className:'range-label-wrap',
-      html:`<div class="range-label ${active?'active':''}">${n} NM</div>`,
-      iconSize:[58,20],iconAnchor:[29,10]
+      html:`<div class="range-label ${isAlert?'alert-zone':'lookup-zone'}">${label}</div>`,
+      iconSize:[126,22],iconAnchor:[63,11]
     })}).addTo(rangeLayer);
   });
 }
