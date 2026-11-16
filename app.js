@@ -2137,13 +2137,13 @@ async function refresh(){
       sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
     }catch(workerError){
-      const fiUrl=`https://opendata.adsb.fi/api/v2/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
+      const fiUrl=`https://opendata.adsb.fi/api/v3/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
       const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
       const [fiRes,adsbRes]=await Promise.allSettled([fetchJson(fiUrl),fetchJson(adsbUrl)]);
       sourceState.fi=fiRes.status==='fulfilled'?'OK':'feil';
       sourceState.adsb=adsbRes.status==='fulfilled'?'OK':'feil';
       sourceState.apl='ikke brukt';
-      const fiData=fiRes.status==='fulfilled'?(fiRes.value.ac||[]):[];
+      const fiData=fiRes.status==='fulfilled'?(fiRes.value.ac||fiRes.value.aircraft||[]):[];
       const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
       if(fiRes.status!=='fulfilled'&&adsbRes.status!=='fulfilled')throw workerError;
       merged=mergeAircraft(fiData,adsbData,'adsb.fi','adsb.lol');
