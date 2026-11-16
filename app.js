@@ -1138,23 +1138,50 @@ function renderAvinor(){
   const now=Date.now();
   const rows=avinorFlights
     .filter(f=>{const t=Date.parse(f.schedule_time||'');return !Number.isFinite(t)||t>=now-30*60*1000})
-    .slice(0,5);
-  el.innerHTML=rows.map(f=>{
+    .slice(0,6);
+
+  el.innerHTML=rows.map((f,index)=>{
     const t=f.schedule_time?new Date(f.schedule_time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
     const dep=f.arr_dep==='D';
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
-    const status=f.status_code?(' · '+f.status_code):'';
     const route=dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`;
     const key=avinorFlightKey(f);
-    const matched=planes.some(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&!p.signalLost);
-    const staleMatched=planes.some(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&p.signalLost);
+    const livePlane=planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&!p.signalLost)||null;
+    const stalePlane=planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&p.signalLost)||null;
+    const matched=Boolean(livePlane);
+    const staleMatched=Boolean(stalePlane);
     const statusText=avinorStatusText(f);
     const sched=Date.parse(f.schedule_time||'');
     const nearWindow=Number.isFinite(sched)&&Math.abs(sched-now)<=120*60*1000;
-    const waitText=!matched&&!staleMatched&&nearWindow&&!statusText?' · venter på ADS-B':'';
-    const lostText=staleMatched?' · signal mistet':'';
-    return `<div class="schedule-row ${heli?'heli':''} ${matched?'matched':''} ${staleMatched?'stale':''}">
-      <div class="schedule-main"><b>${matched?'● ':staleMatched?'◌ ':''}${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b><span>${route}${statusText?' · '+statusText:''}${waitText}${lostText}</span></div>
+
+    let opStatus='';
+    let statusClass='neutral';
+    if(matched){
+      opStatus='Følges nå';
+      statusClass='live';
+    }else if(statusText){
+      opStatus=statusText;
+      statusClass=statusText==='Innstilt'?'cancelled':statusText==='Landet'||statusText==='Avreist'?'done':'changed';
+    }else if(staleMatched){
+      opStatus='Midlertidig signalbortfall';
+      statusClass='stale';
+    }else if(nearWindow){
+      opStatus='Venter på fly';
+      statusClass='waiting';
+    }
+
+    const distanceText=livePlane?`${nm(livePlane.d).toFixed(0)} NM fra KSU`:'';
+    const nextClass=index===0&&!statusText&&!matched?' next':'';
+    return `<div class="schedule-row ${heli?'heli':''} ${matched?'matched':''} ${staleMatched?'stale':''}${nextClass}">
+      <div class="schedule-direction ${dep?'dep':'arr'}">${dep?'AVG':'ANK'}</div>
+      <div class="schedule-main">
+        <div class="schedule-flightline">
+          <b>${heli?'🚁 ':''}${f.flight_id||'Ukjent'}</b>
+          <span class="schedule-route">${route}</span>
+          ${opStatus?`<span class="schedule-status ${statusClass}">${opStatus}</span>`:''}
+        </div>
+        ${distanceText?`<div class="schedule-live-detail">${distanceText}</div>`:''}
+      </div>
       <div class="schedule-time">${t}</div>
     </div>`;
   }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
