@@ -1,5 +1,5 @@
 const $=x=>document.getElementById(x);
-let planes=[], localPlanes=[], remoteKsuPlanes=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent',fi:'ukjent'};
+let planes=[], localPlanes=[], remoteKsuPlanes=[], vessels=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent',fi:'ukjent'};
 let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
@@ -23,6 +23,7 @@ let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
 let trackLayer=L.layerGroup().addTo(map);
 let airportLayer=L.layerGroup().addTo(map);
+let vesselLayer=L.layerGroup().addTo(map);
 
 const norwayAirports=[
   {code:'OSL',name:'Oslo Gardermoen',lat:60.1939,lon:11.1004,major:true},
@@ -1221,6 +1222,50 @@ async function fetchJson(url){
     return await r.json();
   }
 }
+function vesselIcon(v){
+  const tr=Number.isFinite(Number(v.heading))?Number(v.heading):(Number.isFinite(Number(v.course))?Number(v.course):0);
+  return L.divIcon({
+    className:'vessel-wrap',
+    html:`<div class="vessel-marker" style="transform:rotate(${tr}deg)">▲</div>`,
+    iconSize:[26,26],iconAnchor:[13,13]
+  });
+}
+function vesselKind(v){
+  const t=Number(v.shipType);
+  if(t>=40&&t<=49)return 'Hurtiggående passasjerfartøy';
+  if(t>=60&&t<=69)return 'Passasjerskip';
+  return 'Skip';
+}
+function renderVessels(){
+  vesselLayer.clearLayers();
+  for(const v of vessels){
+    if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon)))continue;
+    const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
+    const detail=[
+      vesselKind(v),
+      Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM fra KSU':'',
+      Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' kt':'',
+      v.destination?'mål '+v.destination:''
+    ].filter(Boolean).join(' · ');
+    L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
+      .bindTooltip('⛴ '+name,{direction:'top',offset:[0,-12]})
+      .bindPopup(`<b>${name}</b><br>${detail}<br><small>AIS · Kystverket</small>`)
+      .addTo(vesselLayer);
+  }
+}
+async function loadVessels(){
+  try{
+    const r=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/vessels',{cache:'no-store',credentials:'omit'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const j=await r.json();
+    vessels=Array.isArray(j?.vessels)?j.vessels:[];
+    renderVessels();
+  }catch(e){
+    vessels=[];
+    vesselLayer.clearLayers();
+  }
+}
+
 async function loadOffshore(){
   try{
     const url='https://factmaps.sodir.no/api/rest/services/Factmaps/FactMapsWGS84/FeatureServer/304/query?where=1%3D1&outFields=fclName,fclKind,fclSurface,fclStatus&returnGeometry=true&f=geojson';
@@ -1978,7 +2023,7 @@ async function adaptiveRefresh(){
   await refresh();
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
-load();loadOffshore();adaptiveRefresh();setInterval(loadAvinor,600000);requestAnimationFrame(animateAircraftMotion);
+load();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 setInterval(()=>{
   if(document.hidden)return;
   const sorted=planes.slice().sort((a,b)=>a.d-b.d);
