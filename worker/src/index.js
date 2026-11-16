@@ -70,8 +70,66 @@ function mergeAircraft(...sources) {
 }
 
 export class TrackStore extends DurableObject {
+  constructor(ctx, env) {
+    super(ctx, env);
+    this.aircraftFetchPromise = null;
+  }
+
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/aircraft-shared") {
+      const now = Date.now();
+      const cached = (await this.ctx.storage.get("aircraftSharedSnapshot")) || null;
+      if (cached && Number.isFinite(Number(cached.generated_at_ms)) &&
+          now - Number(cached.generated_at_ms) < 15000) {
+        return new Response(JSON.stringify({ ...cached, cache: "hit" }), {
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+        });
+      }
+
+      if (!this.aircraftFetchPromise) {
+        this.aircraftFetchPromise = (async () => {
+          const adsbUrl =
+            `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+          const airplanesUrl =
+            `https://api.airplanes.live/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+          const adsbFiUrl =
+            `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
+
+          const [adsb, airplanes, adsbfi] = await Promise.all([
+            getSource("adsb.lol", adsbUrl),
+            getSource("airplanes.live", airplanesUrl),
+            getSource("adsb.fi", adsbFiUrl),
+          ]);
+
+          const snapshot = {
+            ok: Boolean(adsb.ok || airplanes.ok || adsbfi.ok),
+            generated_at: new Date().toISOString(),
+            generated_at_ms: Date.now(),
+            sources: {
+              "adsb.lol": { ok: adsb.ok, status: adsb.status, count: adsb.ac.length },
+              "airplanes.live": { ok: airplanes.ok, status: airplanes.status, count: airplanes.ac.length },
+              "adsb.fi": { ok: adsbfi.ok, status: adsbfi.status, count: adsbfi.ac.length },
+            },
+            ac: mergeAircraft(adsb, airplanes, adsbfi),
+          };
+
+          if (snapshot.ok) {
+            await this.ctx.storage.put("aircraftSharedSnapshot", snapshot);
+          }
+          return snapshot;
+        })().finally(() => {
+          this.aircraftFetchPromise = null;
+        });
+      }
+
+      const snapshot = await this.aircraftFetchPromise;
+      return new Response(JSON.stringify({ ...snapshot, cache: "miss" }), {
+        status: snapshot.ok ? 200 : 502,
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+      });
+    }
 
     if (request.method === "POST" && url.pathname === "/update") {
       const payload = await request.json();
@@ -643,29 +701,17 @@ export default {
       );
     }
 
-    const adsbUrl =
-      `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
-    const airplanesUrl =
-      `https://api.airplanes.live/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
-    const adsbFiUrl =
-      `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
+    const sharedId = env.TRACK_STORE.idFromName("ksu");
+    const sharedStub = env.TRACK_STORE.get(sharedId);
+    const sharedResponse = await sharedStub.fetch("https://track-store/aircraft-shared");
+    const shared = await sharedResponse.json();
 
-    const [adsb, airplanes, adsbfi] = await Promise.all([
-      getSource("adsb.lol", adsbUrl),
-      getSource("airplanes.live", airplanesUrl),
-      getSource("adsb.fi", adsbFiUrl),
-    ]);
-
-    if (!adsb.ok && !airplanes.ok && !adsbfi.ok) {
+    if (!sharedResponse.ok || !shared?.ok || !Array.isArray(shared?.ac)) {
       return new Response(
         JSON.stringify({
           ok: false,
           error: "All aircraft sources failed",
-          sources: {
-            "adsb.lol": { ok: adsb.ok, status: adsb.status },
-            "airplanes.live": { ok: airplanes.ok, status: airplanes.status },
-            "adsb.fi": { ok: adsbfi.ok, status: adsbfi.status },
-          },
+          sources: shared?.sources || {},
         }),
         {
           status: 502,
@@ -677,7 +723,9 @@ export default {
       );
     }
 
-    const ac = mergeAircraft(adsb, airplanes, adsbfi);
+
+
+    const ac = shared.ac;
 
     let tracks = {};
     try {
@@ -703,23 +751,8 @@ export default {
         center: KSU,
         count: ac.length,
         tracks,
-        sources: {
-          "adsb.lol": {
-            ok: adsb.ok,
-            status: adsb.status,
-            count: adsb.ac.length,
-          },
-          "airplanes.live": {
-            ok: airplanes.ok,
-            status: airplanes.status,
-            count: airplanes.ac.length,
-          },
-          "adsb.fi": {
-            ok: adsbfi.ok,
-            status: adsbfi.status,
-            count: adsbfi.ac.length,
-          },
-        },
+        cache: shared.cache || "shared",
+        sources: shared.sources || {},
         ac,
       }),
       {
@@ -736,21 +769,15 @@ export default {
     if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
 
     ctx.waitUntil((async () => {
-      const adsbUrl =
-        `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
-      const airplanesUrl =
-        `https://api.airplanes.live/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
-      const adsbFiUrl =
-        `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
+      const sharedId = env.TRACK_STORE.idFromName("ksu");
+      const sharedStub = env.TRACK_STORE.get(sharedId);
+      const sharedResponse = await sharedStub.fetch("https://track-store/aircraft-shared");
+      if (!sharedResponse.ok) return;
+      const shared = await sharedResponse.json();
+      if (!shared?.ok || !Array.isArray(shared?.ac)) return;
 
-      const [adsb, airplanes, adsbfi] = await Promise.all([
-        getSource("adsb.lol", adsbUrl),
-        getSource("airplanes.live", airplanesUrl),
-        getSource("adsb.fi", adsbFiUrl),
-      ]);
-      if (!adsb.ok && !airplanes.ok && !adsbfi.ok) return;
+      const ac = shared.ac;
 
-      const ac = mergeAircraft(adsb, airplanes, adsbfi);
       const inside = ac.filter((a) => {
         const lat = Number(a?.lat);
         const lon = Number(a?.lon);
