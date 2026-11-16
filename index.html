@@ -298,6 +298,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .plane-wrap.proximity-close:before{content:'';position:absolute;inset:-5px;border:2px solid #ffd166;border-radius:50%;animation:proximity-pulse 2s ease-out infinite;pointer-events:none}
 @keyframes proximity-pulse{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.6);opacity:0}}
 @media(prefers-reduced-motion:reduce){.plane-wrap.proximity-close:before{animation:none;opacity:.8}}
+.aircraft-foot{justify-content:flex-end}.flight-route.fallback{padding:5px 8px}.flight-route.fallback .route-loading{font-size:11px;font-weight:500;color:var(--m)}
 </style>
 </head>
 <body>
@@ -315,7 +316,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
 <section class="schedule nearest-panel"><h2>Aktivt fly</h2><div id="cards" class="cards"></div><div class="fs-schedule"><h3>Neste på KSU</h3><div id="avinor-list-side"></div></div></section>
-<section class="schedule"><h2>Kvernberget · kommende ankomster og avganger</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
+<section class="schedule"><h2>Neste på KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 
 <details class="settings-panel" style="margin-top:12px"><summary>Innstillinger</summary>
 <section class="fa-usage" id="fa-usage">
@@ -351,6 +352,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=119"></script>
+<script src="app.js?v=120"></script>
 <script src="flightaware-status.js?v=1"></script>
 </body></html>

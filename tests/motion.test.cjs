@@ -91,3 +91,16 @@ test('distant unrelated and lost aircraft do not hold the map zoomed out',()=>{
  assert.equal(c.hasMapTraffic([{distance:25}]),true);
  assert.equal(c.hasMapTraffic([{distance:100,arrival:true}]),true);
 });
+
+test('schedule hides completed flights and uses revised time for delays',()=>{
+ const c=vm.createContext({Date,Number,String});vm.runInContext(section('function scheduleDisplayTime','function renderAvinor'),c);
+ const now=Date.parse('2026-11-16T17:27:00Z');
+ const row={schedule_time:'2026-11-16T17:30:00Z'};
+ assert.equal(c.upcomingSchedule({...row,status_code:'D'},now),false);
+ assert.equal(c.upcomingSchedule({...row,status_code:'A'},now),false);
+ assert.equal(c.upcomingSchedule(row,now),true);
+ const delayed={schedule_time:'2026-11-16T15:00:00Z',status_code:'E',status_time:'2026-11-16T18:00:00Z'};
+ assert.equal(c.upcomingSchedule(delayed,now),true);
+ assert.equal(c.scheduleDisplayTime(delayed),Date.parse(delayed.status_time));
+ assert.equal(c.upcomingSchedule({schedule_time:'2026-11-16T15:00:00Z'},now),false);
+});

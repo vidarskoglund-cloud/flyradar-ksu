@@ -1440,6 +1440,16 @@ function avinorFlightKey(f){
   if(f.uniqueId)return String(f.uniqueId);
   return [f.flight_id||'',f.schedule_time||'',f.arr_dep||'',f.airport||''].join('|');
 }
+function scheduleDisplayTime(f){
+  const revised=String(f.status_code||'').toUpperCase()==='E'?Date.parse(f.status_time||''):NaN;
+  return Number.isFinite(revised)?revised:Date.parse(f.schedule_time||'');
+}
+function upcomingSchedule(f,now){
+  const status=String(f.status_code||'').toUpperCase();
+  if(status==='A'||status==='D')return false;
+  const time=scheduleDisplayTime(f);
+  return Number.isFinite(time) && time>=now-30*60*1000;
+}
 function renderAvinor(){
   const el=$('avinor-list');
   const side=$('avinor-list-side');
@@ -1451,14 +1461,15 @@ function renderAvinor(){
   }
   const now=Date.now();
   const rows=avinorFlights
-    .filter(f=>{const t=Date.parse(f.schedule_time||'');return !Number.isFinite(t)||t>=now-30*60*1000})
-    .slice(0,6);
+    .filter(f=>upcomingSchedule(f,now))
+    .sort((a,b)=>scheduleDisplayTime(a)-scheduleDisplayTime(b))
+    .slice(0,4);
 
   const rowHtml=(f,index,compact=false)=>{
-    const t=f.schedule_time?new Date(f.schedule_time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
+    const t=Number.isFinite(scheduleDisplayTime(f))?new Date(scheduleDisplayTime(f)).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
     const dep=f.arr_dep==='D';
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
-    const route=dep?`KSU → ${f.airport||'–'}`:`${f.airport||'–'} → KSU`;
+    const route=f.airport==='KSU'?'':`${dep?'Til':'Fra'} ${f.airport||'–'}`;
     const key=avinorFlightKey(f);
     const livePlane=planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&!p.signalLost)||null;
     const stalePlane=planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&p.signalLost)||null;
@@ -1477,10 +1488,10 @@ function renderAvinor(){
       opStatus=statusText;
       statusClass=statusText==='Innstilt'?'cancelled':statusText==='Landet'||statusText==='Avreist'?'done':'changed';
     }else if(staleMatched){
-      opStatus='Midlertidig signalbortfall';
+      opStatus='Signal mistet';
       statusClass='stale';
     }else if(nearWindow){
-      opStatus='Venter på fly';
+      opStatus='';
       statusClass='waiting';
     }
 
@@ -2091,12 +2102,11 @@ function render(autoFit=false){
         <div><span>VERT.</span><b>${f(shown.vr,' ft/min')}</b></div>
       </div>
       <div class="aircraft-foot">
-        <span>${shown.desc||shown.type||'Fly'}</span>
         <span>${shown.reg?('REG. '+shown.reg):''}</span>
       </div>
       <div class="movement-status ${shown.ksuFlight?'ksu':inferred?'inferred':''}">${shown.signalLost?signalStateText(shown):(shown.ksuFlight?ksuOperationalStatus(shown):(inferred?`Sannsynlig mot ${inferred.code}`:ksuOperationalStatus(shown)))}</div>
       ${visibilityHint(shown)?`<div class="movement-status">${visibilityHint(shown)}</div>`:''}
-      <div class="movement">${shown.signalLost?(signalStateText(shown).startsWith('Parkert')?'Siste kjente posisjon ved flyplass':signalStateText(shown).startsWith('Landet')?'Siste kjente posisjon etter landing':'Viser siste kjente posisjon'):movementText(shown)}</div>
+      <div class="movement hidden">${shown.signalLost?(signalStateText(shown).startsWith('Parkert')?'Siste kjente posisjon ved flyplass':signalStateText(shown).startsWith('Landet')?'Siste kjente posisjon etter landing':'Viser siste kjente posisjon'):movementText(shown)}</div>
       <div class="source">${shown.source||''}</div>
     </div>`;
     select(shown,false);
@@ -2217,6 +2227,7 @@ async function adaptiveRefresh(){
   await refresh();
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
+setInterval(renderAvinor,30000);
 load();loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 setInterval(()=>{
   if(document.hidden)return;
