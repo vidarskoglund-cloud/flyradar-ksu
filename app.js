@@ -21,6 +21,9 @@ let map=L.map('map',{zoomControl:true}).setView([63.1118,7.8245],7);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
 let layer=L.layerGroup().addTo(map);
 const motionMarkers=new Map();
+map.createPane('rangePane');
+map.getPane('rangePane').style.zIndex='560';
+map.getPane('rangePane').style.pointerEvents='none';
 let rangeLayer=L.layerGroup().addTo(map);
 let offshoreLayer=L.layerGroup().addTo(map);
 let routeLayer=L.layerGroup().addTo(map);
@@ -934,12 +937,13 @@ function updateRangeRings(s){
       opacity:isAlert?0.82:0.72,
       fill:false,
       dashArray:isAlert?'7 8':'4 7',
-      interactive:false
+      interactive:false,
+      pane:'rangePane'
     }).addTo(rangeLayer);
 
     const pos=destinationPoint(s.lat,s.lon,n,0);
     const label=isAlert?'50 NM':'25 NM · MER INFO';
-    L.marker(pos,{interactive:false,icon:L.divIcon({
+    L.marker(pos,{interactive:false,pane:'rangePane',icon:L.divIcon({
       className:'range-label-wrap',
       html:`<div class="range-label ${isAlert?'alert-zone':'lookup-zone'}">${label}</div>`,
       iconSize:[126,22],iconAnchor:[63,11]
