@@ -1693,6 +1693,11 @@ function nextRefreshMs(){
       if(near.dNm<=6 && (!Number.isFinite(gs)||gs<=220) && (!hasAlt||alt<=8000))return 10000;
     }
 
+    // Samme raske bakke-/taxiregel for alle fly ved kjente flyplasser.
+    // Høyde er ikke nødvendig når lav fart og nærhet tydelig viser bakke/taxi.
+    if(near.dNm<=1.5 && Number.isFinite(gs) && gs<=45 && (!hasAlt||alt<=2500))return 3000;
+    if(near.dNm<=3 && Number.isFinite(gs) && gs<=120 && (!hasAlt||alt<=4000))return 5000;
+
     if(near.dNm<=1.5 && hasAlt && alt<=2000)return 3000;
     if(near.dNm<=3 && hasAlt && alt<=3000)return 5000;
     if(near.dNm<=6 && hasAlt && alt<=6000)return 10000;
