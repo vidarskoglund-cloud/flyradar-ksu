@@ -1130,9 +1130,12 @@ function avinorFlightKey(f){
   return [f.flight_id||'',f.schedule_time||'',f.arr_dep||'',f.airport||''].join('|');
 }
 function renderAvinor(){
-  const el=$('avinor-list'); if(!el)return;
+  const el=$('avinor-list');
+  const side=$('avinor-list-side');
+  if(!el&&!side)return;
   if(!avinorFlights.length){
-    el.innerHTML='<div class="schedule-empty">Ingen planlagte KSU-data tilgjengelig akkurat nå.</div>';
+    if(el)el.innerHTML='<div class="schedule-empty">Ingen planlagte KSU-data tilgjengelig akkurat nå.</div>';
+    if(side)side.innerHTML='<div class="schedule-empty">Ingen kommende fly.</div>';
     return;
   }
   const now=Date.now();
@@ -1140,7 +1143,7 @@ function renderAvinor(){
     .filter(f=>{const t=Date.parse(f.schedule_time||'');return !Number.isFinite(t)||t>=now-30*60*1000})
     .slice(0,6);
 
-  el.innerHTML=rows.map((f,index)=>{
+  const rowHtml=(f,index,compact=false)=>{
     const t=f.schedule_time?new Date(f.schedule_time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
     const dep=f.arr_dep==='D';
     const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
@@ -1180,11 +1183,14 @@ function renderAvinor(){
           <span class="schedule-route">${route}</span>
           ${opStatus?`<span class="schedule-status ${statusClass}">${opStatus}</span>`:''}
         </div>
-        ${distanceText?`<div class="schedule-live-detail">${distanceText}</div>`:''}
+        ${!compact&&distanceText?`<div class="schedule-live-detail">${distanceText}</div>`:compact&&matched?`<div class="schedule-live-detail">${distanceText}</div>`:''}
       </div>
       <div class="schedule-time">${t}</div>
     </div>`;
-  }).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
+  };
+
+  if(el)el.innerHTML=rows.map((f,index)=>rowHtml(f,index,false)).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
+  if(side)side.innerHTML=rows.slice(0,5).map((f,index)=>rowHtml(f,index,true)).join('') || '<div class="schedule-empty">Ingen kommende fly.</div>';
 }
 
 function compactFlightId(value){
