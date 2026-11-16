@@ -4,6 +4,7 @@ let idleFocusIndex=0;
 const trackHistory=new Map();
 const routeCache=new Map();
 const recentPlaneCache=new Map();
+const remoteKsuIdentityCache=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
 const KSU_LOST_SIGNAL_KEEP_MS=10*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
@@ -245,7 +246,7 @@ async function fetchRemoteCallsign(callsign){
     try{
       const j=await fetchJson(url);
       const rows=Array.isArray(j?.ac)?j.ac:[];
-      const found=rows.find(a=>compactFlightId(a.flight)===compactFlightId(callsign))||rows[0]||null;
+      const found=rows.find(a=>compactFlightId(a.flight)===compactFlightId(callsign))||null;
       if(found)return found;
     }catch(e){}
   }
@@ -303,12 +304,39 @@ async function updateRemoteKsuTracking(){
   const s=settings();
   const found=[];
   const candidates=remoteArrivalCandidates();
+
   for(let i=0;i<candidates.length;i++){
     const f=candidates[i];
-    const callsign=trackingCallsign(f.flight_id);
-    let raw=await fetchRemoteCallsign(callsign);
-    if(!raw)raw=await discoverKsuAircraftFromDeparture(f);
+    const flightKey=avinorFlightKey(f);
+    const scheduledCallsign=trackingCallsign(f.flight_id);
+    const cachedIdentity=remoteKsuIdentityCache.get(flightKey)||null;
+
+    let raw=null;
+
+    // Når vi først har funnet det operative ADS-B-callsignet for en Avinor-
+    // flyging, bruk samme identitet videre hele veien mot KSU.
+    if(cachedIdentity?.callsign){
+      raw=await fetchRemoteCallsign(cachedIdentity.callsign);
+    }
+
+    if(!raw){
+      raw=await fetchRemoteCallsign(scheduledCallsign);
+    }
+
+    if(!raw){
+      raw=await discoverKsuAircraftFromDeparture(f);
+    }
+
     if(raw&&raw.lat!=null&&raw.lon!=null){
+      const actualCallsign=String(raw.flight||'').trim();
+      if(actualCallsign){
+        remoteKsuIdentityCache.set(flightKey,{
+          callsign:actualCallsign,
+          hex:String(raw.hex||'').trim().toLowerCase(),
+          updatedAt:Date.now()
+        });
+      }
+
       const p=normalize({...raw,_source:'airplanes.live · KSU fjernsporing'},s);
       p.remoteTracked=true;
       p.ksuFlight=f;
@@ -318,8 +346,18 @@ async function updateRemoteKsuTracking(){
       }
       found.push(p);
     }
+
     if(i<candidates.length-1)await new Promise(resolve=>setTimeout(resolve,1100));
   }
+
+  // Fjern gamle identitetskoblinger etter noen timer.
+  const activeKeys=new Set(candidates.map(avinorFlightKey));
+  for(const [key,entry] of remoteKsuIdentityCache){
+    if(!activeKeys.has(key) && Date.now()-(entry.updatedAt||0)>3*60*60*1000){
+      remoteKsuIdentityCache.delete(key);
+    }
+  }
+
   remoteKsuPlanes=found;
   planes=retainRecentPlanes(mergeTrackedPlanes(localPlanes,remoteKsuPlanes));
   attachAvinorMatches();
@@ -1331,6 +1369,19 @@ function findKsuFlight(p){
 }
 function attachAvinorMatches(){
   planes.forEach(p=>{
+    if(!p.ksuFlight){
+      const call=compactFlightId(p.flight);
+      if(call){
+        for(const f of avinorFlights){
+          const identity=remoteKsuIdentityCache.get(avinorFlightKey(f));
+          if(identity?.callsign && compactFlightId(identity.callsign)===call){
+            p.ksuFlight=f;
+            break;
+          }
+        }
+      }
+    }
+
     const routeDest=confirmedRouteDestination(p);
     const existing=p.ksuFlight||null;
     const exactExisting=existing
