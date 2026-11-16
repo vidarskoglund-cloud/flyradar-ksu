@@ -1848,10 +1848,11 @@ async function toggleProximitySound(){
     proximitySound=true;button.textContent='Nærhetslyd: på';button.setAttribute('aria-pressed','true');playProximityTone();
   }catch(e){button.textContent='Lyd kunne ikke aktiveres';}
 }
+function withinKsuAlertArea(p){return !p.signalLost&&ksuDistanceNm(p)<=50}
 function renderProximityAlert(list){
   const banner=$('proximity-alert');
   if(!banner)return;
-  const near=list.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
+  const near=list.filter(withinKsuAlertArea).sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
   banner.hidden=!near.length;
   if(!near.length)return;
   const p=near[0],d=ksuDistanceNm(p),name=p.flight||p.reg||p.hex||'Fly';
@@ -1906,12 +1907,12 @@ async function refresh(){
     check50NmNotifications(planes);
     if(proximityCrossings(planes).length)playProximityTone();
     renderProximityAlert(planes);
-    const localCount=planes.filter(localRelevant).length;
+    const localCount=planes.filter(withinKsuAlertArea).length;
     const priority=priorityKsuAircraft(planes);
     const passerby=!priority?priorityPasserby(planes):null;
     const followed=priority||passerby||planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
     const followText=followed?' · følger '+(priority?'KSU ':passerby?'lokalt ':'')+(followed.flight||followed.reg||followed.hex):'';
-    $('status').textContent=`${localCount} fly i nærtrafikken${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`${localCount} fly innen 50 NM${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
     render(true);
@@ -1920,8 +1921,8 @@ async function refresh(){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
     if(lastGoodPlanes.length){
       planes=lastGoodPlanes.map(p=>({...p}));
-      const localCount=planes.filter(localRelevant).length;
-      $('status').textContent=`${localCount} fly i nærtrafikken · viser sist kjente data`;
+      const localCount=planes.filter(withinKsuAlertArea).length;
+      $('status').textContent=`${localCount} fly innen 50 NM · viser sist kjente data`;
       $('status').className='muted';
       render(false);
       return;
@@ -1997,7 +1998,7 @@ function render(autoFit=false){
   const s=settings();
   let q=($('filter')?.value||'').toLowerCase();
   let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc,p.route].join(' ').toLowerCase().includes(q));
-  const nearCount=list.filter(localRelevant).length;
+  const nearCount=planes.filter(withinKsuAlertArea).length;
   const closestText=list[0]?fNm(list[0].d):'–';
   const updatedText=new Date().toLocaleTimeString('no-NO');
   $('count').textContent=nearCount;
@@ -2058,9 +2059,9 @@ function render(autoFit=false){
   const shown=current||nearest;
   if(shown){
     selected=shown;
-    const localCountNow=list.filter(localRelevant).length;
+    const localCountNow=planes.filter(withinKsuAlertArea).length;
     const activePrefix=shown.ksuFlight?'KSU ':observablePasserby(shown)?'lokalt ':'';
-    $('status').textContent=`${localCountNow} fly i nærtrafikken · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`${localCountNow} fly innen 50 NM · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     const rp=routeCardParts(shown);
     const service=specialService(shown);
@@ -2112,7 +2113,7 @@ function render(autoFit=false){
     select(shown,false);
   }else{
     selected=null;
-    $('status').textContent=`0 fly i nærtrafikken · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`${planes.filter(withinKsuAlertArea).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     $('cards').innerHTML='';
     routeLayer.clearLayers();
