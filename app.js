@@ -5,6 +5,7 @@ const trackHistory=new Map();
 const routeCache=new Map();
 const recentPlaneCache=new Map();
 const remoteKsuIdentityCache=new Map();
+const ksuLastKnownCache=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
 const KSU_LOST_SIGNAL_KEEP_MS=10*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
@@ -196,6 +197,45 @@ function retainRecentPlanes(current){
   }
   return retained.sort((a,b)=>a.d-b.d);
 }
+function ksuContinuityKey(f){
+  if(!f)return '';
+  return [compactFlightId(f.flight_id),f.arr_dep||'',f.airport||''].join('|');
+}
+function preserveKsuLastKnown(list){
+  const now=Date.now();
+  const out=[...list];
+  const represented=new Set();
+
+  for(const p of out){
+    if(!p?.ksuFlight)continue;
+    const key=ksuContinuityKey(p.ksuFlight);
+    if(!key)continue;
+    represented.add(key);
+    if(!p.signalLost && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))){
+      ksuLastKnownCache.set(key,{
+        plane:{...p,signalLost:false,lastSeenAt:now},
+        lastSeenAt:now
+      });
+    }
+  }
+
+  for(const [key,entry] of ksuLastKnownCache){
+    const age=now-entry.lastSeenAt;
+    if(age>KSU_LOST_SIGNAL_KEEP_MS){
+      ksuLastKnownCache.delete(key);
+      continue;
+    }
+    if(represented.has(key))continue;
+    out.push({
+      ...entry.plane,
+      signalLost:true,
+      lastSeenAt:entry.lastSeenAt,
+      _ksuLastKnown:true
+    });
+  }
+
+  return out.sort((a,b)=>a.d-b.d);
+}
 function signalStateText(p){
   if(!p?.signalLost)return '';
   const ageSec=Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000));
@@ -209,7 +249,7 @@ function signalStateText(p){
       return `Landet ved ${near.airport.code}`;
     }
   }
-  if(p.ksuFlight)return `Signal midlertidig mistet · KSU-fly · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
+  if(p.ksuFlight)return `Signal midlertidig mistet · siste kjente posisjon · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
   return `Signal mistet · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
 }
 function trackingCallsign(flightId){
@@ -361,6 +401,7 @@ async function updateRemoteKsuTracking(){
   remoteKsuPlanes=found;
   planes=retainRecentPlanes(mergeTrackedPlanes(localPlanes,remoteKsuPlanes));
   attachAvinorMatches();
+  planes=preserveKsuLastKnown(planes);
 }
 
 function airportByCode(code){
@@ -539,7 +580,7 @@ function planeIcon(p){
   const tr=getTrackDeg(p)??0;
   return L.divIcon({
     className:'plane-wrap',
-    html:`<div class="plane-marker ${localRelevant(p)?'local':''}" style="transform:rotate(${tr}deg)">
+    html:`<div class="plane-marker ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)">
       <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
         <path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>
       </svg>
@@ -1579,6 +1620,7 @@ async function refresh(){
 
     planes=retainRecentPlanes(mergeTrackedPlanes(localPlanes,remoteKsuPlanes));
     attachAvinorMatches();
+    planes=preserveKsuLastKnown(planes);
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
     check50NmNotifications(planes);
