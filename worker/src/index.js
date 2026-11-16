@@ -35,6 +35,47 @@ function distanceNm(lat1, lon1, lat2, lon2) {
 function aircraftLabel(a) {
   return String(a?.flight || a?.r || a?.hex || "Ukjent fly").trim().toUpperCase();
 }
+function vesselNumber(v, keys) {
+  for (const key of keys) {
+    const n = Number(v?.[key]);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+function vesselText(v, keys) {
+  for (const key of keys) {
+    const x = v?.[key];
+    if (x !== undefined && x !== null && String(x).trim()) return String(x).trim();
+  }
+  return "";
+}
+
+function normalizeVesselFeature(feature) {
+  const p = feature?.properties || feature || {};
+  const coords = feature?.geometry?.coordinates || [];
+  const lon = vesselNumber(p, ["longitude","lon","lng","x"]) ?? Number(coords?.[0]);
+  const lat = vesselNumber(p, ["latitude","lat","y"]) ?? Number(coords?.[1]);
+  const shipType = vesselNumber(p, ["shipType","ship_type","shiptype","type"]);
+  const mmsi = vesselText(p, ["mmsi","MMSI"]);
+  const name = vesselText(p, ["name","shipName","ship_name","vesselName","vessel_name"]);
+  const speed = vesselNumber(p, ["speedOverGround","sog","speed","speed_over_ground"]);
+  const course = vesselNumber(p, ["courseOverGround","cog","course","course_over_ground"]);
+  const heading = vesselNumber(p, ["trueHeading","heading","true_heading"]);
+  const destination = vesselText(p, ["destination","dest"]);
+  const msgtime = vesselText(p, ["msgtime","timestamp","time","date_time_utc"]);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  return { lat, lon, shipType, mmsi, name, speed, course, heading, destination, msgtime };
+}
+
+function relevantPassengerVessel(v) {
+  const t = Number(v?.shipType);
+  if (Number.isFinite(t) && ((t >= 40 && t <= 49) || (t >= 60 && t <= 69))) return true;
+  const name = String(v?.name || "").toUpperCase();
+  return /(HAVILA|HURTIGRUTEN|NORDLYS|POLARLYS|KONG HARALD|NORDKAPP|RICHARD WITH|MIDNATSOL|FINNMARKEN|TROLLFJORD)/.test(name);
+}
+
 
 function mergeAircraft(...sources) {
   const byKey = new Map();
@@ -512,6 +553,43 @@ export default {
         JSON.stringify({ error: "Method not allowed" }),
         { status: 405, headers: corsHeaders() }
       );
+    }
+
+    if (url.pathname === "/vessels") {
+      try {
+        const r = await fetch("https://kystdatahuset.kystverket.no/ws/api/ais/realtime/geojson", {
+          headers: { "User-Agent": "Flyradar-KSU/1.0" },
+        });
+        if (!r.ok) throw new Error("AIS HTTP " + r.status);
+        const data = await r.json();
+        const rows = Array.isArray(data?.features) ? data.features : (Array.isArray(data) ? data : []);
+        const vessels = rows
+          .map(normalizeVesselFeature)
+          .filter(Boolean)
+          .map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
+          .filter(v => v.distanceNm <= 35 && relevantPassengerVessel(v))
+          .sort((a,b) => a.distanceNm - b.distanceNm);
+
+        return new Response(JSON.stringify({
+          ok: true,
+          source: "kystverket",
+          generated_at: new Date().toISOString(),
+          count: vessels.length,
+          vessels,
+        }), {
+          headers: { ...corsHeaders(), "Cache-Control": "public, max-age=20, s-maxage=30" },
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({
+          ok: false,
+          source: "kystverket",
+          error: String(error?.message || "AIS unavailable"),
+          vessels: [],
+        }), {
+          status: 502,
+          headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      }
     }
 
     if (url.pathname === "/route") {
