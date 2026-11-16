@@ -1543,20 +1543,21 @@ async function enrichRoute(p){
     routeRequests.delete(key);
   }
 }
-function mergeAircraft(primary,secondary){
+function mergeAircraft(primary,secondary,primaryName='adsb.fi',secondaryName='adsb.lol'){
   const byKey=new Map();
   const add=(a,source)=>{
     const key=(a.hex||a.r||a.flight||'').toString().trim().toLowerCase();
     if(!key)return;
     const copy={...a,_source:source};
-    if(!byKey.has(key))byKey.set(key,copy);
-    else{
-      const old=byKey.get(key);
-      byKey.set(key,{...copy,...old,_source:old._source==='adsb.lol'?'adsb.lol + airplanes.live':source+' + '+old._source});
-    }
+    const old=byKey.get(key);
+    if(!old){byKey.set(key,copy);return;}
+    const age=x=>{const n=Number(x.seen_pos??x.seen);return Number.isFinite(n)&&n>=0?n:Infinity;};
+    const best=age(copy)<age(old)?copy:old;
+    const other=best===copy?old:copy;
+    byKey.set(key,{...other,...best,_source:old._source+' + '+source});
   };
-  primary.forEach(a=>add(a,'adsb.lol'));
-  secondary.forEach(a=>add(a,'airplanes.live'));
+  primary.forEach(a=>add(a,primaryName));
+  secondary.forEach(a=>add(a,secondaryName));
   return [...byKey.values()];
 }
 async function fetchJson(url){
@@ -2127,16 +2128,16 @@ async function refresh(){
       sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
     }catch(workerError){
+      const fiUrl=`https://opendata.adsb.fi/api/v2/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
       const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
-      const aplUrl=`https://api.airplanes.live/v2/point/${s.lat}/${s.lon}/${s.r}`;
-      const [adsbRes,aplRes]=await Promise.allSettled([fetchJson(adsbUrl),fetchJson(aplUrl)]);
+      const [fiRes,adsbRes]=await Promise.allSettled([fetchJson(fiUrl),fetchJson(adsbUrl)]);
+      sourceState.fi=fiRes.status==='fulfilled'?'OK':'feil';
       sourceState.adsb=adsbRes.status==='fulfilled'?'OK':'feil';
-      sourceState.apl=aplRes.status==='fulfilled'?'OK':'feil';
+      sourceState.apl='ikke brukt';
+      const fiData=fiRes.status==='fulfilled'?(fiRes.value.ac||[]):[];
       const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
-      const aplData=aplRes.status==='fulfilled'?(aplRes.value.ac||[]):[];
-      const anySourceOk=adsbRes.status==='fulfilled'||aplRes.status==='fulfilled';
-      if(!anySourceOk)throw workerError;
-      merged=mergeAircraft(adsbData,aplData);
+      if(fiRes.status!=='fulfilled'&&adsbRes.status!=='fulfilled')throw workerError;
+      merged=mergeAircraft(fiData,adsbData,'adsb.fi','adsb.lol');
     }
 
     recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
