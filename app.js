@@ -609,9 +609,7 @@ function priorityKsuAircraft(list){
     .sort((a,b)=>b.score-a.score||a.p.d-b.p.d)[0]?.p||null;
 }
 
-function settings(){return{lat:+$('lat').value,lon:+$('lon').value,r:+$('radius').value,area:$('area')?.value||'airport'}}
-function save(){localStorage.setItem('ksuFly',JSON.stringify(settings()))}
-function load(){try{let s=JSON.parse(localStorage.getItem('ksuFly')||'{}');if(s.lat)$('lat').value=s.lat;if(s.lon)$('lon').value=s.lon;if(s.r)$('radius').value=s.r;if(s.area&&$('area'))$('area').value=s.area}catch(e){}}
+function settings(){return {lat:63.1118,lon:7.8245,r:75,area:'airport'}}
 function normalize(a,s){
   let lat=a.lat,lon=a.lon;
   const flight=(a.flight||'').trim();
@@ -1892,7 +1890,7 @@ function renderProximityAlert(list){
   banner.classList.toggle('close',d<=25);
 }
 async function refresh(){
-  let s=settings();save();
+  let s=settings();
   $('status').textContent='Henter…';$('status').className='muted';
   home.setLatLng([s.lat,s.lon]);
   updateRangeRings(s);
@@ -2026,8 +2024,7 @@ function select(p,lookupRoute=true){
 }
 function render(autoFit=false){
   const s=settings();
-  let q=($('filter')?.value||'').toLowerCase();
-  let list=planes.filter(p=>!q||[p.flight,p.reg,p.type,p.hex,p.operator,p.desc,p.route].join(' ').toLowerCase().includes(q));
+  let list=planes.slice();
   const nearCount=planes.filter(withinKsuAlertArea).length;
   const closestText=list[0]?fNm(list[0].d):'–';
   const updatedText=new Date().toLocaleTimeString('no-NO');
@@ -2161,11 +2158,6 @@ function toggleDisplay(){
   if(display && selected)select(selected);
   if(!display)setTimeout(()=>map.invalidateSize(),50);
 }
-if($('refresh'))$('refresh').onclick=refresh;
-if($('filter'))$('filter').oninput=()=>render(false);
-if($('radius'))$('radius').onchange=()=>{save();applyMapLevel(settings());refresh();};
-if($('area'))$('area').onchange=()=>{save();applyMapLevel(settings());};
-if($('save'))$('save').onclick=refresh;
 if($('mode'))$('mode').onclick=toggleDisplay;
 if($('notify'))$('notify').onclick=requestNotifications;
 if($('proximity-sound'))$('proximity-sound').onclick=toggleProximitySound;
@@ -2259,7 +2251,7 @@ async function adaptiveRefresh(){
   refreshTimer=setTimeout(adaptiveRefresh,nextRefreshMs());
 }
 setInterval(renderAvinor,30000);
-load();loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
+loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 setInterval(()=>{
   if(document.hidden)return;
   focusIdleCandidate(planes,true);

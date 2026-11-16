@@ -329,29 +329,14 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div class="fa-note" id="fa-note">Henter FlightAware-bruk…</div>
 </section>
 <div class="settings-grid">
-<select id="radius" aria-label="Kartnivå">
-<option value="10">Flyplass · 10 NM</option>
-<option value="25">Lite · 25 NM</option>
-<option value="75" selected>Medium · 75 NM</option>
-<option value="150">Stort · 150 NM</option>
-</select>
-<select id="area" aria-label="Kartområde">
-<option value="airport" selected>Kvernberget</option>
-<option value="city">Kristiansund sentrum</option>
-</select>
-<input id="filter" placeholder="Søk etter fly">
-<button id="refresh">Oppdater nå</button>
-<button id="notify">Aktiver varsling</button>
+<button id="notify">Nettleservarsler</button>
 <button id="proximity-sound" aria-pressed="false">Nærhetslyd: av</button>
-<small>Lyd gjelder mens siden er åpen. Aktiver på nytt etter omlasting.</small>
-<input id="lat" value="63.1118" type="number" step=".0001">
-<input id="lon" value="7.8245" type="number" step=".0001">
-<button id="save">Lagre</button>
+<small style="grid-column:1/-1;color:var(--m)">Lyd aktiveres på nytt etter omlasting.</small>
 </div></details>
 </main>
 <footer>Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=123"></script>
+<script src="app.js?v=124"></script>
 <script src="flightaware-status.js?v=1"></script>
 </body></html>
