@@ -1279,9 +1279,19 @@ function inferredRouteLabel(p){
 }
 function routeLookupLabel(p){
   if(!p)return'';
-  if(p.routeData)return p.routeLookupSource?('Rute funnet via '+p.routeLookupSource):'Rute funnet';
+  const d=p.routeLookupDiagnostics;
+  const diag=d
+    ? [
+        d.adsb_lol_attempted ? ('adsb.lol: '+(d.adsb_lol_result==='found'?'treff':d.adsb_lol_result==='no-route'?'ingen treff':d.adsb_lol_result)) : null,
+        d.flightaware_attempted ? ('FlightAware: '+(d.flightaware_result==='found'?'treff':d.flightaware_result==='no-route'?'ingen treff':d.flightaware_result)) : null
+      ].filter(Boolean).join(' · ')
+    : '';
+  if(p.routeData){
+    const base=p.routeLookupSource?('Rute funnet via '+p.routeLookupSource):'Rute funnet';
+    return diag?base+' · '+diag:base;
+  }
   if(p.routeLookupState==='trying')return'Ruteoppslag pågår…';
-  if(p.routeLookupState==='not-found')return'Oppslag utført · ingen rute funnet';
+  if(p.routeLookupState==='not-found')return diag?('Oppslag utført · '+diag):'Oppslag utført · ingen rute funnet';
   if(p.routeLookupState==='error')return'Ruteoppslag feilet';
   const scope=routeLookupScope(p);
   if(scope)return'Ruteoppslag ikke forsøkt ennå';
@@ -1351,6 +1361,7 @@ async function enrichRoute(p){
     if(r)rememberAircraftRoute(p,r);
     p.routeData=r;
     p.routeLookupSource=j?.source||'';
+    p.routeLookupDiagnostics=j?.diagnostics||null;
     p.routeLookupState=r?'found':'not-found';
     p.route=routeText(r);
     if(selected&&selected.hex===p.hex)select(p,false);
