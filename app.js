@@ -492,47 +492,33 @@ function genericAirportFocus(p){
   const altRaw=p.alt;
   const alt=Number(altRaw);
   const vr=Number(p.vr);
-  const near=nearestKnownAirport(p,6);
+  const ksu=airportByCode('KSU');
+  const dNm=nm(dist(p.lat,p.lon,ksu.lat,ksu.lon));
 
-  // På bakken / taxi ved kjent flyplass. Fart er viktigere enn barometrisk høyde,
-  // siden enkelte mottakere ikke rapporterer "ground" konsekvent.
-  if(near && (
+  // Lokal-first: automatisk flyplasszoom er kun tillatt ved Kvernberget.
+  // Andre flyplasser kan fortsatt vises i ruten, men skal aldri overta kartet.
+  if(dNm<=6 && (
     String(altRaw||'').toLowerCase()==='ground' ||
-    (Number.isFinite(gs)&&gs<=60&&near.dNm<=3.5) ||
-    (Number.isFinite(alt)&&alt<=2500&&Number.isFinite(gs)&&gs<=80&&near.dNm<=2)
+    (Number.isFinite(gs)&&gs<=60&&dNm<=3.5) ||
+    (Number.isFinite(alt)&&alt<=2500&&Number.isFinite(gs)&&gs<=80&&dNm<=2)
   )){
-    return {airport:near.airport,dNm:near.dNm,mode:'ground',label:`På bakken ved ${near.airport.code}`};
+    return {airport:ksu,dNm,mode:'ground',label:'På bakken ved KSU'};
   }
 
-  // Lavt fly tett på en kjent flyplass skal få flyplasszoom selv om
-  // rute/destinasjon ennå ikke er identifisert.
-  if(near && Number.isFinite(alt) && alt<=3000 &&
-     Number.isFinite(gs) && gs<=200 && near.dNm<=5.5){
-    return {airport:near.airport,dNm:near.dNm,mode:'approach',label:`Nær ${near.airport.code} · lav høyde`};
+  if(Number.isFinite(alt)&&alt<=3000 &&
+     Number.isFinite(gs)&&gs<=200&&dNm<=5.5){
+    return {airport:ksu,dNm,mode:'approach',label:'Nær KSU · lav høyde'};
   }
 
-  // Bekreftet eller sannsynlig destinasjon for siste del av innflygingen.
-  let target=null;
   const info=ksuFlightInfo(p);
-  if(info?.direction==='Ankomst KSU'){
-    target=airportByCode('KSU');
-  }else{
-    const aps=Array.isArray(p.routeData?._airports)?p.routeData._airports:[];
-    const last=aps.length?aps[aps.length-1]:null;
-    const code=last?.iata||last?.code||'';
-    target=airportByCode(code);
-    if(!target){
-      const inferred=inferredRouteLabel(p);
-      if(inferred)target=airportByCode(inferred.code);
-    }
-  }
-  if(!target)return null;
-
-  const dNm=nm(dist(p.lat,p.lon,target.lat,target.lon));
+  const headingToKsu=getTrackDeg(p);
+  const toKsu=bearingBetween(p.lat,p.lon,ksu.lat,ksu.lon);
+  const toward=headingToKsu!==null&&angleDiff(headingToKsu,toKsu)<=55;
   const descending=Number.isFinite(vr)&&vr<-100;
   const low=Number.isFinite(alt)&&alt<=7000;
-  if(dNm<=12&&(descending||low)){
-    return {airport:target,dNm,mode:'approach',label:`Innflyging mot ${target.code}`};
+
+  if(info?.direction==='Ankomst KSU' && dNm<=12 && (descending||low) && toward){
+    return {airport:ksu,dNm,mode:'approach',label:'Innflyging mot KSU'};
   }
   return null;
 }
@@ -567,17 +553,14 @@ function ksuGroundContext(p){
   const f=p?.ksuFlight;
   if(!info||!f||!isGroundOrTaxi(p))return null;
 
-  const code=info.direction==='Ankomst KSU' ? f.airport : 'KSU';
-  const airport=airportByCode(code);
-  if(!airport)return null;
-
+  const airport=airportByCode('KSU');
   const d=nm(dist(airport.lat,airport.lon,p.lat,p.lon));
   if(d>6)return null;
 
   return {
     airport,
     label:info.direction==='Ankomst KSU'
-      ? `På bakken ved ${airport.code} før KSU`
+      ? 'På bakken ved KSU etter ankomst'
       : 'På bakken ved KSU før avgang'
   };
 }
