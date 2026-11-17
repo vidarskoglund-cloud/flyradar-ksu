@@ -609,18 +609,27 @@ export default {
         if (!r.ok) throw new Error("AIS HTTP " + r.status);
         const data = await r.json();
         const rows = Array.isArray(data?.features) ? data.features : (Array.isArray(data) ? data : []);
-        const vessels = rows
-          .map(normalizeVesselFeature)
-          .filter(Boolean)
-          .map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
-          .filter(v => v.distanceNm <= 25 && Number.isFinite(v.speed) && v.speed >= 1)
+        const parsed = rows.map(normalizeVesselFeature).filter(Boolean);
+        const nearby = parsed.map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
+          .filter(v => v.distanceNm <= 25);
+        const vessels = nearby.filter(v => Number.isFinite(v.speed) && v.speed >= 1)
           .sort((a,b) => a.distanceNm - b.distanceNm);
+        const diagnostic = {
+          upstream_type: Array.isArray(data) ? "array" : String(data?.type || typeof data),
+          upstream_rows: rows.length,
+          parsed_coordinates: parsed.length,
+          within_25_nm: nearby.length,
+          with_speed: nearby.filter(v => Number.isFinite(v.speed)).length,
+          moving: vessels.length,
+          sample_property_keys: rows.length ? Object.keys(rows[0]?.properties || rows[0] || {}).slice(0,25) : []
+        };
 
         return new Response(JSON.stringify({
           ok: true,
           source: "kystverket",
           generated_at: new Date().toISOString(),
           count: vessels.length,
+          diagnostic,
           vessels,
         }), {
           headers: { ...corsHeaders(), "Cache-Control": "public, max-age=20, s-maxage=30" },
