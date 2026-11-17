@@ -2,6 +2,8 @@ name: Publish adsb.fi test snapshot
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"
 
 permissions:
   contents: write
