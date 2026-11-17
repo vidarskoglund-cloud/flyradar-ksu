@@ -1562,24 +1562,38 @@ function mergeAircraft(primary,secondary,primaryName='adsb.fi',secondaryName='ad
 }
 // Browser-side rescue for adsb.fi when the Cloudflare Worker is blocked.
 let fiRescueLastAttempt=0,fiRescueLastSuccess=0,fiRescueAircraft=[];
+let fiRescueRetryAfter=0,fiRescueError='',fiRescueDirectOk=false;
 async function rescueAdsbFi(s){
   const now=Date.now();
-  if(now-fiRescueLastAttempt<15000){
-    return now-fiRescueLastSuccess<45000?fiRescueAircraft:null;
+  // Share one recent successful snapshot; never label an old snapshot as live.
+  if(now<fiRescueRetryAfter || now-fiRescueLastAttempt<30000){
+    return now-fiRescueLastSuccess<30000?fiRescueAircraft:null;
   }
   fiRescueLastAttempt=now;
+  fiRescueDirectOk=false;
   try{
     const url=`https://opendata.adsb.fi/api/v3/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
     const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(8000)});
-    if(!response.ok)throw new Error('adsb.fi HTTP '+response.status);
+    if(!response.ok){
+      // Stop retrying on access denials and rate limits.
+      if([400,401,403,404,429].includes(response.status)){
+        fiRescueRetryAfter=Date.now()+(response.status===429?10:5)*60*1000;
+      }
+      throw new Error('HTTP '+response.status);
+    }
     const data=await response.json();
     const aircraft=data.ac||data.aircraft;
-    if(!Array.isArray(aircraft))throw new Error('adsb.fi invalid aircraft payload');
+    if(!Array.isArray(aircraft))throw new Error('invalid aircraft payload');
     fiRescueAircraft=aircraft;
     fiRescueLastSuccess=Date.now();
+    fiRescueError='';
+    fiRescueDirectOk=true;
     return aircraft;
   }catch(error){
-    console.warn('adsb.fi direct rescue unavailable',error);
+    fiRescueError=String(error?.message||error);
+    // Network/CORS errors also need backoff to avoid hammering the endpoint.
+    if(!fiRescueRetryAfter || fiRescueRetryAfter<Date.now())fiRescueRetryAfter=Date.now()+120000;
+    console.warn('adsb.fi direct request unavailable:',fiRescueError);
     return null;
   }
 }
@@ -2141,7 +2155,7 @@ function updateAdsbSourceLabel(mode){
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
-  el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.';
+  el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.'+(fiRescueError?' Direkte adsb.fi: '+fiRescueError+'. Neste forsøk tidligst '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO'):'');
 }
 async function refresh(){
   let s=settings();
@@ -2183,7 +2197,7 @@ async function refresh(){
       merged=mergeAircraft(fiData,adsbData,'adsb.fi','adsb.lol');
     }
 
-    updateAdsbSourceLabel(workerOk?'worker':'direct');
+    updateAdsbSourceLabel(workerOk&&!fiRescueDirectOk?'worker':'direct');
     recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
     localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
