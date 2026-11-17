@@ -54,15 +54,23 @@ function vesselText(v, keys) {
 
 function normalizeVesselFeature(feature) {
   const p = feature?.properties || feature || {};
-  const coords = feature?.geometry?.coordinates || [];
-  const lon = vesselNumber(p, ["longitude","lon","lng","x"]) ?? Number(coords?.[0]);
-  const lat = vesselNumber(p, ["latitude","lat","y"]) ?? Number(coords?.[1]);
-  const shipType = vesselNumber(p, ["shipType","ship_type","shiptype","type"]);
+  const geometry = feature?.geometry || {};
+  const coords = geometry.coordinates;
+  // Kystverket provides vessel movement as GeoJSON LineString; the last
+  // coordinate pair is the latest reported position.
+  const point = geometry.type === "LineString" && Array.isArray(coords)
+    ? coords[coords.length - 1]
+    : geometry.type === "MultiLineString" && Array.isArray(coords)
+      ? coords[coords.length - 1]?.slice(-1)?.[0]
+      : coords;
+  const lon = vesselNumber(p, ["longitude","lon","lng","x"]) ?? (Array.isArray(point) && point[0] != null ? Number(point[0]) : NaN);
+  const lat = vesselNumber(p, ["latitude","lat","y"]) ?? (Array.isArray(point) && point[1] != null ? Number(point[1]) : NaN);
+  const shipType = vesselNumber(p, ["ship_type","shipType","shiptype","type"]);
   const mmsi = vesselText(p, ["mmsi","MMSI"]);
-  const name = vesselText(p, ["name","shipName","ship_name","vesselName","vessel_name"]);
-  const speed = vesselNumber(p, ["speedOverGround","sog","speed","speed_over_ground"]);
-  const course = vesselNumber(p, ["courseOverGround","cog","course","course_over_ground"]);
-  const heading = vesselNumber(p, ["trueHeading","heading","true_heading"]);
+  const name = vesselText(p, ["ship_name","name","shipName","vesselName","vessel_name"]);
+  const speed = vesselNumber(p, ["speed","speedOverGround","sog","speed_over_ground"]);
+  const course = vesselNumber(p, ["cog","courseOverGround","course","course_over_ground"]);
+  const heading = vesselNumber(p, ["true_heading","trueHeading","heading"]);
   const destination = vesselText(p, ["destination","dest"]);
   const msgtime = vesselText(p, ["msgtime","timestamp","time","date_time_utc"]);
 
