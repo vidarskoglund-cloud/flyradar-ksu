@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 
+const ADSB_PAUSE_UNTIL_MS = 1795006013510; // Automatic 24-hour ADS-B pause; resumes without another deployment.
 const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
 const TRACK_KEEP_MS = 20 * 60 * 1000;
 const FLIGHTAWARE_QUERY_COST_USD = 0.005;
@@ -854,6 +855,12 @@ export default {
       );
     }
 
+    if (Date.now() < ADSB_PAUSE_UNTIL_MS) {
+      return new Response(JSON.stringify({ ok: false, paused: true, resume_at: new Date(ADSB_PAUSE_UNTIL_MS).toISOString(), ac: [] }), {
+        status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" }
+      });
+    }
+
     const sharedId = env.TRACK_STORE.idFromName("ksu");
     const sharedStub = env.TRACK_STORE.get(sharedId);
     const sharedResponse = await sharedStub.fetch("https://track-store/aircraft-shared");
@@ -919,6 +926,8 @@ export default {
   },
 
   async scheduled(controller, env, ctx) {
+    if (Date.now() < ADSB_PAUSE_UNTIL_MS) return;
+
     if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
 
     ctx.waitUntil((async () => {
