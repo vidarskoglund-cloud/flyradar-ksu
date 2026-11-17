@@ -123,7 +123,7 @@ export class TrackStore extends DurableObject {
       const now = Date.now();
       const cached = (await this.ctx.storage.get("aircraftSharedSnapshot")) || null;
       if (cached && Number.isFinite(Number(cached.generated_at_ms)) &&
-          now - Number(cached.generated_at_ms) < 15000) {
+          now - Number(cached.generated_at_ms) < 60000) {
         return new Response(JSON.stringify({ ...cached, cache: "hit" }), {
           headers: { "Content-Type": "application/json; charset=utf-8" },
         });
@@ -138,11 +138,34 @@ export class TrackStore extends DurableObject {
           const adsbFiUrl =
             `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
 
-          const [adsb, airplanes, adsbfi] = await Promise.all([
-            getSource("adsb.lol", adsbUrl),
-            getSource("airplanes.live", airplanesUrl),
-            getSource("adsb.fi", adsbFiUrl),
-          ]);
+          // Respect provider rate limits across requests and scheduled jobs.
+          const cooldown = (await this.ctx.storage.get("aircraftSourceCooldown")) || {};
+          const providers = [
+            ["adsb.lol", adsbUrl],
+            ["airplanes.live", airplanesUrl],
+            ["adsb.fi", adsbFiUrl],
+          ];
+          const results = {};
+          for (const [name, sourceUrl] of providers) {
+            const blockedUntil = Number(cooldown[name] || 0);
+            if (blockedUntil > Date.now()) {
+              results[name] = { name, ok: false, status: 429, ac: [], retry_at: blockedUntil };
+              continue;
+            }
+            const result = await getSource(name, sourceUrl);
+            results[name] = result;
+            if (!result.ok) {
+              cooldown[name] = Date.now() + (result.status === 403 ? 15 * 60000 :
+                result.status === 429 ? 5 * 60000 : 2 * 60000);
+            } else {
+              delete cooldown[name];
+              break; // One working source is enough; avoid unnecessary requests.
+            }
+          }
+          await this.ctx.storage.put("aircraftSourceCooldown", cooldown);
+          const adsb = results["adsb.lol"] || { name:"adsb.lol", ok:false, status:0, ac:[] };
+          const airplanes = results["airplanes.live"] || { name:"airplanes.live", ok:false, status:0, ac:[] };
+          const adsbfi = results["adsb.fi"] || { name:"adsb.fi", ok:false, status:0, ac:[] };
 
           const snapshot = {
             ok: Boolean(adsb.ok || airplanes.ok || adsbfi.ok),
@@ -506,11 +529,7 @@ async function flightAwareRoute(env, callsign) {
 async function getSource(name, url) {
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "Flyradar-KSU/1.0" },
-      cf: {
-        cacheEverything: true,
-        cacheTtl: 15,
-      },
+      headers: { "Accept": "application/json" },
     });
 
     if (!response.ok) {
