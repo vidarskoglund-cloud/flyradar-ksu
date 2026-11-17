@@ -1312,14 +1312,30 @@ function airportLabel(a){
   if(place&&code)return `${place} (${code})`;
   return place||code;
 }
+function validAirportLabel(value){
+  const v=String(value||'').trim();
+  if(!v)return false;
+  // Reject raw coordinate strings and fabricated "L 63.123" airport identifiers.
+  if(/^L?\s*[-+]?\d{1,3}\.\d+/i.test(v))return false;
+  if(/^-?\d{1,3}\.\d+\s*[, ]\s*-?\d{1,3}\.\d+/.test(v))return false;
+  return true;
+}
+function validRouteAirport(a){
+  if(!a)return false;
+  const code=String(a.iata||a.icao||a.code||'').trim();
+  const place=String(a.city||a.name||'').trim();
+  return (/^[A-Z]{3,4}$/i.test(code)||validAirportLabel(place)) &&
+    (!code||/^[A-Z]{3,4}$/i.test(code)) &&
+    (!place||validAirportLabel(place));
+}
 function routeText(r){
   if(!r||r.plausible===false||r.airport_codes==='unknown')return'Rute ikke tilgjengelig';
   const aps=Array.isArray(r._airports)?r._airports:[];
-  if(aps.length>=2){
+  if(aps.length>=2 && validRouteAirport(aps[0]) && validRouteAirport(aps[aps.length-1])){
     const from=airportLabel(aps[0]),to=airportLabel(aps[aps.length-1]);
     if(from&&to)return `${from} → ${to}`;
   }
-  if(r.airport_codes&&r.airport_codes!=='unknown'){
+  if(r.airport_codes&&r.airport_codes!=='unknown' && /^[A-Z]{3,4}[-_][A-Z]{3,4}$/i.test(String(r.airport_codes))){
     return String(r.airport_codes).replace(/[-_]/g,' → ');
   }
   return'Rute ikke tilgjengelig';
@@ -1327,7 +1343,7 @@ function routeText(r){
 function routeCardParts(p){
   const r=p?.routeData;
   const aps=Array.isArray(r?._airports)?r._airports:[];
-  if(aps.length>=2){
+  if(aps.length>=2 && validRouteAirport(aps[0]) && validRouteAirport(aps[aps.length-1])){
     const from=aps[0],to=aps[aps.length-1];
     return {
       fromCode:from.iata||from.icao||from.code||'–',
@@ -1338,7 +1354,7 @@ function routeCardParts(p){
   }
   const txt=displayRoute(p);
   const parts=txt.split('→').map(x=>x.trim());
-  if(parts.length===2){
+  if(parts.length===2 && parts.every(x=>/^[A-Z]{3,4}$/i.test(x))){
     return {fromCode:parts[0],fromPlace:'',toCode:parts[1],toPlace:''};
   }
   return null;
@@ -2265,7 +2281,7 @@ function drawRoute(p){
   if(!p)return;
   const r=p.routeData;
   const aps=Array.isArray(r?._airports)?r._airports:[];
-  if(aps.length<2)return;
+  if(aps.length<2 || !validRouteAirport(aps[0]) || !validRouteAirport(aps[aps.length-1]))return;
 
   const from=airportCoords(aps[0]);
   const to=airportCoords(aps[aps.length-1]);
