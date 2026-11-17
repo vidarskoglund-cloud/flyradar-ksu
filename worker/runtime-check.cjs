@@ -1,0 +1,6 @@
+const {Miniflare,convertV4MiniflareOptions}=require('miniflare');
+(async()=>{
+let calls=0;
+const mf=new Miniflare(convertV4MiniflareOptions({modules:true,scriptPath:'review/index.js',compatibilityDate:'2026-11-15',durableObjects:{TRACK_STORE:{className:'TrackStore',useSQLite:true}},outboundService:async req=>{calls++;if(req.url.includes('airplanes.live'))return new Response('',{status:403});return new Response(JSON.stringify({now:Date.now(),ac:[{hex:'abc123',lat:63.11,lon:7.82,seen_pos:req.url.includes('adsb.fi')?1:20,flight:'TEST'}]}));}}));
+try{const r=await mf.dispatchFetch('https://test/aircraft');const j=await r.json();console.log(JSON.stringify({status:r.status,count:j.count,sources:j.sources,position:j.ac?.[0]}));if(r.status!==200||j.ac?.[0]?._position_source!=='adsb.fi')throw Error('runtime assertion failed');if(!j.tracks.abc123||j.sources['airplanes.live'].error!=='access_denied')throw Error('storage/403 assertion failed');await mf.dispatchFetch('https://test/aircraft');if(calls!==3)throw Error('shared cache failed');const health=await mf.dispatchFetch('https://test/health');if(health.status!==200)throw Error('health failed');console.log('PASS: runtime, SQLite Durable Object, source selection, 403 diagnostics, shared cache and health');}finally{await mf.dispose();}
+})().catch(e=>{console.error(e);process.exitCode=1});
