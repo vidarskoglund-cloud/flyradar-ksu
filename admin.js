@@ -38,3 +38,37 @@ $('json').onclick=()=>download('flyradar-ksu-status.json','application/json',JSO
 $('csv').onclick=()=>{const rows=records();const keys=['at','event','worker','adsbLol','adsbFi','airplanesLive','aircraft','source','fiDirectError','fiRetryAt'];const quote=x=>'"'+String(x??'').replace(/"/g,'""')+'"';download('flyradar-ksu-status.csv','text/csv;charset=utf-8','\uFEFF'+[keys.join(';'),...rows.map(r=>keys.map(k=>quote(r[k])).join(';'))].join('\r\n'))};
 $('clear').onclick=()=>{if(confirm('Slette all lokal statushistorikk for denne nettleseren?')){localStorage.removeItem(KEY);render()}};
 render();setInterval(render,30000);
+
+const WORKER_TEST_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
+const FI_TEST_URL='https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75';
+const TEST_HISTORY_KEY='flyradar-ksu-api-tests-v1';
+async function probe(url,name){
+ const start=performance.now(),controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),10000);
+ try{
+   const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:controller.signal});
+   const ms=Math.round(performance.now()-start);
+   let data=null;
+   try{data=await response.json()}catch{}
+   const sourceSummary=name==='Worker'&&data?.sources
+     ? Object.entries(data.sources).map(([key,v])=>key+': '+(v?.ok?'OK':'feil')+(v?.status?' HTTP '+v.status:'')+(v?.error?' '+String(v.error).slice(0,120):'')).join(' | ')
+     : data&&Array.isArray(data.ac||data.aircraft)?'Fly: '+(data.ac||data.aircraft).length:'Ingen gyldig flyliste bekreftet';
+   return {at:new Date().toISOString(),name,status:response.status,ms,ok:response.ok,detail:sourceSummary};
+ }catch(e){
+   return {at:new Date().toISOString(),name,status:null,ms:Math.round(performance.now()-start),ok:false,detail:(e?.name==='AbortError'?'Tidsavbrudd':String(e?.message||e))+' (kan skyldes CORS/nettverk; HTTP-status utilgjengelig)'};
+ }finally{clearTimeout(timeout)}
+}
+function renderProbeResults(results){
+ $('test-results').innerHTML=results.map(r=>'<tr><td>'+escapeHtml(r.name)+'</td><td class="'+(r.ok?'ok':'bad')+'">'+(r.ok?'OK':'Feil')+'</td><td>'+escapeHtml(r.status??'Ikke tilgjengelig')+'</td><td>'+escapeHtml(r.ms)+' ms</td><td>'+escapeHtml(r.detail)+'</td></tr>').join('');
+}
+try{const prior=JSON.parse(localStorage.getItem(TEST_HISTORY_KEY)||'[]');if(prior.length){const latest=prior.slice(-2);renderProbeResults(latest);$('test-state').textContent='Siste test: '+fmtDate(latest.at(-1)?.at)}}catch{}
+$('test-api').onclick=async()=>{
+ const button=$('test-api');button.disabled=true;$('test-state').textContent='Tester…';
+ try{
+   // One manual direct request, not an automatic polling loop.
+   const results=await Promise.all([probe(WORKER_TEST_URL,'Worker'),probe(FI_TEST_URL,'adsb.fi direkte')]);
+   renderProbeResults(results);
+   try{const old=JSON.parse(localStorage.getItem(TEST_HISTORY_KEY)||'[]');localStorage.setItem(TEST_HISTORY_KEY,JSON.stringify([...old,...results].slice(-200)))}catch{}
+   $('test-state').textContent='Testet '+fmtDate(results[0].at);
+ }finally{button.disabled=false}
+};
