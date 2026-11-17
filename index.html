@@ -304,7 +304,9 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <body>
 <header><div><h1>Flyradar KSU</h1><div class="muted">Kristiansund / Kvernberget</div></div><div style="text-align:right"><div id="status" class="muted">Starter…</div><div id="adsb-source-label" class="muted" style="font-size:10px;max-width:350px;margin-top:3px">Flydata: kontrollerer kilder…</div></div></header>
 <main>
-<div role="status" style="padding:12px 16px;margin:0 0 14px;border:1px solid #a97631;border-radius:10px;background:#382b1b;color:#ffe6b9;font-size:14px;line-height:1.5"><strong>Flyposisjoner midlertidig deaktivert</strong><div>ADS-B-oppslag er satt på pause på grunn av begrensninger hos dataleverandørene. Planlagt automatisk gjenopptakelse: <strong>18. november kl. 13:46</strong>. I mellomtiden tester vi AIS-sporing av fartøy i bevegelse innen 25 NM. Kartet kan automatisk zoome inn på aktuelle fartøy. Avinor-rutetidene er fortsatt tilgjengelige. Antall fly vises ikke mens innhentingen er pauset.</div></div>
+<div id="adsb-pause-notice" role="status" style="padding:8px 12px;margin:0 0 10px;border:1px solid #a97631;border-radius:8px;background:#382b1b;color:#ffe6b9;font-size:12px">Flyposisjoner på pause til 18. november kl. 13:46 · AIS-sporing aktiv</div>
+<script>if(Date.now()>=1795006013510)document.getElementById('adsb-pause-notice')?.remove();</script>
+<div id="vessel-focus-status" role="status" style="margin:0 0 6px;font-size:14px;font-weight:600">Velger fartøy å følge …</div>
 <div id="vessel-live-status" role="status" style="margin:0 0 12px;font-size:13px;color:var(--m)">Kontrollerer AIS-fartøy innen 25 NM …</div>
 <div id="stats" class="stats"><div><b id="count">0</b><span class="muted">innen 50 NM</span></div><div><b id="closest">–</b><span class="muted">nærmeste med signal</span></div><div><b id="updated">–</b><span class="muted">oppdatert</span></div></div>
 <section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div><div id="hroute" class="route">Rute ikke tilgjengelig</div></div><div id="hdist" class="dist">–</div></div>
@@ -339,6 +341,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer><a href="admin.html" title="Status, historikk og feilsøking">Administrasjon / status</a> · Flydata: adsb.lol + Airplanes.live + <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=146"></script>
+<script src="app.js?v=147"></script>
 <script src="flightaware-status.js?v=1"></script>
 </body></html>
