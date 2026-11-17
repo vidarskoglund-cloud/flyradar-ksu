@@ -2154,7 +2154,7 @@ function updateAdsbSourceLabel(mode){
   const names=[['fi','adsb.fi'],['adsb','adsb.lol'],['apl','Airplanes.live']];
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
-  el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
+  el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
   el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.'+(fiRescueError?' Direkte adsb.fi: '+fiRescueError+'. Neste forsøk tidligst '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO'):'');
 }
 async function refresh(){
@@ -2197,7 +2197,7 @@ async function refresh(){
       merged=mergeAircraft(fiData,adsbData,'adsb.fi','adsb.lol');
     }
 
-    updateAdsbSourceLabel(workerOk&&!fiRescueDirectOk?'worker':'direct');
+    updateAdsbSourceLabel(workerOk?(fiRescueDirectOk?'combined':'worker'):'direct');
     recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
     localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
