@@ -2257,7 +2257,8 @@ function render(autoFit=false){
   const s=settings();
   let list=planes.slice();
   const nearCount=planes.filter(withinKsuAlertArea).length;
-  const closestText=list[0]?fNm(list[0].d):'–';
+  const closestActive=planes.filter(p=>!p.signalLost&&Number.isFinite(ksuDistanceNm(p))).sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0];
+  const closestText=closestActive?ksuDistanceNm(closestActive).toFixed(1)+' NM':'–';
   const updatedText=new Date().toLocaleTimeString('no-NO');
   $('count').textContent=nearCount;
   $('closest').textContent=closestText;
@@ -2267,7 +2268,7 @@ function render(autoFit=false){
   if($('fs-updated'))$('fs-updated').textContent=updatedText;
   if($('fs-status'))$('fs-status').textContent=$('status')?.textContent||'';
   if($('fs-aircraft')){
-    const p=list[0]||null;
+    const p=list.find(p=>!p.signalLost)||null;
     $('fs-aircraft').innerHTML=p
       ? `<b>${p.flight||p.reg||p.hex||'Ukjent'} · ${fNm(p.d)}</b><span>${[p.reg,p.type,ksuFlightInfo(p)?.route||displayRoute(p),ksuOperationalStatus(p),f(p.alt,' ft'),f(p.gs,' kt')].filter(Boolean).join(' · ')}</span>`
       : '<b>Ingen fly</b><span>–</span>';
@@ -2316,8 +2317,8 @@ function render(autoFit=false){
       liveDistanceState.delete(key);
     }
   }
-  const nearest=list[0]||null;
-  const current=selected&&list.find(p=>p.hex===selected.hex);
+  const nearest=list.find(p=>!p.signalLost)||null;
+  const current=selected&&list.find(p=>p.hex===selected.hex&&!p.signalLost);
   const shown=current||nearest;
   if(shown){
     selected=shown;
@@ -2354,7 +2355,7 @@ function render(autoFit=false){
           </div>
           <div class="operator">${shown.operator||service||shown.desc||''}</div>
         </div>
-        <div class="dist">${liveDistanceText(shown)}</div>
+        <div class="dist">${shown.signalLost?'Siste kjente avstand · ':''}${liveDistanceText(shown)}</div>
       </div>
       ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
