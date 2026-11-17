@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>adsb.fi – testkart | Flyradar KSU</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#08111f;color:#eef5ff;font:15px system-ui,Arial,sans-serif}header{padding:14px 18px;background:#101e30;border-bottom:1px solid #30435c}h1{font-size:21px;margin:4px 0}a{color:#83dfff}small,.muted{color:#aabbd0}main{max-width:1250px;margin:auto;padding:14px}#status{padding:12px;background:#15263c;border:1px solid #314b69;border-radius:10px;margin-bottom:12px}#status.warn{border-color:#e7b46a}#status.error{border-color:#fa8585}#map{height:min(66vh,660px);min-height:360px;border-radius:10px;background:#142338}.tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0}button{background:#164e72;border:1px solid #3e86aa;color:white;padding:9px 13px;border-radius:8px;cursor:pointer}button:hover{background:#236b94}#flights{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px;margin:12px 0}.flight{background:#14243a;border:1px solid #31445e;border-radius:9px;padding:10px;cursor:pointer;text-align:left;color:inherit}.flight b{display:block;font-size:16px}.flight small{display:block;margin-top:5px}.notice{font-weight:650;color:#f8d08b}.leaflet-popup-content{color:#152032}footer{color:#aabbd0;font-size:12px;margin-top:12px}
+</style>
+</head>
+<body>
+<header><a href="./">← Flyradar KSU</a><h1>adsb.fi – separat testkart</h1><small>GitHub Actions-øyeblikksbilder, ikke sanntidssporing</small></header>
+<main>
+<div id="status" role="status">Laster testdata …</div>
+<div class="tools"><button id="refresh" type="button">Hent siste testfil</button><label><input id="showOld" type="checkbox" checked> Vis gamle posisjoner som historiske markører</label></div>
+<div id="map" aria-label="Kart over flyposisjoner rundt Kvernberget"></div>
+<h2>Fly i siste testfil <span id="count"></span></h2><div id="flights"></div>
+<footer>Datakilde: adsb.fi Open Data v3. Snapshot hentet via GitHub Actions og publisert med GitHub Pages. Markører er historiske når dataene er eldre enn 2 minutter. Nettleseren sjekker etter ny fil hvert 60. sekund; det starter ikke en ny GitHub Actions-kjøring.</footer>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+"use strict";
+const KSU=[63.1118,7.8245], map=L.map("map").setView(KSU,8);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"© OpenStreetMap contributors"}).addTo(map);
+L.marker(KSU).addTo(map).bindPopup("<b>Kvernberget (KSU)</b>");
+const markers=L.layerGroup().addTo(map);
+const status=document.getElementById("status"),flights=document.getElementById("flights"),count=document.getElementById("count"),showOld=document.getElementById("showOld");
+let snapshot=null;
+const esc=v=>String(v??"–").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num=(v,d=0)=>Number.isFinite(Number(v))&&v!==null&&v!==""?Number(v).toFixed(d):"–";
+const when=ms=>new Date(ms).toLocaleString("nb-NO",{dateStyle:"short",timeStyle:"medium",timeZone:"Europe/Oslo"});
+function render(){
+  if(!snapshot)return;
+  const ts=Date.parse(snapshot.fetched_at),age=Date.now()-ts,stale=!Number.isFinite(ts)||age>120000;
+  const arr=Array.isArray(snapshot.ac)?snapshot.ac:[];
+  status.className=stale?"warn":"";
+  status.innerHTML="<strong>"+(stale?"HISTORISKE DATA – IKKE SANNTID":"Testdata nylig hentet")+"</strong><div>Hentet: "+(Number.isFinite(ts)?when(ts):"ukjent")+" · Alder: "+(Number.isFinite(age)?Math.max(0,Math.round(age/60000))+" min":"ukjent")+" · Fly: "+arr.length+"</div><small>En ny kartoppdatering gir ikke ferske posisjoner før GitHub Actions har hentet et nytt øyeblikksbilde.</small>";
+  count.textContent="("+arr.length+")";markers.clearLayers();flights.replaceChildren();
+  if(stale&&!showOld.checked){flights.textContent="Gamle posisjoner er skjult. Kryss av for å se siste historiske øyeblikksbilde.";return}
+  if(!arr.length){flights.textContent="Ingen fly i dette øyeblikksbildet.";return}
+  let plotted=0;
+  for(const a of arr){
+    const label=(a.flight||"").trim()||a.r||a.hex||"Ukjent fly";
+    const details="<b>"+esc(label)+"</b><br>"+esc(a.r)+" · "+esc(a.desc||a.t)+"<br>Høyde: "+num(a.alt_baro)+" ft · Fart: "+num(a.gs)+" kt<br>Avstand KSU: "+num(a.dst,1)+" NM"+(stale?"<br><b>Historisk posisjon</b>":"");
+    let marker=null;
+    if(Number.isFinite(a.lat)&&Number.isFinite(a.lon)){
+      marker=L.circleMarker([a.lat,a.lon],{radius:7,color:stale?"#c58d49":"#1467ad",fillColor:stale?"#f3bf77":"#61d6ff",fillOpacity:.85,weight:2}).addTo(markers).bindPopup(details);
+      plotted++;
+    }
+    const card=document.createElement("button");card.className="flight";card.type="button";
+    card.innerHTML="<b>"+esc(label)+"</b>"+esc(a.r)+" · "+esc(a.desc||a.t)+"<small>"+num(a.alt_baro)+" ft · "+num(a.gs)+" kt · "+num(a.dst,1)+" NM fra KSU"+(stale?" · HISTORISK":"")+"</small>";
+    if(marker)card.addEventListener("click",()=>{map.setView(marker.getLatLng(),Math.max(map.getZoom(),10));marker.openPopup()});
+    else card.disabled=true;
+    flights.append(card);
+  }
+  if(!plotted)status.innerHTML+="<div>Ingen gyldige koordinater i filen.</div>";
+}
+async function load(){
+  const btn=document.getElementById("refresh");btn.disabled=true;
+  try{
+    const r=await fetch("./data/adsb-fi-test.json?t="+Date.now(),{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);
+    const data=await r.json();
+    if(data.source!=="adsb.fi"||!Array.isArray(data.ac)||!data.fetched_at)throw new Error("Ugyldig JSON-format");
+    snapshot=data;render();
+  }catch(e){status.className="error";status.textContent="Kunne ikke hente testfilen: "+e.message+". Kartet bruker eventuelle tidligere innlastede data."}
+  finally{btn.disabled=false}
+}
+document.getElementById("refresh").addEventListener("click",load);
+showOld.addEventListener("change",render);
+load();setInterval(load,60000);
+</script>
+</body></html>
