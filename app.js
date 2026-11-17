@@ -2148,6 +2148,16 @@ function recordAdsbDiagnostics(rawAircraft, sourceName){
     localStorage.setItem(key,JSON.stringify(rows.slice(-500)));
   }catch(e){console.warn('ADS-B diagnostics unavailable',e);}
 }
+// Shared browser-local diagnostics for the administrator status page.
+const ADMIN_LOG_KEY='flyradar-ksu-admin-log-v1';
+function recordAdminStatus(event,details={}){
+  try{
+    const now=new Date().toISOString();
+    const history=JSON.parse(localStorage.getItem(ADMIN_LOG_KEY)||'[]');
+    history.push({at:now,event,...details});
+    localStorage.setItem(ADMIN_LOG_KEY,JSON.stringify(history.slice(-1000)));
+  }catch(e){console.warn('Admin history unavailable',e);}
+}
 function updateAdsbSourceLabel(mode){
   const el=$('adsb-source-label');
   if(!el)return;
@@ -2198,6 +2208,12 @@ async function refresh(){
     }
 
     updateAdsbSourceLabel(workerOk?(fiRescueDirectOk?'combined':'worker'):'direct');
+    recordAdminStatus('flydata', {
+      worker:workerOk?'OK':'feil',adsbLol:sourceState.adsb,adsbFi:sourceState.fi,
+      airplanesLive:sourceState.apl,fiDirectError:fiRescueError||null,
+      fiRetryAt:fiRescueRetryAfter?new Date(fiRescueRetryAfter).toISOString():null,
+      aircraft:merged.length,source:workerOk?(fiRescueDirectOk?'worker+direct':'worker'):'direct'
+    });
     recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
     localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
