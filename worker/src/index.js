@@ -77,37 +77,54 @@ function relevantPassengerVessel(v) {
 }
 
 
+// Keep each position and its motion fields from one observation.
+const MAX_POSITION_AGE_SECONDS = 120;
+function finiteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function sourceTimestamp(value, receivedAt) {
+  if (!finiteNumber(value) || value <= 0) return receivedAt;
+  const ms = value < 1e12 ? value * 1000 : value;
+  return Math.min(ms, receivedAt);
+}
 function mergeAircraft(...sources) {
+  const now = Date.now();
   const byKey = new Map();
-
-  const add = (a, source) => {
-    const key = keyFor(a);
-    if (!key) return;
-
-    const copy = { ...a, _source: source };
-    if (!byKey.has(key)) {
-      byKey.set(key, copy);
-      return;
-    }
-
-    const old = byKey.get(key);
-    const names = new Set(
-      String(old._source || "")
-        .split(" + ")
-        .filter(Boolean)
-        .concat(source)
-    );
-    byKey.set(key, {
-      ...copy,
-      ...old,
-      _source: [...names].join(" + "),
-    });
-  };
-
   for (const source of sources) {
-    for (const a of source.ac || []) add(a, source.name);
+    for (const a of source.ac || []) {
+      const key = keyFor(a);
+      if (!key || !finiteNumber(a.lat) || !finiteNumber(a.lon) ||
+          Math.abs(a.lat) > 90 || Math.abs(a.lon) > 180 ||
+          !finiteNumber(a.seen_pos) || a.seen_pos < 0) continue;
+      const positionAt = sourceTimestamp(source.now, source.receivedAt || now) - a.seen_pos * 1000;
+      const age = Math.max(0, (now - positionAt) / 1000);
+      if (age > MAX_POSITION_AGE_SECONDS) continue;
+      const candidate = { ...a, seen_pos: age, _position_at_ms: positionAt,
+        _position_source: source.name, _source: source.name };
+      const old = byKey.get(key);
+      if (!old) { byKey.set(key, candidate); continue; }
+      const best = positionAt > old._position_at_ms ? candidate : old;
+      const other = best === candidate ? old : candidate;
+      const merged = { ...best };
+      // Only static identity fields may be filled from the other observation.
+      for (const field of ["flight", "r", "t", "desc", "ownOp"]) {
+        if (!merged[field] && other[field]) merged[field] = other[field];
+      }
+      merged._source = [...new Set([...old._source.split(" + "), source.name])].join(" + ");
+      byKey.set(key, merged);
+    }
   }
   return [...byKey.values()];
+}
+function ageSnapshot(snapshot, now = Date.now()) {
+  return { ...snapshot, ac: (snapshot.ac || []).map(a => ({ ...a,
+    seen_pos: finiteNumber(a._position_at_ms) ? Math.max(0, (now - a._position_at_ms) / 1000) : a.seen_pos
+  })).filter(a => finiteNumber(a.seen_pos) && a.seen_pos <= MAX_POSITION_AGE_SECONDS) };
+}
+function sourceStatus(source) {
+  return { ok: source.ok, status: source.status, count: source.ac.length,
+    error: source.error || null, retry_at: source.retry_at || null,
+    cf_ray: source.cf_ray || null };
 }
 
 export class TrackStore extends DurableObject {
@@ -124,7 +141,7 @@ export class TrackStore extends DurableObject {
       const cached = (await this.ctx.storage.get("aircraftSharedSnapshot")) || null;
       if (cached && Number.isFinite(Number(cached.generated_at_ms)) &&
           now - Number(cached.generated_at_ms) < 15000) {
-        return new Response(JSON.stringify({ ...cached, cache: "hit" }), {
+        return new Response(JSON.stringify({ ...ageSnapshot(cached), cache: "hit" }), {
           headers: { "Content-Type": "application/json; charset=utf-8" },
         });
       }
@@ -138,20 +155,29 @@ export class TrackStore extends DurableObject {
           const adsbFiUrl =
             `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
 
+          const failures = await this.ctx.storage.get("aircraftSourceFailures") || {};
+          const fetchSource = async (name, url) => {
+            if (failures[name]?.retry_at > Date.now()) return { ...failures[name], name, ac: [] };
+            const result = await getSource(name, url);
+            if (result.ok) delete failures[name];
+            else failures[name] = { ...sourceStatus(result), name, retry_at: result.retry_at };
+            return result;
+          };
           const [adsb, airplanes, adsbfi] = await Promise.all([
-            getSource("adsb.lol", adsbUrl),
-            getSource("airplanes.live", airplanesUrl),
-            getSource("adsb.fi", adsbFiUrl),
+            fetchSource("adsb.lol", adsbUrl),
+            fetchSource("airplanes.live", airplanesUrl),
+            fetchSource("adsb.fi", adsbFiUrl),
           ]);
+          await this.ctx.storage.put("aircraftSourceFailures", failures);
 
           const snapshot = {
             ok: Boolean(adsb.ok || airplanes.ok || adsbfi.ok),
             generated_at: new Date().toISOString(),
             generated_at_ms: Date.now(),
             sources: {
-              "adsb.lol": { ok: adsb.ok, status: adsb.status, count: adsb.ac.length },
-              "airplanes.live": { ok: airplanes.ok, status: airplanes.status, count: airplanes.ac.length },
-              "adsb.fi": { ok: adsbfi.ok, status: adsbfi.status, count: adsbfi.ac.length },
+              "adsb.lol": sourceStatus(adsb),
+              "airplanes.live": sourceStatus(airplanes),
+              "adsb.fi": sourceStatus(adsbfi),
             },
             ac: mergeAircraft(adsb, airplanes, adsbfi),
           };
@@ -504,38 +530,37 @@ async function flightAwareRoute(env, callsign) {
 }
 
 async function getSource(name, url) {
+  let status = 0;
+  let ray = null;
+  let retryMs = 60000;
   try {
     const response = await fetch(url, {
-      headers: { "User-Agent": "Flyradar-KSU/1.0" },
-      cf: {
-        cacheEverything: true,
-        cacheTtl: 15,
-      },
+      headers: { "User-Agent": "Flyradar-KSU/1.0", "Accept": "application/json" },
+      signal: AbortSignal.timeout(8000),
+      // The Durable Object already shares and caches requests for every client.
+      cf: { cacheTtl: 0, cacheEverything: false },
     });
-
+    status = response.status;
+    ray = response.headers.get("cf-ray");
     if (!response.ok) {
-      return { name, ok: false, status: response.status, ac: [] };
+      const retry = response.headers.get("retry-after");
+      const delay = retry && /^\d+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry || "") - Date.now();
+      retryMs = Math.max(status === 403 ? 300000 : 60000, Number.isFinite(delay) ? delay : 0);
+      await response.body?.cancel();
+      throw new Error(status === 403 ? "access_denied" : status === 429 ? "rate_limited" : "upstream_http_error");
     }
-
     const json = await response.json();
-    return {
-      name,
-      ok: true,
-      status: response.status,
-      ac: Array.isArray(json?.ac)
-        ? json.ac
-        : Array.isArray(json?.aircraft)
-          ? json.aircraft
-          : [],
-    };
+    const ac = Array.isArray(json?.ac) ? json.ac : Array.isArray(json?.aircraft) ? json.aircraft : null;
+    if (!ac) throw new Error("invalid_response_schema");
+    return { name, ok: true, status, ac, now: json.now, receivedAt: Date.now() };
   } catch (error) {
-    return {
-      name,
-      ok: false,
-      status: 0,
-      error: error instanceof Error ? error.message : String(error),
-      ac: [],
-    };
+    const allowed = ["access_denied", "rate_limited", "upstream_http_error", "invalid_response_schema"];
+    const code = allowed.includes(error?.message) ? error.message :
+      error?.name === "TimeoutError" || error?.name === "AbortError" ? "timeout" :
+      error instanceof SyntaxError ? "invalid_json" : "network_error";
+    console.warn(JSON.stringify({ event: "aircraft_source_failure", source: name, status, error: code, cf_ray: ray }));
+    return { name, ok: false, status, error: code, cf_ray: ray,
+      retry_at: Date.now() + retryMs, ac: [] };
   }
 }
 
@@ -833,7 +858,7 @@ export default {
 
 
 
-    const ac = shared.ac;
+    const ac = ageSnapshot(shared).ac;
 
     let tracks = {};
     try {
@@ -884,7 +909,7 @@ export default {
       const shared = await sharedResponse.json();
       if (!shared?.ok || !Array.isArray(shared?.ac)) return;
 
-      const ac = shared.ac;
+      const ac = ageSnapshot(shared).ac;
 
       const inside = ac.filter((a) => {
         const lat = Number(a?.lat);
