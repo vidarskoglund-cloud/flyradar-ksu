@@ -1651,6 +1651,28 @@ function vesselKind(v){
   if(t>=60&&t<=69)return 'Passasjerskip';
   return 'Skip';
 }
+// During the ADS-B pause, show and follow moving AIS vessels instead.
+let vesselFocusMmsi='',vesselFocusChangedAt=0,vesselLastFocusAt=0;
+const escapeVesselText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function focusMovingVessel(force=false){
+  if(Date.now()>=ADSB_PAUSE_UNTIL_MS)return;
+  const moving=vessels.filter(v=>Number(v.speed)>=1&&Number(v.distanceNm)<=25&&Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon)));
+  if(!moving.length)return;
+  const now=Date.now();
+  let selected=moving.find(v=>String(v.mmsi)===vesselFocusMmsi);
+  if(!selected||now-vesselFocusChangedAt>45000){
+    const sorted=moving.slice().sort((a,b)=>Number(b.speed)-Number(a.speed));
+    const index=sorted.findIndex(v=>String(v.mmsi)===vesselFocusMmsi);
+    selected=sorted[(index+1)%sorted.length];
+    vesselFocusMmsi=String(selected.mmsi||selected.name);
+    vesselFocusChangedAt=now;
+    force=true;
+  }
+  if(force||now-vesselLastFocusAt>15000){
+    vesselLastFocusAt=now;
+    map.flyTo([Number(selected.lat),Number(selected.lon)],Math.max(map.getZoom(),11),{animate:true,duration:1.8});
+  }
+}
 function renderVessels(){
   vesselLayer.clearLayers();
   for(const v of vessels){
@@ -1663,10 +1685,11 @@ function renderVessels(){
       v.destination?'mål '+v.destination:''
     ].filter(Boolean).join(' · ');
     L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
-      .bindTooltip('⛴ '+name,{direction:'top',offset:[0,-12]})
-      .bindPopup(`<b>${name}</b><br>${detail}<br><small>AIS · Kystverket</small>`)
+      .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
+      .bindPopup('<b>'+escapeVesselText(name)+'</b><br>'+escapeVesselText(detail)+'<br><small>AIS · Kystverket</small>')
       .addTo(vesselLayer);
   }
+  focusMovingVessel();
 }
 async function loadVessels(){
   try{
@@ -1675,9 +1698,15 @@ async function loadVessels(){
     const j=await r.json();
     vessels=Array.isArray(j?.vessels)?j.vessels:[];
     renderVessels();
+    const el=document.getElementById('vessel-live-status');
+    if(el)el.textContent=vessels.length
+      ?vessels.length+' fartøy i bevegelse innen 25 NM · AIS fra Kystverket'
+      :'Ingen fartøy i bevegelse registrert innen 25 NM';
   }catch(e){
     vessels=[];
     vesselLayer.clearLayers();
+    const el=document.getElementById('vessel-live-status');
+    if(el)el.textContent='AIS-data er ikke tilgjengelige akkurat nå';
   }
 }
 
