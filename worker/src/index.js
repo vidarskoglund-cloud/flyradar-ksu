@@ -613,7 +613,7 @@ export default {
           .map(normalizeVesselFeature)
           .filter(Boolean)
           .map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
-          .filter(v => v.distanceNm <= 35 && relevantPassengerVessel(v))
+          .filter(v => v.distanceNm <= 25 && Number.isFinite(v.speed) && v.speed >= 1)
           .sort((a,b) => a.distanceNm - b.distanceNm);
 
         return new Response(JSON.stringify({
