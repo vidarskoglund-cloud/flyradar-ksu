@@ -26,6 +26,11 @@ jobs:
           for(const s of scripts)new Function(s);
           console.log('Validated '+scripts.length+' inline script(s)');
           NODE
+      - name: Bundle Worker without deploying
+        working-directory: worker
+        run: |
+          npm install --no-audit --no-fund
+          npx wrangler deploy --dry-run --outdir /tmp/flyradar-ksu-build
       - name: Validate Worker deployment configuration
         run: |
           node - <<'NODE'
