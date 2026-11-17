@@ -1651,26 +1651,32 @@ function vesselKind(v){
   if(t>=60&&t<=69)return 'Passasjerskip';
   return 'Skip';
 }
-// During the ADS-B pause, show and follow moving AIS vessels instead.
+// During the ADS-B pause, focus on one moving AIS vessel at a time.
 let vesselFocusMmsi='',vesselFocusChangedAt=0,vesselLastFocusAt=0;
 const escapeVesselText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function focusMovingVessel(force=false){
-  if(Date.now()>=ADSB_PAUSE_UNTIL_MS)return;
+  const el=document.getElementById('vessel-focus-status');
+  if(Date.now()>=ADSB_PAUSE_UNTIL_MS){if(el)el.textContent='';return;}
   const moving=vessels.filter(v=>Number(v.speed)>=1&&Number(v.distanceNm)<=25&&Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon)));
-  if(!moving.length)return;
+  if(!moving.length){if(el)el.textContent='Ingen fartøy å følge akkurat nå';return;}
   const now=Date.now();
-  let selected=moving.find(v=>String(v.mmsi)===vesselFocusMmsi);
-  if(!selected||now-vesselFocusChangedAt>45000){
-    const sorted=moving.slice().sort((a,b)=>Number(b.speed)-Number(a.speed));
-    const index=sorted.findIndex(v=>String(v.mmsi)===vesselFocusMmsi);
+  const sorted=moving.slice().sort((a,b)=>Number(b.speed)-Number(a.speed));
+  let selected=sorted.find(v=>String(v.mmsi||v.name)===vesselFocusMmsi);
+  if(!selected||now-vesselFocusChangedAt>60000){
+    const index=sorted.findIndex(v=>String(v.mmsi||v.name)===vesselFocusMmsi);
     selected=sorted[(index+1)%sorted.length];
     vesselFocusMmsi=String(selected.mmsi||selected.name);
     vesselFocusChangedAt=now;
     force=true;
   }
-  if(force||now-vesselLastFocusAt>15000){
+  if(el)el.textContent='Følger: '+(selected.name||('MMSI '+selected.mmsi))+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU';
+  if(force||now-vesselLastFocusAt>20000){
     vesselLastFocusAt=now;
-    map.flyTo([Number(selected.lat),Number(selected.lon)],Math.max(map.getZoom(),11),{animate:true,duration:1.8});
+    const target=L.latLng(Number(selected.lat),Number(selected.lon));
+    const zoom=10;
+    if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>700){
+      map.flyTo(target,zoom,{animate:true,duration:1.6});
+    }
   }
 }
 function renderVessels(){
