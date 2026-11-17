@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Cache Avinor KSU traffic
+        continue-on-error: true # Keep Pages publishing if Avinor is temporarily unavailable
         shell: python
         run: |
           import json, os, urllib.request, xml.etree.ElementTree as ET
