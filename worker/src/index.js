@@ -28,7 +28,7 @@ export class TrackStore extends DurableObject {
   return {ok:live,stale:Boolean(fresh&&!live),generated_at:state.lastGood?new Date(state.lastGood.time).toISOString():null,age_seconds:age===null?null:Math.round(age/1000),center:KSU,count:fresh?state.lastGood.ac.length:0,ac:fresh?state.lastGood.ac:[],sources:state.sources,cache};
  }
  async refresh(state){
-  const now=Date.now(),sources={...state.sources},successful=[];
+  const now=Date.now(),sources={...state.sources},successful=[];let succeeded=false;
   // Try one provider at a time, avoiding unnecessary calls to blocked providers.
   for(const provider of SOURCES){
    const prior=sources[provider.name]||{};
@@ -42,13 +42,13 @@ export class TrackStore extends DurableObject {
     const payload=await response.json();
     const ac=normalize(Array.isArray(payload.ac)?payload.ac:Array.isArray(payload.aircraft)?payload.aircraft:[]);
     sources[provider.name]={ok:true,status:200,retryAt:0,count:ac.length};
-    successful.push(...ac);
+    succeeded=true;successful.push(...ac);
     break;
    }catch(error){sources[provider.name]={ok:false,status:0,retryAt:now+120000,error:String(error).slice(0,120)};}
   }
   const unique=new Map();for(const a of successful){const key=String(a.hex||a.r||a.flight||"").trim().toLowerCase();if(key)unique.set(key,a);}
   const updated={...state,sources,nextFetch:now+TTL};
-  if(successful.length||Object.values(sources).some(s=>s.ok&&s.retryAt===0)&&unique.size===0){
+  if(succeeded){
    updated.lastGood={time:now,ac:[...unique.values()]};updated.lastSuccess=now;
   }else{updated.lastSuccess=null;}
   await this.ctx.storage.put("state",updated);
