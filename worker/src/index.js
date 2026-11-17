@@ -3,9 +3,9 @@ import { DurableObject } from "cloudflare:workers";
 const KSU={lat:63.1118,lon:7.8245,radiusNm:75};
 const TTL=60000, STALE_MAX=20*60000;
 const SOURCES=[
- {name:"adsb.lol",url:"https://api.adsb.lol/v2/point/63.1118/7.8245/75"},
+ {name:"adsb.lol",url:"https://api.adsb.lol/v2/point/63.1118/7.8245/120"},
  {name:"airplanes.live",url:"https://api.airplanes.live/v2/point/63.1118/7.8245/75"},
- {name:"adsb.fi",url:"https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75"}
+ {name:"adsb.fi",url:"https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/120"}
 ];
 const headers={"Content-Type":"application/json; charset=utf-8","Access-Control-Allow-Origin":"*","Access-Control-Allow-Methods":"GET, OPTIONS","Cache-Control":"no-store"};
 function json(body,status=200){return new Response(JSON.stringify(body),{status,headers});}
