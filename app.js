@@ -1560,6 +1560,29 @@ function mergeAircraft(primary,secondary,primaryName='adsb.fi',secondaryName='ad
   secondary.forEach(a=>add(a,secondaryName));
   return [...byKey.values()];
 }
+// Browser-side rescue for adsb.fi when the Cloudflare Worker is blocked.
+let fiRescueLastAttempt=0,fiRescueLastSuccess=0,fiRescueAircraft=[];
+async function rescueAdsbFi(s){
+  const now=Date.now();
+  if(now-fiRescueLastAttempt<15000){
+    return now-fiRescueLastSuccess<45000?fiRescueAircraft:null;
+  }
+  fiRescueLastAttempt=now;
+  try{
+    const url=`https://opendata.adsb.fi/api/v3/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
+    const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(8000)});
+    if(!response.ok)throw new Error('adsb.fi HTTP '+response.status);
+    const data=await response.json();
+    const aircraft=data.ac||data.aircraft;
+    if(!Array.isArray(aircraft))throw new Error('adsb.fi invalid aircraft payload');
+    fiRescueAircraft=aircraft;
+    fiRescueLastSuccess=Date.now();
+    return aircraft;
+  }catch(error){
+    console.warn('adsb.fi direct rescue unavailable',error);
+    return null;
+  }
+}
 async function fetchJson(url){
   try{
     const r=await fetch(url,{credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(12000)});
@@ -2136,6 +2159,15 @@ async function refresh(){
       sourceState.apl=w.sources?.['airplanes.live']?.ok?'OK':'feil';
       sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
+      // A successful Worker response can still contain a failed adsb.fi source.
+      // Try adsb.fi directly from the browser; keep the Worker's valid aircraft.
+      if(sourceState.fi!=='OK'){
+        const rescued=await rescueAdsbFi(s);
+        if(rescued!==null){
+          merged=mergeAircraft(merged,rescued,'Worker','adsb.fi');
+          sourceState.fi='OK';
+        }
+      }
     }catch(workerError){
       const fiUrl=`https://opendata.adsb.fi/api/v3/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
       const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
