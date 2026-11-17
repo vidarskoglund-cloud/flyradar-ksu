@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08111f">
+<title>Flyradar KSU – Status og diagnostikk</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#08111f;color:#eaf2fb}
+*{box-sizing:border-box}body{margin:0}main{max-width:1150px;margin:auto;padding:20px}
+header{border-bottom:1px solid #29415a;padding:18px 20px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
+a{color:#76d8ff}h1{font-size:23px;margin:0}h2{font-size:18px;margin:0 0 12px}
+small,.muted{color:#9db2c7}section{margin:20px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
+.card{border:1px solid #29415a;border-radius:12px;background:#101e30;padding:15px}.card strong{display:block;font-size:23px;margin:8px 0}.ok{color:#66e1a0}.bad{color:#ff9c9c}.warn{color:#f5c975}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px;border-bottom:1px solid #29415a;text-align:left;vertical-align:top}
+.wrap{overflow-x:auto}button{background:#1a344b;border:1px solid #476a88;border-radius:9px;color:white;padding:10px 13px;cursor:pointer}
+.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.note{line-height:1.5;color:#b5c8da}
+code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+</style></head>
+<body><header><div><h1>Flyradar KSU · Administrasjon</h1><small>Status, diagnostikk og lokal historikk</small></div><a href="./">Tilbake til flykartet</a></header>
+<main>
+<p class="note">Statusen er basert på oppslag som denne nettleseren har registrert. Den viser ikke alle besøkendes trafikk eller Cloudflare-serverlogger. Historikk lagres lokalt i nettleseren og kan eksporteres.</p>
+<div class="actions"><button id="refresh">Oppdater visning</button><button id="json">Eksporter JSON</button><button id="csv">Eksporter CSV</button><button id="clear">Slett lokal historikk</button><small id="stamp"></small></div>
+<section><h2>Datakilder · siste registrerte oppslag</h2><div class="grid" id="sources"></div></section>
+<section><h2>Nøkkeltall</h2><div class="grid" id="metrics"></div></section>
+<section class="card"><h2>Feilsøking av adsb.fi</h2><div id="diagnosis" class="note"></div><p class="note">Offisielt oppslag: <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener">adsb.fi v3 · KSU 75 NM</a>. Åpning av lenken er en manuell test og bruker et API-oppslag.</p></section>
+<section class="card"><h2>Historikk</h2><div class="filters"><label>Hendelser <select id="filter"><option value="all">Alle</option><option value="changes">Bare endringer/feil</option></select></label><label>Vis <select id="limit"><option>50</option><option>100</option><option>250</option><option>1000</option></select></label></div><div class="wrap"><table><thead><tr><th>Tid</th><th>Worker</th><th>adsb.lol</th><th>adsb.fi</th><th>Airplanes.live</th><th>Fly</th><th>Merknad</th></tr></thead><tbody id="history"></tbody></table></div></section>
+<section class="card"><h2>Hva vi bør overvåke</h2><p class="note">Andel vellykkede oppslag per kilde, tid siden siste vellykkede oppslag, feilårsak, antall fly per oppslag, og om adsb.fi gir flere fly enn adsb.lol. Det siste krever separat telling per kilde i Worker for en sikker sammenligning.</p></section>
+</main><script src="admin.js?v=1"></script></body></html>
