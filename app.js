@@ -2113,8 +2113,10 @@ function renderProximityAlert(list){
   banner.hidden=!near.length;
   if(!near.length)return;
   const p=near[0],d=ksuDistanceNm(p),name=p.flight||p.reg||p.hex||'Fly';
-  const title=confirmedKsuArrival(p)?'På vei til Kvernberget':'Fly nær KSU';
-  const text=`✈ ${title} · ${name} · ${d.toFixed(1)} NM${near.length>1?' · +'+(near.length-1)+' fly':''}`;
+  const altitude=Number(p.alt);
+  const lowFlying=Number.isFinite(altitude)&&altitude<=8000;
+  const title=confirmedKsuArrival(p)?'Ankomst KSU':lowFlying?'Lavtflygende i KSU-området':'Passerer KSU-området';
+  const text=`✈ ${title} · ${name} · ${d.toFixed(1)} NM fra KSU${near.length>1?' · +'+(near.length-1)+' fly':''}`;
   if(banner.textContent!==text)banner.textContent=text;
   banner.classList.toggle('close',d<=25);
 }
@@ -2481,8 +2483,9 @@ function smoothedLiveDistanceNm(p,now=Date.now()){
   return value;
 }
 function liveDistanceText(p,now=Date.now()){
-  const d=smoothedLiveDistanceNm(p,now);
-  return d===null?'–':d.toFixed(1)+' NM';
+  // Show the measured KSU distance, not the animation-smoothed value.
+  const d=ksuDistanceNm(p);
+  return Number.isFinite(d)?d.toFixed(1)+' NM':'–';
 }
 function motionPosition(entry,now){
   const target=interpolatedPlanePosition(entry.plane,now);
