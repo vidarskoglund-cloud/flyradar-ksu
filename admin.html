@@ -20,6 +20,11 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
 <section><h2>Datakilder · siste registrerte oppslag</h2><div class="grid" id="sources"></div></section>
 <section><h2>Nøkkeltall</h2><div class="grid" id="metrics"></div></section>
 <section class="card"><h2>Feilsøking av adsb.fi</h2><div id="diagnosis" class="note"></div><p class="note">Offisielt oppslag: <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener">adsb.fi v3 · KSU 75 NM</a>. Åpning av lenken er en manuell test og bruker et API-oppslag.</p></section>
+<section class="card"><h2>API-diagnose · manuell test</h2>
+<p class="note">Tester Worker og direkte adsb.fi fra denne nettleseren. Testen utføres kun når du trykker på knappen. En blokkert nettleserforespørsel kan ikke alltid avsløre HTTP-status.</p>
+<div class="actions"><button id="test-api">Test datakildene nå</button><small id="test-state">Ikke testet</small></div>
+<div class="wrap"><table><thead><tr><th>Kilde</th><th>Resultat</th><th>HTTP</th><th>Responstid</th><th>Detaljer</th></tr></thead><tbody id="test-results"><tr><td colspan="5">Ingen manuell test ennå</td></tr></tbody></table></div>
+</section>
 <section class="card"><h2>Historikk</h2><div class="filters"><label>Hendelser <select id="filter"><option value="all">Alle</option><option value="changes">Bare endringer/feil</option></select></label><label>Vis <select id="limit"><option>50</option><option>100</option><option>250</option><option>1000</option></select></label></div><div class="wrap"><table><thead><tr><th>Tid</th><th>Worker</th><th>adsb.lol</th><th>adsb.fi</th><th>Airplanes.live</th><th>Fly</th><th>Merknad</th></tr></thead><tbody id="history"></tbody></table></div></section>
 <section class="card"><h2>Hva vi bør overvåke</h2><p class="note">Andel vellykkede oppslag per kilde, tid siden siste vellykkede oppslag, feilårsak, antall fly per oppslag, og om adsb.fi gir flere fly enn adsb.lol. Det siste krever separat telling per kilde i Worker for en sikker sammenligning.</p></section>
-</main><script src="admin.js?v=1"></script></body></html>
+</main><script src="admin.js?v=2"></script></body></html>
