@@ -621,7 +621,8 @@ export default {
           within_25_nm: nearby.length,
           with_speed: nearby.filter(v => Number.isFinite(v.speed)).length,
           moving: vessels.length,
-          sample_property_keys: rows.length ? Object.keys(rows[0]?.properties || rows[0] || {}).slice(0,25) : []
+          sample_property_keys: rows.length ? Object.keys(rows[0]?.properties || rows[0] || {}).slice(0,25) : [],
+          sample_geometry: rows.slice(0,3).map(v => ({ type: v?.geometry?.type || null, coordinates: JSON.stringify(v?.geometry?.coordinates ?? null).slice(0,160), lat: v?.properties?.latitude ?? null, lon: v?.properties?.longitude ?? null }))
         };
 
         return new Response(JSON.stringify({
