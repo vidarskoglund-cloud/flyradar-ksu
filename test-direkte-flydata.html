@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flyradar KSU – direkte datatest</title>
+<style>body{font:16px system-ui,sans-serif;background:#0b1624;color:#eaf2ff;max-width:850px;margin:30px auto;padding:16px}button{padding:12px 18px;background:#245b89;color:white;border:0;border-radius:8px;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#14273c;padding:14px;border-radius:8px}p{line-height:1.5}</style></head>
+<body><h1>Flyradar KSU – test fra egen nettleser</h1>
+<p>Denne siden tester tre flydatakilder direkte fra din PC, uten Cloudflare. Den gjør ett oppslag per kilde når du trykker på knappen. Ved CORS-feil kan nettleseren skjule HTTP-statusen. Testen endrer ikke flykartet.</p>
+<button id="test">Test flydata nå</button><pre id="result">Ingen test kjørt.</pre>
+<script>
+const sources=[
+ ["adsb.lol","https://api.adsb.lol/v2/point/63.1118/7.8245/75"],
+ ["airplanes.live","https://api.airplanes.live/v2/point/63.1118/7.8245/75"],
+ ["adsb.fi","https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75"]
+];
+document.getElementById("test").onclick=async()=>{
+ const button=document.getElementById("test"),out=document.getElementById("result");
+ button.disabled=true;out.textContent="Tester én kilde om gangen …";
+ const lines=[];
+ for(const [name,url] of sources){
+  const t=Date.now();
+  try{
+   const r=await fetch(url,{cache:"no-store",credentials:"omit",signal:AbortSignal.timeout(12000)});
+   if(!r.ok){lines.push(name+": HTTP "+r.status+" ("+(Date.now()-t)+" ms)");}
+   else{
+    const json=await r.json(),ac=json.ac||json.aircraft;
+    lines.push(name+": HTTP "+r.status+", "+(Array.isArray(ac)?ac.length:"ukjent antall")+" fly ("+(Date.now()-t)+" ms)");
+   }
+  }catch(e){lines.push(name+": Nettverks-/CORS-feil: "+String(e.message||e));}
+  out.textContent=lines.join("\n");
+ }
+ out.textContent+="\n\nTest utført: "+new Date().toLocaleString("no-NO");
+ button.disabled=false;
+};
+</script></body></html>
