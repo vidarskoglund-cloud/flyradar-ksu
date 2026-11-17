@@ -574,6 +574,32 @@ export default {
       );
     }
 
+    // Diagnostic only: OpenSky is not yet used for the live map.
+    if (url.pathname === "/test-opensky") {
+      const endpoint = "https://opensky-network.org/api/states/all?lamin=62.5&lomin=6.5&lamax=63.8&lomax=9.0";
+      try {
+        const response = await fetch(endpoint, { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(10000) });
+        let count = null;
+        let valid = false;
+        if (response.ok) {
+          const payload = await response.json();
+          valid = Array.isArray(payload?.states);
+          count = valid ? payload.states.length : null;
+        }
+        return new Response(JSON.stringify({
+          ok: response.ok && valid,
+          provider: "OpenSky Network",
+          http_status: response.status,
+          aircraft_count: count,
+          rate_limit_remaining: response.headers.get("X-Rate-Limit-Remaining"),
+          note: "One-off connectivity diagnostic; not connected to map"
+        }), { status: 200, headers: { ...corsHeaders(), "Cache-Control": "public, max-age=600" } });
+      } catch (error) {
+        return new Response(JSON.stringify({ ok: false, provider: "OpenSky Network", error: String(error?.message || error) }),
+          { status: 200, headers: { ...corsHeaders(), "Cache-Control": "public, max-age=600" } });
+      }
+    }
+
     if (url.pathname === "/vessels") {
       try {
         const r = await fetch("https://kystdatahuset.kystverket.no/ws/api/ais/realtime/geojson", {
