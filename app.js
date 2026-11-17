@@ -2200,7 +2200,18 @@ function updateAdsbSourceLabel(mode){
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
   el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.'+(fiRescueError?' Direkte adsb.fi: '+fiRescueError+'. Neste forsøk tidligst '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO'):'');
 }
+const ADSB_PAUSE_UNTIL_MS = 1795006013510;
 async function refresh(){
+  if (Date.now() < ADSB_PAUSE_UNTIL_MS) {
+    planes = [];
+    localPlanes = [];
+    remoteKsuPlanes = [];
+    $('status').textContent = 'Flydata midlertidig deaktivert til ' + new Date(ADSB_PAUSE_UNTIL_MS).toLocaleString('no-NO');
+    $('status').className = 'muted';
+    document.body.dataset.liveSource = 'paused';
+    render(false);
+    return;
+  }
   let s=settings();
   $('status').textContent='Henter…';$('status').className='muted';
   home.setLatLng([s.lat,s.lon]);
