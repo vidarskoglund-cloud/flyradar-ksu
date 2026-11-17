@@ -31,12 +31,28 @@ const nm=(a,b)=>{const rad=Math.PI/180,p1=KSU[0]*rad,p2=a*rad,d=(a-KSU[0])*rad,l
 async function refresh(){
  const status=document.getElementById("status"),summary=document.getElementById("summary"),flights=document.getElementById("flights");
  try{
-  const r=await fetch(API,{cache:"no-store"});if(!r.ok)throw Error("API HTTP "+r.status);
-  const data=await r.json(),stale=Boolean(data.stale),live=Boolean(data.ok&&!stale);
-  status.textContent=live?"Direkte flydata":stale?"Historiske posisjoner":"Ingen tilgjengelige flydata";
+  let data=null,fromSnapshot=false;
+  try{
+   const r=await fetch(API,{cache:"no-store"});if(r.ok)data=await r.json();
+  }catch(e){console.warn("Worker unavailable",e);}
+  if(!data?.ok){
+   try{
+    const r=await fetch("./data/adsb-fi-test.json",{cache:"no-store"});
+    if(r.ok){
+     const snapshot=await r.json(),age=(Date.now()-Date.parse(snapshot.fetched_at))/1000;
+     if(Number.isFinite(age)&&age>=0&&age<=1200&&Array.isArray(snapshot.ac)){
+      data={ok:false,stale:true,age_seconds:age,ac:snapshot.ac};
+      fromSnapshot=true;
+     }
+    }
+   }catch(e){console.warn("Snapshot unavailable",e);}
+  }
+  if(!data)throw Error("Ingen tilgjengelige datakilder");
+  const stale=Boolean(data.stale),live=Boolean(data.ok&&!stale);
+  status.textContent=live?"Direkte flydata":fromSnapshot?"Forsinket flydata (GitHub)":stale?"Historiske posisjoner":"Ingen tilgjengelige flydata";
   status.className="status "+(live?"good":stale?"warning":"bad");
   const ac=Array.isArray(data.ac)?data.ac:[];
-  summary.textContent=(live?"Oppdatert nå":stale?"Sist oppdatert for "+Math.round((data.age_seconds||0)/60)+" min siden":"Kildene er midlertidig utilgjengelige")+" · "+ac.length+" fly";
+  summary.textContent=(live?"Oppdatert nå":stale?"Posisjoner hentet for "+Math.round((data.age_seconds||0)/60)+" min siden":"Kildene er midlertidig utilgjengelige")+" · "+ac.length+" fly";
   markers.clearLayers();flights.replaceChildren();
   const sorted=ac.filter(a=>Number.isFinite(+a.lat)&&Number.isFinite(+a.lon)).map(a=>({...a,d:nm(+a.lat,+a.lon)})).sort((a,b)=>a.d-b.d);
   for(const a of sorted){
