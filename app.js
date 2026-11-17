@@ -713,14 +713,26 @@ function getTrackDeg(p){
   }
   return null;
 }
+function isHelicopter(p){
+  const type=String(p?.type||'').trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const desc=String(p?.desc||'').toLowerCase();
+  const operator=String(p?.operator||'').toLowerCase();
+  // Known ICAO helicopter types. Avoid classifying solely by operator,
+  // since offshore and rescue operators can also operate fixed-wing aircraft.
+  const types=new Set(['S92','S76','EC35','EC45','EC55','EC75','EC20','EC25','EC30','EC50','EC15','EC65','AS32','AS35','AS50','AS55','AS65','H145','H135','H125','H160','H175','AW09','AW10','AW11','AW13','AW16','AW18','A109','A119','A139','A169','A189','B06','B206','B212','B222','B407','B412','B429','B505','R22','R44','R66','MD52','MD60','MD90','NH90','MI8','MI17','MI24','MI26','UH60','H60','H47','CH47','H500','H369','H269','CABR','G2CA']);
+  return types.has(type) || /helicopter|helikopter|rotorcraft/.test(desc) ||
+    (/^HK[SM]/i.test(String(p?.flight||'')) && /helicopter|helikopter|offshore|chc/.test(operator+' '+desc));
+}
 function planeIcon(p){
   const tr=getTrackDeg(p)??0;
+  const heli=isHelicopter(p);
+  const shape=heli
+    ? '<path d="M14 2 H18 V11 H25 V13 H18 V15 H21 L24 18 V21 L20 20 L18 26 H23 V28 H9 V26 H14 L12 20 L8 21 V18 L11 15 H14 V13 H7 V11 H14 Z"/><path d="M4 12 H28 M16 2 V6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
+    : '<path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>';
   return L.divIcon({
     className:'plane-wrap',
-    html:`<div class="plane-marker ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)">
-      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-        <path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>
-      </svg>
+    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${heli?'Helikopter':'Fly'}">
+      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}</svg>
     </div>`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
