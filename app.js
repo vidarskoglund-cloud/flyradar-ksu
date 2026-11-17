@@ -2157,8 +2157,13 @@ function renderProximityAlert(list){
   const p=near[0],d=ksuDistanceNm(p),name=p.flight||p.reg||p.hex||'Fly';
   const altitude=Number(p.alt);
   const lowFlying=Number.isFinite(altitude)&&altitude<=8000;
+  const heli=isHelicopter(p);
   const title=confirmedKsuArrival(p)?'Ankomst KSU':lowFlying?'Lavtflygende i KSU-området':'Passerer KSU-området';
-  const text=`✈ ${title} · ${name} · ${d.toFixed(1)} NM fra KSU${near.length>1?' · +'+(near.length-1)+' fly':''}`;
+  const type=String(p.type||'').trim().toUpperCase();
+  const model={S92:'Sikorsky S-92',S76:'Sikorsky S-76',H145:'Airbus H145',H135:'Airbus H135',AW13:'Leonardo AW139',A139:'Leonardo AW139',AW16:'Leonardo AW169',A169:'Leonardo AW169'}[type]||'';
+  const description=heli?(model||'Helikopter'):(type&&/^[A-Z0-9]{2,5}$/.test(type)?type:'');
+  const registration=p.reg&&String(p.reg).toUpperCase()!==String(name).toUpperCase()?' · '+p.reg:'';
+  const text=`${heli?'🚁':'✈'} ${title} · ${name}${description?' · '+description:''}${registration} · ${d.toFixed(1)} NM fra KSU${near.length>1?' · +'+(near.length-1)+' fly':''}`;
   if(banner.textContent!==text)banner.textContent=text;
   banner.classList.toggle('close',d<=25);
 }
