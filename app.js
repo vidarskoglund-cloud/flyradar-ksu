@@ -2244,7 +2244,7 @@ function recordAdminStatus(event,details={}){
 function updateAdsbSourceLabel(mode){
   const el=$('adsb-source-label');
   if(!el)return;
-  const names=[['fi','adsb.fi'],['adsb','adsb.lol'],['apl','Airplanes.live']];
+  const names=[['adsb','adsb.lol']];
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
@@ -2279,26 +2279,11 @@ async function refresh(){
       sourceState.apl=w.sources?.['airplanes.live']?.ok?'OK':'feil';
       sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
-      // A successful Worker response can still contain a failed adsb.fi source.
-      // Try adsb.fi directly from the browser; keep the Worker's valid aircraft.
-      if(sourceState.fi!=='OK'){
-        const rescued=await rescueAdsbFi(s);
-        if(rescued!==null){
-          merged=mergeAircraft(merged,rescued,'Worker','adsb.fi');
-          sourceState.fi='OK';
-        }
-      }
     }catch(workerError){
-      const fiUrl=`https://opendata.adsb.fi/api/v3/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
-      const adsbUrl=`https://api.adsb.lol/v2/point/${s.lat}/${s.lon}/${s.r}`;
-      const [fiRes,adsbRes]=await Promise.allSettled([fetchJson(fiUrl),fetchJson(adsbUrl)]);
-      sourceState.fi=fiRes.status==='fulfilled'?'OK':'feil';
-      sourceState.adsb=adsbRes.status==='fulfilled'?'OK':'feil';
+      sourceState.adsb='feil';
       sourceState.apl='ikke brukt';
-      const fiData=fiRes.status==='fulfilled'?(fiRes.value.ac||fiRes.value.aircraft||[]):[];
-      const adsbData=adsbRes.status==='fulfilled'?(adsbRes.value.ac||[]):[];
-      if(fiRes.status!=='fulfilled'&&adsbRes.status!=='fulfilled')throw workerError;
-      merged=mergeAircraft(fiData,adsbData,'adsb.fi','adsb.lol');
+      sourceState.fi='ikke brukt';
+      throw workerError; // Diagnostic mode: no direct browser or proxy fallback.
     }
 
     updateAdsbSourceLabel(workerOk?(fiRescueDirectOk?'combined':'worker'):'direct');
@@ -2320,7 +2305,7 @@ async function refresh(){
     planes=preserveKsuLastKnown(planes);
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
-    queueLocal25RouteLookups(planes);
+    // Diagnostic mode: no automatic per-aircraft route lookups.
     check50NmNotifications(planes);
     if(proximityCrossings(planes).length)playProximityTone();
     renderProximityAlert(planes);
@@ -2333,7 +2318,7 @@ async function refresh(){
     $('status').className='ok';
     document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
     render(true);
-    if(selected)enrichRoute(selected);
+    // Diagnostic mode: skip selected-aircraft route lookup.
   }catch(e){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
     if(lastGoodPlanes.length){
