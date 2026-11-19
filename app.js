@@ -329,7 +329,6 @@ function remoteDepartureCandidates(){
 async function fetchRemoteCallsign(callsign){
   if(!callsign)return null;
   const urls=[
-    'https://api.airplanes.live/v2/callsign/'+encodeURIComponent(callsign),
     'https://api.adsb.lol/v2/callsign/'+encodeURIComponent(callsign)
   ];
   for(const url of urls){
@@ -371,7 +370,7 @@ async function discoverKsuAircraftFromDeparture(f){
   const origin=airportByCode(f?.airport);
   if(!origin)return null;
   try{
-    const url=`https://api.airplanes.live/v2/point/${origin.lat}/${origin.lon}/25`;
+    const url=`https://api.adsb.lol/v2/point/${origin.lat}/${origin.lon}/25`;
     const j=await fetchJson(url);
     const rows=(Array.isArray(j?.ac)?j.ac:[]).filter(a=>{
       const cs=compactFlightId(a.flight);
@@ -398,7 +397,7 @@ async function discoverKsuDepartureAircraft(f){
   const ksu=airportByCode('KSU');
   if(!destination||!ksu)return null;
   try{
-    const url=`https://api.airplanes.live/v2/point/${ksu.lat}/${ksu.lon}/25`;
+    const url=`https://api.adsb.lol/v2/point/${ksu.lat}/${ksu.lon}/25`;
     const j=await fetchJson(url);
     const rows=(Array.isArray(j?.ac)?j.ac:[]).filter(a=>{
       const cs=compactFlightId(a.flight);
@@ -463,7 +462,7 @@ async function updateRemoteKsuTracking(){
         });
       }
 
-      const p=normalize({...raw,_source:'airplanes.live · KSU fjernsporing'},s);
+      const p=normalize({...raw,_source:'adsb.lol · KSU fjernsporing'},s);
       p.remoteTracked=true;
       p.ksuFlight=f;
       if(raw._matchedRoute){
@@ -2244,7 +2243,7 @@ function recordAdminStatus(event,details={}){
 function updateAdsbSourceLabel(mode){
   const el=$('adsb-source-label');
   if(!el)return;
-  const names=[['apl','Airplanes.live']];
+  const names=[['adsb','adsb.lol']];
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
@@ -2276,12 +2275,12 @@ async function refresh(){
       merged=w.ac;
       sharedTracks=w.tracks||null;
       sourceState.adsb=w.sources?.['adsb.lol']?.ok?'OK':'feil';
-      sourceState.apl=w.sources?.['airplanes.live']?.ok?'OK':'feil';
-      sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
+      sourceState.apl='ikke brukt';
+      sourceState.fi='ikke brukt';
       workerOk=true;
     }catch(workerError){
-      sourceState.adsb='ikke brukt';
-      sourceState.apl='feil';
+      sourceState.adsb='feil';
+      sourceState.apl='ikke brukt';
       sourceState.fi='ikke brukt';
       throw workerError; // Diagnostic mode: no direct browser or proxy fallback.
     }
