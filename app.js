@@ -1651,38 +1651,66 @@ function vesselKind(v){
   if(t>=60&&t<=69)return 'Passasjerskip';
   return 'Skip';
 }
-// During the ADS-B pause, focus on one moving AIS vessel at a time.
+// Rotate through nearby AIS vessels and show a live information popup.
 let vesselFocusMmsi='',vesselFocusChangedAt=0,vesselLastFocusAt=0;
+const vesselMarkers=new Map();
 const escapeVesselText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function vesselKey(v){return String(v.mmsi||v.name||'').trim();}
+function vesselDetail(v){
+ const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
+ const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
+ const fields=[
+  ['Type',category],['MMSI',v.mmsi],['Fart',Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],
+  ['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],
+  ['Avstand KSU',Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM':''],
+  ['Destinasjon',v.destination],['AIS-tid',v.msgtime]
+ ];
+ return '<div style="min-width:190px"><b>'+escapeVesselText(name)+'</b>'+
+  fields.filter(([,value])=>value!==''&&value!=null).map(([key,value])=>'<div><strong>'+escapeVesselText(key)+':</strong> '+escapeVesselText(value)+'</div>').join('')+
+  '<small>AIS · Kystverket</small></div>';
+}
 function focusMovingVessel(force=false){
  const el=document.getElementById('vessel-focus-status');
- const targets=vessels.filter(v=>['hurtigrute','hurtigbat','mulig_hurtigbat'].includes(v.category)&&Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon)));
- if(!targets.length){vesselFocusMmsi='';if(el)el.textContent='Ingen Hurtigruten/Havila eller aktuelle hurtigbåter registrert nå';return;}
- const now=Date.now(),sorted=targets.slice().sort((a,b)=>Number(a.distanceNm)-Number(b.distanceNm));
- let selected=sorted.find(v=>String(v.mmsi||v.name)===vesselFocusMmsi);
- if(!selected||now-vesselFocusChangedAt>90000){const index=sorted.findIndex(v=>String(v.mmsi||v.name)===vesselFocusMmsi);selected=sorted[(index+1)%sorted.length];vesselFocusMmsi=String(selected.mmsi||selected.name);vesselFocusChangedAt=now;force=true;}
- const label=selected.category==='hurtigrute'?'Hurtigruten/Havila':selected.category==='hurtigbat'?'Hurtigbåt':'Mulig hurtigbåt';
- if(el)el.textContent='Følger '+label+': '+(selected.name||('MMSI '+selected.mmsi))+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU';
- if(force||now-vesselLastFocusAt>20000){vesselLastFocusAt=now;const target=L.latLng(Number(selected.lat),Number(selected.lon)),zoom=selected.distanceNm>45?8:10;if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>700)map.flyTo(target,zoom,{animate:true,duration:1.6});}
+ if(Date.now()>=ADSB_PAUSE_UNTIL_MS){if(el)el.textContent='';return;}
+ const nearby=vessels.filter(v=>Number(v.distanceNm)<=25&&Number(v.speed)>=1&&vesselMarkers.has(vesselKey(v)));
+ const priority=vessels.filter(v=>Number(v.distanceNm)>25&&['hurtigrute','hurtigbat','mulig_hurtigbat'].includes(v.category)&&vesselMarkers.has(vesselKey(v)));
+ const targets=nearby.concat(priority);
+ if(!targets.length){vesselFocusMmsi='';if(el)el.textContent='Ingen fartøy i bevegelse å følge akkurat nå';return;}
+ const now=Date.now();
+ const sorted=targets.slice().sort((a,b)=>Number(a.distanceNm)-Number(b.distanceNm));
+ let selected=sorted.find(v=>vesselKey(v)===vesselFocusMmsi);
+ if(!selected||now-vesselFocusChangedAt>=45000){
+  const index=sorted.findIndex(v=>vesselKey(v)===vesselFocusMmsi);
+  selected=sorted[(index+1)%sorted.length];
+  vesselFocusMmsi=vesselKey(selected);vesselFocusChangedAt=now;force=true;
+ }
+ const name=selected.name||('MMSI '+selected.mmsi);
+ if(el)el.textContent='Følger: '+name+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU · bytter hvert 45. sekund';
+ if(force||now-vesselLastFocusAt>=20000){
+  vesselLastFocusAt=now;
+  const target=L.latLng(Number(selected.lat),Number(selected.lon));
+  const zoom=selected.distanceNm>45?8:selected.distanceNm>25?9:12;
+  if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>500)map.flyTo(target,zoom,{animate:true,duration:1.5});
+  const marker=vesselMarkers.get(vesselKey(selected));
+  if(marker){
+   marker.setPopupContent(vesselDetail(selected));
+   marker.openPopup();
+  }
+ }
 }
 function renderVessels(){
-  vesselLayer.clearLayers();
-  for(const v of vessels){
-    if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon)))continue;
-    const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
-    const categoryLabel=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':'';
-    const detail=[
-      categoryLabel||vesselKind(v),
-      Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM fra KSU':'',
-      Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' kt':'',
-      v.destination?'mål '+v.destination:''
-    ].filter(Boolean).join(' · ');
-    L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
-      .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
-      .bindPopup('<b>'+escapeVesselText(name)+'</b><br>'+escapeVesselText(detail)+'<br><small>AIS · Kystverket</small>')
-      .addTo(vesselLayer);
-  }
-  focusMovingVessel();
+ vesselLayer.clearLayers();
+ vesselMarkers.clear();
+ for(const v of vessels){
+  if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon)))continue;
+  const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
+  const marker=L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
+   .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
+   .bindPopup(vesselDetail(v),{autoPan:false})
+   .addTo(vesselLayer);
+  vesselMarkers.set(vesselKey(v),marker);
+ }
+ focusMovingVessel();
 }
 async function loadVessels(){
   try{
