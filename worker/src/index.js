@@ -149,11 +149,8 @@ export class TrackStore extends DurableObject {
 
           // Respect provider rate limits across requests and scheduled jobs.
           const cooldown = (await this.ctx.storage.get("aircraftSourceCooldown")) || {};
-          const providers = [
-            ["adsb.lol", adsbUrl],
-            ["airplanes.live", airplanesUrl],
-            ["adsb.fi", adsbFiUrl],
-          ];
+          // Diagnostic mode: only adsb.lol. No automatic provider failover.
+          const providers = [["adsb.lol", adsbUrl]];
           const results = {};
           for (const [name, sourceUrl] of providers) {
             const blockedUntil = Number(cooldown[name] || 0);
@@ -957,7 +954,7 @@ export default {
   async scheduled(controller, env, ctx) {
     if (Date.now() < ADSB_PAUSE_UNTIL_MS) return;
 
-    if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY || !env.VAPID_SUBJECT) return;
+    return; // Diagnostic mode: disable scheduled ADS-B polling and push checks.
 
     ctx.waitUntil((async () => {
       const sharedId = env.TRACK_STORE.idFromName("ksu");
