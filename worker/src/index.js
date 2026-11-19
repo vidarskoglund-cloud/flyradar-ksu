@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 
-const ADSB_PAUSE_UNTIL_MS = Date.UTC(2099, 0, 1); // ADS-B manually paused until explicitly re-enabled.
+const ADSB_PAUSE_UNTIL_MS = 0; // ADS-B tracking enabled.
 const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
 const TRACK_KEEP_MS = 20 * 60 * 1000;
 const FLIGHTAWARE_QUERY_COST_USD = 0.005;
