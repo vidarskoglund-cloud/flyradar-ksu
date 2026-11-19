@@ -2250,7 +2250,7 @@ function updateAdsbSourceLabel(mode){
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
   el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.'+(fiRescueError?' Direkte adsb.fi: '+fiRescueError+'. Neste forsøk tidligst '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO'):'');
 }
-const ADSB_PAUSE_UNTIL_MS = Date.UTC(2099,0,1); // Manual pause
+const ADSB_PAUSE_UNTIL_MS = 0; // Tracking enabled
 async function refresh(){
   if (Date.now() < ADSB_PAUSE_UNTIL_MS) {
     planes = [];
@@ -2658,65 +2658,7 @@ function animateAircraftMotion(frameAt){
     if($('fs-closest'))$('fs-closest').textContent=closestText;
   }
 }
-function nextRefreshMs(){
-  if(!planes.length)return 120000;
-
-  // Fly som er lave og nær en kjent flyplass skal oppdateres raskt,
-  // selv om flyplassen ligger langt fra KSU.
-  for(const p of planes){
-    const near=nearestKnownAirport(p,8);
-    if(!near)continue;
-    const alt=Number(p.alt);
-    const gs=Number(p.gs);
-    const hasAlt=Number.isFinite(alt);
-
-    // Bekreftede KSU-fly på/tett ved avgangsflyplass skal følges tett selv
-    // når ADS-B ikke rapporterer høyde på bakken.
-    if(p.ksuFlight){
-      if(near.dNm<=1.5 && (!Number.isFinite(gs)||gs<=45) && (!hasAlt||alt<=2500))return 3000;
-      if(near.dNm<=3 && (!Number.isFinite(gs)||gs<=120) && (!hasAlt||alt<=4000))return 5000;
-      if(near.dNm<=6 && (!Number.isFinite(gs)||gs<=220) && (!hasAlt||alt<=8000))return 10000;
-    }
-
-    // Samme raske bakke-/taxiregel for alle fly ved kjente flyplasser.
-    // Høyde er ikke nødvendig når lav fart og nærhet tydelig viser bakke/taxi.
-    if(near.dNm<=1.5 && Number.isFinite(gs) && gs<=45 && (!hasAlt||alt<=2500))return 3000;
-    if(near.dNm<=3 && Number.isFinite(gs) && gs<=120 && (!hasAlt||alt<=4000))return 5000;
-
-    if(near.dNm<=1.5 && hasAlt && alt<=2000)return 3000;
-    if(near.dNm<=3 && hasAlt && alt<=3000)return 5000;
-    if(near.dNm<=6 && hasAlt && alt<=6000)return 10000;
-    if(near.dNm<=8 && hasAlt && alt<=10000 && (!Number.isFinite(gs)||gs<=250))return 20000;
-  }
-
-  const approachKsu=planes.find(p=>ksuApproachContext(p));
-  if(approachKsu){
-    const ctx=ksuApproachContext(approachKsu);
-    if(ctx?.dNm<=15)return 5000;
-    if(ctx?.dNm<=35)return 10000;
-    return 15000;
-  }
-
-  const trackedKsu=planes.find(p=>confirmedKsuArrival(p)&&ksuDistanceNm(p)<=12);
-  if(trackedKsu){
-    const d=ksuDistanceNm(trackedKsu);
-    const gs=Number(trackedKsu.gs);
-    const alt=Number(trackedKsu.alt);
-    if(d<=3.5 && (!Number.isFinite(gs)||gs<=80) && (!Number.isFinite(alt)||alt<=2500))return 3000;
-    if(d<=6)return 5000;
-    return 10000;
-  }
-
-  const nearest=planes.slice().sort((a,b)=>a.d-b.d)[0];
-  if(!nearest)return 120000;
-  const dNm=nm(nearest.d);
-  const alt=typeof nearest.alt==='number'?nearest.alt:99999;
-  if(dNm<=5)return 10000;
-  if(dNm<=15)return 15000;
-  if(dNm<=30 && alt<=20000)return 30000;
-  if(dNm<=75)return 60000;
-  return 120000;
-}
+function nextRefreshMs(){ return 60000; } // One aircraft refresh per minute, regardless of proximity.
 async function adaptiveRefresh(){
   if(refreshTimer)clearTimeout(refreshTimer);
   await refresh();
