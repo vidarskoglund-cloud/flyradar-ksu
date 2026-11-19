@@ -2244,7 +2244,7 @@ function recordAdminStatus(event,details={}){
 function updateAdsbSourceLabel(mode){
   const el=$('adsb-source-label');
   if(!el)return;
-  const names=[['adsb','adsb.lol']];
+  const names=[['apl','Airplanes.live']];
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
@@ -2280,8 +2280,8 @@ async function refresh(){
       sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
     }catch(workerError){
-      sourceState.adsb='feil';
-      sourceState.apl='ikke brukt';
+      sourceState.adsb='ikke brukt';
+      sourceState.apl='feil';
       sourceState.fi='ikke brukt';
       throw workerError; // Diagnostic mode: no direct browser or proxy fallback.
     }
