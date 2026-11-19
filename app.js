@@ -1655,37 +1655,24 @@ function vesselKind(v){
 let vesselFocusMmsi='',vesselFocusChangedAt=0,vesselLastFocusAt=0;
 const escapeVesselText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function focusMovingVessel(force=false){
-  const el=document.getElementById('vessel-focus-status');
-  if(Date.now()>=ADSB_PAUSE_UNTIL_MS){if(el)el.textContent='';return;}
-  const moving=vessels.filter(v=>Number(v.speed)>=1&&Number(v.distanceNm)<=25&&Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon)));
-  if(!moving.length){if(el)el.textContent='Ingen fartøy å følge akkurat nå';return;}
-  const now=Date.now();
-  const sorted=moving.slice().sort((a,b)=>Number(b.speed)-Number(a.speed));
-  let selected=sorted.find(v=>String(v.mmsi||v.name)===vesselFocusMmsi);
-  if(!selected||now-vesselFocusChangedAt>60000){
-    const index=sorted.findIndex(v=>String(v.mmsi||v.name)===vesselFocusMmsi);
-    selected=sorted[(index+1)%sorted.length];
-    vesselFocusMmsi=String(selected.mmsi||selected.name);
-    vesselFocusChangedAt=now;
-    force=true;
-  }
-  if(el)el.textContent='Følger: '+(selected.name||('MMSI '+selected.mmsi))+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU';
-  if(force||now-vesselLastFocusAt>20000){
-    vesselLastFocusAt=now;
-    const target=L.latLng(Number(selected.lat),Number(selected.lon));
-    const zoom=10;
-    if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>700){
-      map.flyTo(target,zoom,{animate:true,duration:1.6});
-    }
-  }
+ const el=document.getElementById('vessel-focus-status');
+ const targets=vessels.filter(v=>['hurtigrute','hurtigbat','mulig_hurtigbat'].includes(v.category)&&Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon)));
+ if(!targets.length){vesselFocusMmsi='';if(el)el.textContent='Ingen Hurtigruten/Havila eller aktuelle hurtigbåter registrert nå';return;}
+ const now=Date.now(),sorted=targets.slice().sort((a,b)=>Number(a.distanceNm)-Number(b.distanceNm));
+ let selected=sorted.find(v=>String(v.mmsi||v.name)===vesselFocusMmsi);
+ if(!selected||now-vesselFocusChangedAt>90000){const index=sorted.findIndex(v=>String(v.mmsi||v.name)===vesselFocusMmsi);selected=sorted[(index+1)%sorted.length];vesselFocusMmsi=String(selected.mmsi||selected.name);vesselFocusChangedAt=now;force=true;}
+ const label=selected.category==='hurtigrute'?'Hurtigruten/Havila':selected.category==='hurtigbat'?'Hurtigbåt':'Mulig hurtigbåt';
+ if(el)el.textContent='Følger '+label+': '+(selected.name||('MMSI '+selected.mmsi))+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU';
+ if(force||now-vesselLastFocusAt>20000){vesselLastFocusAt=now;const target=L.latLng(Number(selected.lat),Number(selected.lon)),zoom=selected.distanceNm>45?8:10;if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>700)map.flyTo(target,zoom,{animate:true,duration:1.6});}
 }
 function renderVessels(){
   vesselLayer.clearLayers();
   for(const v of vessels){
     if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon)))continue;
     const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
+    const categoryLabel=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':'';
     const detail=[
-      vesselKind(v),
+      categoryLabel||vesselKind(v),
       Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM fra KSU':'',
       Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' kt':'',
       v.destination?'mål '+v.destination:''
@@ -1706,7 +1693,7 @@ async function loadVessels(){
     renderVessels();
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent=vessels.length
-      ?vessels.length+' fartøy i bevegelse innen 25 NM · AIS fra Kystverket'
+      ?vessels.length+' fartøy i bevegelse · AIS fra Kystverket'
       :'Ingen fartøy i bevegelse registrert innen 25 NM';
   }catch(e){
     vessels=[];
@@ -2235,7 +2222,7 @@ function updateAdsbSourceLabel(mode){
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
   el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.'+(fiRescueError?' Direkte adsb.fi: '+fiRescueError+'. Neste forsøk tidligst '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO'):'');
 }
-const ADSB_PAUSE_UNTIL_MS = 1795006013510;
+const ADSB_PAUSE_UNTIL_MS = Date.UTC(2099,0,1); // Manual pause
 async function refresh(){
   if (Date.now() < ADSB_PAUSE_UNTIL_MS) {
     planes = [];
