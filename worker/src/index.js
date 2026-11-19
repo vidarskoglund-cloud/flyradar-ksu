@@ -149,8 +149,8 @@ export class TrackStore extends DurableObject {
 
           // Respect provider rate limits across requests and scheduled jobs.
           const cooldown = (await this.ctx.storage.get("aircraftSourceCooldown")) || {};
-          // Diagnostic mode: only adsb.lol. No automatic provider failover.
-          const providers = [["adsb.lol", adsbUrl]];
+          // Diagnostic mode: only airplanes.live. No automatic provider failover.
+          const providers = [["airplanes.live", airplanesUrl]];
           const results = {};
           for (const [name, sourceUrl] of providers) {
             const blockedUntil = Number(cooldown[name] || 0);
