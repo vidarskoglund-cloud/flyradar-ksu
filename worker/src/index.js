@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 
-const ADSB_PAUSE_UNTIL_MS = 1795006013510; // Automatic 24-hour ADS-B pause; resumes without another deployment.
+const ADSB_PAUSE_UNTIL_MS = Date.UTC(2099, 0, 1); // ADS-B manually paused until explicitly re-enabled.
 const KSU = { lat: 63.1118, lon: 7.8245, radiusNm: 150 };
 const TRACK_KEEP_MS = 20 * 60 * 1000;
 const FLIGHTAWARE_QUERY_COST_USD = 0.005;
@@ -620,7 +620,18 @@ export default {
         const parsed = rows.map(normalizeVesselFeature).filter(Boolean);
         const nearby = parsed.map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
           .filter(v => v.distanceNm <= 25);
-        const vessels = nearby.filter(v => Number.isFinite(v.speed) && v.speed >= 1)
+        const vessels = parsed.map(v => {
+          const distanceNmFromKsu = distanceNm(KSU.lat, KSU.lon, v.lat, v.lon);
+          const name = String(v.name || "").toUpperCase();
+          const dest = String(v.destination || "").toUpperCase();
+          const coastal = /(HAVILA|HURTIGRUTEN|NORDLYS|POLARLYS|KONG HARALD|NORDKAPP|RICHARD WITH|MIDNATSOL|FINNMARKEN|TROLLFJORD|NORDSTJERNEN|LOFOTEN|VESTERALEN|SPITSBERGEN|CAPELLA|CASTOR|POLARIS|POLLUX)/.test(name);
+          const fastNamed = /(TRONDHEIMSFJORD|TER NINGEN|TERNINGEN|TYRHAUG|FJORDPRINSESSEN|FJORDDRONNINGEN)/.test(name);
+          const fastRoute = Number(v.shipType) >= 40 && Number(v.shipType) <= 49 &&
+            /(TRONDHEIM|KRISTIANSUND|BREKSTAD|EDOY|EDØY)/.test(dest);
+          const category = coastal ? "hurtigrute" : fastNamed ? "hurtigbat" : fastRoute ? "mulig_hurtigbat" : "";
+          return { ...v, distanceNm: distanceNmFromKsu, category };
+        }).filter(v => Number.isFinite(v.speed) && v.speed >= 1 &&
+          (v.distanceNm <= 25 || (v.category && v.distanceNm <= 110)))
           .sort((a,b) => a.distanceNm - b.distanceNm);
         const diagnostic = {
           upstream_type: Array.isArray(data) ? "array" : String(data?.type || typeof data),
