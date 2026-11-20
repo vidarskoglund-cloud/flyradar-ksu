@@ -149,16 +149,19 @@ export class TrackStore extends DurableObject {
           const providers = [["adsb.lol", adsbUrl]];
           const results = {};
           for (const [name, sourceUrl] of providers) {
-            const blockedUntil = Number(cooldown[name] || 0);
+            const previous = cooldown[name];
+            const blockedUntil = Number(previous?.retry_at ?? previous ?? 0);
             if (blockedUntil > Date.now()) {
-              results[name] = { name, ok: false, status: 429, ac: [], retry_at: blockedUntil };
+              results[name] = { name, ok: false, status: previous?.status ?? null, ac: [], last_attempt_at: previous?.last_attempt_at ?? null, retry_at: blockedUntil, waiting: true };
               continue;
             }
             const result = await getSource(name, sourceUrl);
             results[name] = result;
             if (!result.ok) {
-              cooldown[name] = Date.now() + (result.status === 403 ? 15 * 60000 :
+              result.last_attempt_at = Date.now();
+              result.retry_at = result.last_attempt_at + (result.status === 403 ? 15 * 60000 :
                 result.status === 429 ? 5 * 60000 : 2 * 60000);
+              cooldown[name] = { status: result.status, last_attempt_at: result.last_attempt_at, retry_at: result.retry_at };
             } else {
               delete cooldown[name];
               break; // One working source is enough; avoid unnecessary requests.
@@ -174,7 +177,7 @@ export class TrackStore extends DurableObject {
             generated_at: new Date().toISOString(),
             generated_at_ms: Date.now(),
             sources: {
-              "adsb.lol": { ok: adsb.ok, status: adsb.status, count: adsb.ac.length },
+              "adsb.lol": { ok: adsb.ok, status: adsb.status, count: adsb.ac.length, last_attempt_at: adsb.last_attempt_at ?? null, retry_at: adsb.retry_at ?? null, waiting: adsb.waiting === true },
               "airplanes.live": { ok: airplanes.ok, status: airplanes.status, count: airplanes.ac.length },
               "adsb.fi": { ok: adsbfi.ok, status: adsbfi.status, count: adsbfi.ac.length },
             },
