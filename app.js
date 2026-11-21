@@ -1617,7 +1617,7 @@ async function rescueAdsbFi(s){
     fiRescueDirectOk=true;
     return aircraft;
   }catch(error){
-    fiRescueError=String(error?.message||error);
+    fiRescueError=error?.name==='AbortError'||error?.name==='TimeoutError'?'Tidsavbrudd (8 sek)':error instanceof TypeError?'Nettverksfeil / mulig CORS-blokkering':String(error?.message||error);
     // Network/CORS errors also need backoff to avoid hammering the endpoint.
     if(!fiRescueRetryAfter || fiRescueRetryAfter<Date.now())fiRescueRetryAfter=Date.now()+120000;
     console.warn('adsb.fi direct request unavailable:',fiRescueError);
@@ -2217,7 +2217,8 @@ function updateAdsbSourceLabel(mode){
   const names=[['fi','adsb.fi']];
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
-  el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
+  const diagnostic=fiRescueError?(' · '+fiRescueError+(fiRescueRetryAfter>Date.now()?' · nytt forsøk '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'')):'';
+  el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'')+diagnostic;
   el.title='Aktive datakilder. Dette viser ikke hvilken mottaker som observerte hvert fly.'+(fiRescueError?' Direkte adsb.fi: '+fiRescueError+'. Neste forsøk tidligst '+new Date(fiRescueRetryAfter).toLocaleTimeString('no-NO'):'');
 }
 const ADSB_PAUSE_UNTIL_MS = 0; // Tracking enabled
@@ -2289,7 +2290,7 @@ async function refresh(){
       render(false);
       return;
     }
-    $('status').textContent='Feil: '+e.message;$('status').className='err';
+    $('status').textContent='Flydata feilet: '+(fiRescueError||e.message);$('status').className='err';
     $('cards').innerHTML='<div class="card">Kunne ikke hente live-data. Kontroller nettverk eller prøv Oppdater igjen.</div>';
   }
 }
