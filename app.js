@@ -1314,7 +1314,7 @@ function followNearest(list,s){
   if(!focusIdleCandidate(sorted,false))applyMapLevel(s);
 }
 function fitMap(list,s){
-  followNearest(list,s);
+  // Automatic aircraft zoom and tracking disabled; keep user's map position.
 }
 function airportLabel(a){
   if(!a)return'';
@@ -1668,35 +1668,6 @@ function vesselDetail(v){
   fields.filter(([,value])=>value!==''&&value!=null).map(([key,value])=>'<div><strong>'+escapeVesselText(key)+':</strong> '+escapeVesselText(value)+'</div>').join('')+
   '<small>AIS · Kystverket</small></div>';
 }
-function focusMovingVessel(force=false){
- const el=document.getElementById('vessel-focus-status');
- const nearby=vessels.filter(v=>Number(v.distanceNm)<=25&&Number(v.speed)>=1&&vesselMarkers.has(vesselKey(v)));
- const priority=vessels.filter(v=>Number(v.distanceNm)>25&&['hurtigrute','hurtigbat','mulig_hurtigbat'].includes(v.category)&&vesselMarkers.has(vesselKey(v)));
- const named=vessels.filter(v=>/bremsnes/i.test(String(v.name||''))&&vesselMarkers.has(vesselKey(v)));
- const targets=named.length?named:nearby.concat(priority);
- if(!targets.length){vesselFocusMmsi='';if(el)el.textContent='Ingen fartøy i bevegelse å følge akkurat nå';return;}
- const now=Date.now();
- const sorted=targets.slice().sort((a,b)=>Number(a.distanceNm)-Number(b.distanceNm));
- let selected=sorted.find(v=>vesselKey(v)===vesselFocusMmsi);
- if(!selected||now-vesselFocusChangedAt>=45000){
-  const index=sorted.findIndex(v=>vesselKey(v)===vesselFocusMmsi);
-  selected=sorted[(index+1)%sorted.length];
-  vesselFocusMmsi=vesselKey(selected);vesselFocusChangedAt=now;force=true;
- }
- const name=selected.name||('MMSI '+selected.mmsi);
- if(el)el.textContent='Følger: '+name+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU'+(named.length?' · prioritert fartøy':' · bytter hvert 45. sekund');
- if(force||now-vesselLastFocusAt>=20000){
-  vesselLastFocusAt=now;
-  const target=L.latLng(Number(selected.lat),Number(selected.lon));
-  const zoom=named.length?13:selected.distanceNm>45?8:selected.distanceNm>25?9:12;
-  if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>500)map.flyTo(target,zoom,{animate:true,duration:1.5});
-  const marker=vesselMarkers.get(vesselKey(selected));
-  if(marker){
-   marker.setPopupContent(vesselDetail(selected));
-   marker.openPopup();
-  }
- }
-}
 function renderVessels(){
  vesselLayer.clearLayers();
  vesselMarkers.clear();
@@ -1709,7 +1680,7 @@ function renderVessels(){
    .addTo(vesselLayer);
   vesselMarkers.set(vesselKey(v),marker);
  }
- focusMovingVessel();
+
 }
 async function loadVessels(){
   try{
@@ -2650,15 +2621,12 @@ async function adaptiveRefresh(){
 }
 setInterval(renderAvinor,30000);
 loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
-setInterval(()=>{
-  if(document.hidden)return;
-  focusIdleCandidate(planes,true);
-},2000);
+
 document.addEventListener('fullscreenchange',()=>{
   setTimeout(()=>{
     try{
       map.invalidateSize(true);
-      if(planes.length)fitMap(planes,settings());
+      // Preserve manual map position when entering or leaving fullscreen.
     }catch(e){}
   },120);
 });
