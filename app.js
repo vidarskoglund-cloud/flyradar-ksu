@@ -2214,7 +2214,7 @@ function recordAdminStatus(event,details={}){
 function updateAdsbSourceLabel(mode){
   const el=$('adsb-source-label');
   if(!el)return;
-  const names=[['adsb','adsb.lol']];
+  const names=[['fi','adsb.fi']];
   const active=names.filter(([key])=>sourceState[key]==='OK').map(([,name])=>name);
   const unavailable=names.filter(([key])=>sourceState[key]==='feil').map(([,name])=>name);
   el.textContent='Flydata: '+(active.join(' + ')||'ingen kilde bekreftet')+(mode==='worker'?' (via Worker)':mode==='combined'?' (Worker + direkte)':' (direkte)')+(unavailable.length?' · Feil: '+unavailable.join(', '):'');
@@ -2245,9 +2245,9 @@ async function refresh(){
       if(!w||w.ok!==true||!Array.isArray(w.ac))throw new Error('Ugyldig Worker-svar');
       merged=w.ac;
       sharedTracks=w.tracks||null;
-      sourceState.adsb=w.sources?.['adsb.lol']?.ok?'OK':'feil';
+      sourceState.adsb='ikke brukt';
       sourceState.apl='ikke brukt';
-      sourceState.fi='ikke brukt';
+      sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
     }catch(workerError){
       sourceState.adsb='feil';
