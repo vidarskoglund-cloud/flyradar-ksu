@@ -1670,10 +1670,10 @@ function vesselDetail(v){
 }
 function focusMovingVessel(force=false){
  const el=document.getElementById('vessel-focus-status');
- if(Date.now()>=ADSB_PAUSE_UNTIL_MS){if(el)el.textContent='';return;}
  const nearby=vessels.filter(v=>Number(v.distanceNm)<=25&&Number(v.speed)>=1&&vesselMarkers.has(vesselKey(v)));
  const priority=vessels.filter(v=>Number(v.distanceNm)>25&&['hurtigrute','hurtigbat','mulig_hurtigbat'].includes(v.category)&&vesselMarkers.has(vesselKey(v)));
- const targets=nearby.concat(priority);
+ const named=vessels.filter(v=>/bremsens|bremnes/i.test(String(v.name||''))&&vesselMarkers.has(vesselKey(v)));
+ const targets=named.length?named:nearby.concat(priority);
  if(!targets.length){vesselFocusMmsi='';if(el)el.textContent='Ingen fartøy i bevegelse å følge akkurat nå';return;}
  const now=Date.now();
  const sorted=targets.slice().sort((a,b)=>Number(a.distanceNm)-Number(b.distanceNm));
@@ -1684,11 +1684,11 @@ function focusMovingVessel(force=false){
   vesselFocusMmsi=vesselKey(selected);vesselFocusChangedAt=now;force=true;
  }
  const name=selected.name||('MMSI '+selected.mmsi);
- if(el)el.textContent='Følger: '+name+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU · bytter hvert 45. sekund';
+ if(el)el.textContent='Følger: '+name+' · '+Number(selected.speed).toFixed(1)+' knop · '+Number(selected.distanceNm).toFixed(1)+' NM fra KSU'+(named.length?' · prioritert fartøy':' · bytter hvert 45. sekund');
  if(force||now-vesselLastFocusAt>=20000){
   vesselLastFocusAt=now;
   const target=L.latLng(Number(selected.lat),Number(selected.lon));
-  const zoom=selected.distanceNm>45?8:selected.distanceNm>25?9:12;
+  const zoom=named.length?13:selected.distanceNm>45?8:selected.distanceNm>25?9:12;
   if(map.getZoom()!==zoom||map.getCenter().distanceTo(target)>500)map.flyTo(target,zoom,{animate:true,duration:1.5});
   const marker=vesselMarkers.get(vesselKey(selected));
   if(marker){
