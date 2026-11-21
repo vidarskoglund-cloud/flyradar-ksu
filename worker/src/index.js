@@ -141,12 +141,12 @@ export class TrackStore extends DurableObject {
       if (!this.aircraftFetchPromise) {
         this.aircraftFetchPromise = (async () => {
           const adsbUrl =
-            `https://api.adsb.lol/v2/point/${KSU.lat}/${KSU.lon}/${KSU.radiusNm}`;
+            `https://opendata.adsb.fi/api/v3/lat/${KSU.lat}/lon/${KSU.lon}/dist/${KSU.radiusNm}`;
 
           // Respect provider rate limits across requests and scheduled jobs.
           const cooldown = (await this.ctx.storage.get("aircraftSourceCooldown")) || {};
-          // Use adsb.lol as the sole aircraft provider.
-          const providers = [["adsb.lol", adsbUrl]];
+          // Use adsb.fi v3 as the sole aircraft provider.
+          const providers = [["adsb.fi", adsbUrl]];
           const results = {};
           for (const [name, sourceUrl] of providers) {
             const previous = cooldown[name];
