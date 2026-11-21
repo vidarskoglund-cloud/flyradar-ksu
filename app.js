@@ -2237,38 +2237,21 @@ async function refresh(){
   home.setLatLng([s.lat,s.lon]);
   updateRangeRings(s);
   try{
-    let merged=[], workerOk=false, sharedTracks=null;
-    try{
-      const wr=await fetch(WORKER_URL,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
-      if(!wr.ok)throw new Error('Worker HTTP '+wr.status);
-      const w=await wr.json();
-      if(!w||w.ok!==true||!Array.isArray(w.ac))throw new Error('Ugyldig Worker-svar');
-      merged=w.ac;
-      sharedTracks=w.tracks||null;
-      sourceState.adsb='ikke brukt';
-      sourceState.apl='ikke brukt';
-      sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
-      workerOk=true;
-    }catch(workerError){
-      // If Cloudflare is denied, attempt one direct adsb.fi v3 browser request.
-      // This only succeeds when adsb.fi allows cross-origin requests (CORS).
-      const direct=await rescueAdsbFi(s);
-      if(!Array.isArray(direct))throw workerError;
-      merged=direct.map(a=>({...a,_source:'adsb.fi v3 (direkte)'}));
-      sharedTracks=null;
-      sourceState.adsb='ikke brukt';
-      sourceState.apl='ikke brukt';
-      sourceState.fi='OK';
-    }
-
-    updateAdsbSourceLabel(workerOk?(fiRescueDirectOk?'combined':'worker'):'direct');
+    // Browser-only diagnostic: do not request aircraft from Cloudflare or other providers.
+    const direct=await rescueAdsbFi(s);
+    if(!Array.isArray(direct))throw new Error('Direkte adsb.fi v3 feilet: '+(fiRescueError||'venter på nytt forsøk'));
+    const merged=direct.map(a=>({...a,_source:'adsb.fi v3 (direkte)'}));
+    const sharedTracks=null;
+    sourceState.adsb='ikke brukt';
+    sourceState.apl='ikke brukt';
+    sourceState.fi='OK';
+    updateAdsbSourceLabel('direct');
     recordAdminStatus('flydata', {
-      worker:workerOk?'OK':'feil',adsbLol:sourceState.adsb,adsbFi:sourceState.fi,
-      airplanesLive:sourceState.apl,fiDirectError:fiRescueError||null,
-      fiRetryAt:fiRescueRetryAfter?new Date(fiRescueRetryAfter).toISOString():null,
-      aircraft:merged.length,source:workerOk?(fiRescueDirectOk?'worker+direct':'worker'):'direct'
+      worker:'deaktivert',adsbLol:'ikke brukt',adsbFi:'OK',
+      airplanesLive:'ikke brukt',fiDirectError:null,fiRetryAt:null,
+      aircraft:merged.length,source:'adsb.fi v3 direkte'
     });
-    recordAdsbDiagnostics(merged,workerOk?'worker':'direct-fallback');
+    recordAdsbDiagnostics(merged,'direct');
     localPlanes=merged
       .filter(a=>a.lat!=null&&a.lon!=null)
       .map(a=>normalize(a,s))
@@ -2291,11 +2274,13 @@ async function refresh(){
     const followText=followed?' · følger '+(priority?'KSU ':passerby?'lokalt ':'')+(followed.flight||followed.reg||followed.hex):'';
     $('status').textContent=`${localCount} fly innen 50 NM${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
-    document.body.dataset.liveSource=workerOk?'worker':'direct-fallback';
+    document.body.dataset.liveSource='direct';
     render(true);
     // Diagnostic mode: skip selected-aircraft route lookup.
   }catch(e){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
+    sourceState.fi='feil';
+    updateAdsbSourceLabel('direct');
     if(lastGoodPlanes.length){
       planes=lastGoodPlanes.map(p=>({...p}));
       const localCount=planes.filter(withinKsuAlertArea).length;
