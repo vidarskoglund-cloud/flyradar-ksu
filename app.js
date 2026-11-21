@@ -2250,10 +2250,15 @@ async function refresh(){
       sourceState.fi=w.sources?.['adsb.fi']?.ok?'OK':'feil';
       workerOk=true;
     }catch(workerError){
-      sourceState.adsb='feil';
+      // If Cloudflare is denied, attempt one direct adsb.fi v3 browser request.
+      // This only succeeds when adsb.fi allows cross-origin requests (CORS).
+      const direct=await rescueAdsbFi(s);
+      if(!Array.isArray(direct))throw workerError;
+      merged=direct.map(a=>({...a,_source:'adsb.fi v3 (direkte)'}));
+      sharedTracks=null;
+      sourceState.adsb='ikke brukt';
       sourceState.apl='ikke brukt';
-      sourceState.fi='ikke brukt';
-      throw workerError; // Diagnostic mode: no direct browser or proxy fallback.
+      sourceState.fi='OK';
     }
 
     updateAdsbSourceLabel(workerOk?(fiRescueDirectOk?'combined':'worker'):'direct');
