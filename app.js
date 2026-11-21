@@ -1672,7 +1672,7 @@ function focusMovingVessel(force=false){
  const el=document.getElementById('vessel-focus-status');
  const nearby=vessels.filter(v=>Number(v.distanceNm)<=25&&Number(v.speed)>=1&&vesselMarkers.has(vesselKey(v)));
  const priority=vessels.filter(v=>Number(v.distanceNm)>25&&['hurtigrute','hurtigbat','mulig_hurtigbat'].includes(v.category)&&vesselMarkers.has(vesselKey(v)));
- const named=vessels.filter(v=>/bremsens|bremnes/i.test(String(v.name||''))&&vesselMarkers.has(vesselKey(v)));
+ const named=vessels.filter(v=>/bremsnes/i.test(String(v.name||''))&&vesselMarkers.has(vesselKey(v)));
  const targets=named.length?named:nearby.concat(priority);
  if(!targets.length){vesselFocusMmsi='';if(el)el.textContent='Ingen fartøy i bevegelse å følge akkurat nå';return;}
  const now=Date.now();
