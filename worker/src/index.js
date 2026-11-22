@@ -567,6 +567,72 @@ async function getSource(name, url) {
   }
 }
 
+// Kvernberget METAR observations and Kristiansund forecast are separate
+// products: the former is measured, the latter is modelled.
+const WEATHER_STATION='ENKB';
+const WEATHER_CACHE_SECONDS=600;
+const WEATHER_USER_AGENT='Kristiansund-Trafikkradar/1.0 (https://vidarskoglund-cloud.github.io/flyradar-ksu/)';
+function numOrNull(value){
+ if(value===null||value===undefined||value==='')return null;
+ const n=Number(value);return Number.isFinite(n)?n:null;
+}
+function weatherObservation(rows,now=Date.now()){
+ const row=(Array.isArray(rows)?rows:[]).find(r=>String(r?.icaoId||r?.station||r?.id||'').toUpperCase()===WEATHER_STATION);
+ if(!row)return null;
+ const rawTime=row.obsTime??row.reportTime??row.receiptTime;
+ const parsed=typeof rawTime==='number'?rawTime*1000:Date.parse(String(rawTime||''));
+ if(!Number.isFinite(parsed)||parsed>now+300000||now-parsed>2*60*60*1000)return null;
+ const ktToMs=n=>n===null?null:Math.round(n*0.514444*10)/10;
+ const dir=numOrNull(row.wdir);
+ return {
+  station:WEATHER_STATION,observed_at:new Date(parsed).toISOString(),
+  temperature_c:numOrNull(row.temp),
+  wind_mps:ktToMs(numOrNull(row.wspd)),
+  gust_mps:ktToMs(numOrNull(row.wgst)),
+  wind_direction_deg:dir!==null&&dir<=360?dir:null,
+  visibility_m:numOrNull(row.visib)!==null?Math.round(Number(row.visib)*1609.344):null,
+  pressure_hpa:numOrNull(row.altim)!==null?Math.round(Number(row.altim)*33.8639):null,
+  raw:String(row.rawOb||row.raw||'').slice(0,350),
+  source:'Aviation Weather Center / METAR ENKB'
+ };
+}
+function weatherForecast(body){
+ const times=body?.properties?.timeseries;
+ if(!Array.isArray(times)||!times.length)return null;
+ const first=times[0];
+ const values=first?.data?.instant?.details;
+ if(!values)return null;
+ return {
+  location:'Kristiansund sentrum',
+  valid_at:String(first.time||''),
+  temperature_c:numOrNull(values.air_temperature),
+  wind_mps:numOrNull(values.wind_speed),
+  gust_mps:numOrNull(values.wind_speed_of_gust),
+  wind_direction_deg:numOrNull(values.wind_from_direction),
+  precipitation_next_hour_mm:numOrNull(first?.data?.next_1_hours?.details?.precipitation_amount),
+  symbol:String(first?.data?.next_1_hours?.summary?.symbol_code||''),
+  source:'MET Norway Locationforecast'
+ };
+}
+async function fetchWeather(){
+ const requestHeaders={'User-Agent':WEATHER_USER_AGENT,Accept:'application/json'};
+ const result=await Promise.allSettled([
+  fetch('https://aviationweather.gov/api/data/metar?ids=ENKB&format=json',{
+   headers:requestHeaders,signal:AbortSignal.timeout(10000)
+  }).then(async r=>{if(!r.ok)throw new Error('METAR '+r.status);return r.json();}),
+  fetch('https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=63.1115&lon=7.7600',{
+   headers:requestHeaders,signal:AbortSignal.timeout(10000)
+  }).then(async r=>{if(!r.ok)throw new Error('MET '+r.status);return r.json();})
+ ]);
+ const observation=result[0].status==='fulfilled'?weatherObservation(result[0].value):null;
+ const forecast=result[1].status==='fulfilled'?weatherForecast(result[1].value):null;
+ return {
+  ok:Boolean(observation||forecast),
+  observation,forecast,generated_at:new Date().toISOString(),
+  sources:{observation:result[0].status==='fulfilled'?'available':'unavailable',
+   forecast:result[1].status==='fulfilled'?'available':'unavailable'}
+ };
+}
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -581,6 +647,23 @@ export default {
         JSON.stringify({ error: "Method not allowed" }),
         { status: 405, headers: corsHeaders() }
       );
+    }
+
+    if(url.pathname==='/weather'){
+      // A bounded shared edge cache prevents each website visitor from
+      // issuing separate requests to weather providers.
+      const cacheKey=new Request('https://flyradar-ksu.vidar-skoglund.workers.dev/weather');
+      const cache=caches.default;
+      const cached=await cache.match(cacheKey);
+      if(cached)return cached;
+      let payload;
+      try{payload=await fetchWeather();}
+      catch(e){payload={ok:false,observation:null,forecast:null,generated_at:new Date().toISOString()};}
+      const response=new Response(JSON.stringify(payload),{
+       status:200,headers:{...corsHeaders(),'Cache-Control':'public, max-age=120, s-maxage='+WEATHER_CACHE_SECONDS}
+      });
+      if(payload.ok)await cache.put(cacheKey,response.clone());
+      return response;
     }
 
     // Diagnostic only: OpenSky is not yet used for the live map.
