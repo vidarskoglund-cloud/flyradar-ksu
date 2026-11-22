@@ -2719,51 +2719,31 @@ function findKsuFlight(p){
     return exact[0];
   }
 
-  const callsign=compactFlightId(p.flight);
-  const carrier=callsign.startsWith('WIF')?'WF':callsign.startsWith('SAS')?'SK':'';
-  if(!carrier)return null;
-
-  // ADS-B-kallesignal (f.eks. WIF7D) er ikke et Avinor-flynummer.
-  // Bruk aldri bare flyselskap og tid som bekreftet identitet.
-  const dNm=nm(p.d);
-  if(!Number.isFinite(dNm)||dNm>50||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return null;
-  const track=getTrackDeg(p);
-  const toKsu=bearingBetween(p.lat,p.lon,63.1118,7.8245);
-  const awayByHeading=track!==null&&angleDiff(track,toKsu)>=125;
-  const history=trackHistory.get(planeKey(p))||[];
-  const first=history[0],last=history[history.length-1];
-  const awayByHistory=history.length>=2 &&
-    nm(dist(63.1118,7.8245,last.lat,last.lon))-
-    nm(dist(63.1118,7.8245,first.lat,first.lon))>=1;
-  // Unngaa sirkelavhengighet: «Har forlatt KSU» krever Avinor-kobling.
-  if(dNm>8 && !awayByHeading && !awayByHistory)return null;
-
-  const confirmedDestination=confirmedRouteDestination(p);
-  const fallback=avinorFlights.filter(f=>{
-    if(f.arr_dep!=='D')return false;
-    if(!compactFlightId(f.flight_id).startsWith(carrier))return false;
-    if(!avinorMatchPlausible(p,f,false))return false;
-    if(!airportByCode(f.airport)||!plausibleKsuRouteCorridor(p,f))return false;
-    if(confirmedDestination && confirmedDestination.code!==f.airport)return false;
-    const t=Date.parse(f.schedule_time||'');
-    if(!Number.isFinite(t))return false;
-    const maxAge=dNm>15?45:60;
-    const futureAllowance=dNm>15?5:20;
-    return t>=now-maxAge*60*1000 && t<=now+futureAllowance*60*1000;
-  });
-
-  if(fallback.length!==1)return null;
-  // Match mot rute/korridor er sannsynlig, ikke bekreftet identitet.
-  return {...fallback[0],_inferredKsuMatch:true};
+  // Ikke tildel KSU-avgang ut fra selskap, tidspunkt, kurs og posisjon.
+  // WIF9AL og WIF7D er callsigns, ikke entydige WF-rutenumre.
+  // Bare identitetsbekreftede Avinor-treff ovenfor kan sette ksuFlight.
+  return null;
 }
 function attachAvinorMatches(){
   planes.forEach(p=>{
+    // Fjern svake KSU-koblinger fra forrige kodeversjon, også i cache.
+    // En bekreftet flyrute som ikke omfatter KSU skal aldri vises som KSU-avgang.
+    const f=p.ksuFlight;
+    if(f){
+      const exact=[...flightAliases(p.flight)].some(x=>flightAliases(f.flight_id).has(x));
+      const linkedRoute=p.routeData &&
+        routeContainsAirport(p.routeData,'KSU') &&
+        routeContainsAirport(p.routeData,f.airport);
+      if(f._inferredKsuMatch || (!exact && !linkedRoute))p.ksuFlight=null;
+    }
     if(!p.ksuFlight){
       const call=compactFlightId(p.flight);
       if(call){
         for(const f of avinorFlights){
           const identity=remoteKsuIdentityCache.get(avinorFlightKey(f));
-          if(identity?.callsign && compactFlightId(identity.callsign)===call){
+          if(identity?.callsign && compactFlightId(identity.callsign)===call &&
+             p.routeData && routeContainsAirport(p.routeData,'KSU') &&
+             routeContainsAirport(p.routeData,f.airport)){
             p.ksuFlight=f;
             break;
           }
