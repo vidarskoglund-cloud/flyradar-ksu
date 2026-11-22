@@ -2512,7 +2512,8 @@ async function toggleProximitySound(){
   if(proximitySound)await unlockProximityAudio();
   renderProximitySoundButton();
 }
-function withinKsuAlertArea(p){return !p.signalLost&&ksuDistanceNm(p)<=50}
+// The prominent page banner is local to KSU; the separate 50 NM tracking/push rules are unchanged.
+function withinKsuAlertArea(p){return !p.signalLost&&ksuDistanceNm(p)<=25}
 function renderProximityAlert(list){
   const banner=$('proximity-alert');
   if(!banner)return;
@@ -2535,7 +2536,7 @@ function renderProximityAlert(list){
   }else if(onGroundAtKsu){
     title=moving?'Fly i bevegelse på KSU':'Fly registrert på bakken ved KSU';
   }else{
-    title=confirmedKsuArrival(p)?'På innflyging mot KSU':flight?.direction==='Avgang KSU'?'Avgang fra KSU':lowFlying?'Lavtflygende i KSU-området':'Passerer KSU-området';
+    title=confirmedKsuArrival(p)?'På innflyging mot KSU':flight?.direction==='Avgang KSU'?'Avgang fra KSU':d<=10?(lowFlying?'Lavtflygende nær KSU':'Fly nær KSU'):'Fly innen 25 NM fra KSU';
   }
   const type=String(p.type||'').trim().toUpperCase();
   const model={S92:'Sikorsky S-92',S76:'Sikorsky S-76',H145:'Airbus H145',H135:'Airbus H135',AW13:'Leonardo AW139',A139:'Leonardo AW139',AW16:'Leonardo AW169',A169:'Leonardo AW169'}[type]||'';
@@ -2543,7 +2544,7 @@ function renderProximityAlert(list){
   const registration=p.reg&&String(p.reg).toUpperCase()!==String(name).toUpperCase()?' · '+p.reg:'';
   const text=`${heli?'🚁':'✈'} ${title} · ${name}${description?' · '+description:''}${registration} · ${d.toFixed(1)} NM fra KSU${near.length>1?' · +'+(near.length-1)+' fly':''}`;
   if(banner.textContent!==text)banner.textContent=text;
-  banner.classList.toggle('close',d<=25);
+  banner.classList.toggle('close',d<=10);
 }
 // Lightweight local diagnostics; no extra ADS-B API requests.
 function recordAdsbDiagnostics(rawAircraft, sourceName){
