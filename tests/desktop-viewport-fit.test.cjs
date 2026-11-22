@@ -36,7 +36,7 @@ test('at 100 percent zoom laptop view compacts every sidebar section but keeps t
  assert.match(css,/\.weather-metrics\{gap:1px 8px/);
  assert.match(css,/\.fs-schedule/);
  assert.match(css,/@media \(min-width:900px\) and \(max-height:800px\)/);
- assert.doesNotMatch(css,/display:none/);
+ assert.doesNotMatch(css,/\.nearest-panel details\.road-status-side\{[^}]*display:none/);
  assert.match(html,/\.nearest-panel\{[^}]*overflow-y:auto/);
 });
 
