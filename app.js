@@ -1893,8 +1893,8 @@ function vesselDetail(v){
  const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
  const fields=[
-  ['Type',category],['MMSI',v.mmsi],['Fart',Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],
-  ['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],
+  ['Type',category],['MMSI',v.mmsi],['Fart',v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],
+  ['Kurs',v.course!=null&&v.course!==''&&Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],
   ['Avstand KSU',Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM':''],
   ['Destinasjon',v.destination],['AIS-tid',v.msgtime]
  ];
@@ -1969,7 +1969,7 @@ function aircraftTypeCard(p){
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
- const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['Fart',Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],['AIS-tid',v.msgtime]];
+ const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['Fart',v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],['AIS-tid',v.msgtime]];
  return '<details class="type-info" open><summary>Om valgt fartøy</summary><div class="type-info-inner">'+
  '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div><strong>'+escapeVesselText(title)+'</strong>'+
  fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span>'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+
@@ -1984,7 +1984,7 @@ function updateVesselSelectionBanner(){
  if(!v)return;
  const parts=['Valgt skip: '+(v.name||('MMSI '+(v.mmsi||'ukjent')))];
  if(v.mmsi)parts.push('MMSI '+v.mmsi);
- if(Number.isFinite(Number(v.speed)))parts.push(Number(v.speed).toFixed(1)+' knop');
+ if(v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed)))parts.push(Number(v.speed).toFixed(1)+' knop');
  banner.textContent=parts.join(' · ');
 }
 function updateTypeCard(p){
