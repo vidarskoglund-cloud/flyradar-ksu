@@ -68,3 +68,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Skipskortet viser også fart, kurs og AIS-tid når kjent. `worker/src/index.js` viderefører valgfrie IMO-/lengde-/breddefelt når upstream leverer dem. **Cloudflare Worker er ikke bekreftet publisert med ny kode; slike felt må ikke fremstilles som live-verifiserte.**
 - GitHub Actions syntakskontroll og nye bilde-/karttester besto. **Gjenstår:** bekrefte oppdatering av GitHub Pages, teste faktiske Commons-funn/feiltilfeller for fly og skip, og kontrollere Worker-utrulling separat.
 - Eldre [PR #25](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/25) inneholder overlappende endringer og skal ikke slås sammen uten ny gjennomgang.
+
+## 22.11.2026 – Ryddet fly-/skipskort og skipsfoto
+- [PR #31](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/31) slått sammen i `main` (commit `9a7fdcf3a1df5374375435be8520f873b0fdc999`).
+- Rettet bekreftet UI-feil fra skjermbilde: CSS for `.cards` overstyrte HTML `hidden` slik at WIF459 fremdeles vistes under overskriften «Fartøy ved Kristiansund havn». `#cards[hidden]` skjules nå eksplisitt, og fartøykortet viser WATERLORD eller annet valgt fartøy som hovedobjekt med navn, fart, kurs og AIS-detaljer.
+- Kartmarkør for automatisk/manuelt valgt skip får synlig markering, oppdateres etter AIS-refresh og fjernes ved skifte til fly. Manuelt flyklikk viser flykortet og overstyrer automatisk skipsvalg i to minutter.
+- Fartøykortet oppdaterer AIS-verdier uten å gjenskape fotoelementet hvert 30. sekund, slik at bilder ikke blinker eller avbrytes.
+- Skipsbildet beholdes som illustrasjon til et verifisert Commons-foto faktisk har lastet. Ved manglende sikkert treff vises forklaringen «Fant ikke et sikkert skipsfoto i Wikimedia Commons». Negativ bildecache er fornyet (v3).
+- GitHub Actions syntakskontroll, kart-, bilde- og nye fartøypaneltester besto. Gamle feil i `motion.test.cjs` er fremdeles separat/ikke bekreftet løst. **Gjenstår:** live nettlesertest av GitHub Pages, AIS og foto. Et foto av WATERLORD er funnet på annen nettside, men kan ikke automatisk brukes som fritt lisensiert bilde uten rettighetsavklaring.
+- ADS-B, AIS-kilder, Worker, varsler og kartzoom er ikke endret.
