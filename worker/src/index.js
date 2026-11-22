@@ -584,6 +584,13 @@ function weatherObservation(rows,now=Date.now()){
  if(!Number.isFinite(parsed)||parsed>now+300000||now-parsed>2*60*60*1000)return null;
  const ktToMs=n=>n===null?null:Math.round(n*0.514444*10)/10;
  const dir=numOrNull(row.wdir);
+ // AWC JSON 'altim' is already in hPa for many stations. Accept inches
+ // of mercury only where the input is clearly in the 25-35 inHg range.
+ const rawPressure=numOrNull(row.altim);
+ const pressure=rawPressure!==null
+  ?(rawPressure>=850&&rawPressure<=1100?Math.round(rawPressure):
+    rawPressure>=25&&rawPressure<=35?Math.round(rawPressure*33.8639):null)
+  :null;
  return {
   station:WEATHER_STATION,observed_at:new Date(parsed).toISOString(),
   temperature_c:numOrNull(row.temp),
@@ -591,7 +598,7 @@ function weatherObservation(rows,now=Date.now()){
   gust_mps:ktToMs(numOrNull(row.wgst)),
   wind_direction_deg:dir!==null&&dir<=360?dir:null,
   visibility_m:numOrNull(row.visib)!==null?Math.round(Number(row.visib)*1609.344):null,
-  pressure_hpa:numOrNull(row.altim)!==null?Math.round(Number(row.altim)*33.8639):null,
+  pressure_hpa:pressure,
   raw:String(row.rawOb||row.raw||'').slice(0,350),
   source:'Aviation Weather Center / METAR ENKB'
  };
