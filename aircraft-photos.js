@@ -43,7 +43,7 @@ function chooseExactRegistration(reg,pages){
   if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||
      !/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
   const url=String(meta.LicenseUrl?.value||'');
-  candidates.push({src,source,license:licence,
+  candidates.push({src,source,license:licence,exact:true,
     licenseUrl:/^https:\/\/(?:creativecommons\.org|commons\.wikimedia\.org)\//.test(url)?url:source,
     credit:plain(meta.Artist?.value||meta.Credit?.value||info.user||'Se bildekilde')});
  }
