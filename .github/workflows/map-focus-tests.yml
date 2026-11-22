@@ -62,6 +62,8 @@ jobs:
         run: node --test tests/aircraft-route-card-copy.test.cjs
       - name: Kristiansund speedboat departures and arrivals tests
         run: node --test tests/speedboat-schedule.test.cjs
+      - name: Specialized aircraft classification and type photo tests
+        run: node --test tests/aircraft-special-photo.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
