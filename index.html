@@ -35,10 +35,10 @@ body.display-on{overflow:hidden}body.display-on header{position:fixed;left:0;rig
 body.display-on details,body.display-on footer{display:none}.fa-usage{grid-template-columns:repeat(5,1fr);padding:7px 9px;margin-top:7px}.fa-usage span{font-size:7px}.fa-usage b{font-size:10px}.fa-note{font-size:8px}
 @media(min-width:900px){
   main{
-    max-width:1500px;
+    max-width:none;
     padding:14px 24px 24px;
     display:grid;
-    grid-template-columns:minmax(0,2.35fr) minmax(320px,.95fr);
+    grid-template-columns:minmax(0,1fr) 360px;
     grid-template-areas:
       "rule rule"
       "stats stats"
@@ -51,7 +51,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   }
   .local-rule{grid-area:rule;max-width:none;width:100%;margin:0;padding:0 4px}
   .stats{grid-area:stats;max-width:none;width:100%;margin:0;gap:6px}.stats div{padding:7px 10px}.stats b{font-size:18px}
-  #map{grid-area:map;height:64vh;min-height:520px}
+  #map{grid-area:map;height:calc(100vh - 190px);min-height:520px}
   .fullscreen-strip{grid-area:map}
   main > .schedule:not(.nearest-panel){display:none}
   .schedule:not(.nearest-panel){grid-area:schedule;margin-top:0;padding:12px 14px}
