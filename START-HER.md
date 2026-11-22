@@ -59,3 +59,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Når prioritert KSU-fly overtar, returnerer høyrepanelet til flyvisning. Fly-/AIS-kilder, oppdateringsfrekvens, varsler og gjeldende kartzoomlogikk er ikke endret.
 - GitHub Actions-testene for kartfokus besto. **Gjenstår:** verifisere faktisk automatisk skipsvalg i publisert GitHub Pages med levende AIS-oppdateringer; skip trenger minst to ulike posisjoner før automatisk valg.
 - Urelatert [PR #25](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/25) om ytterligere skipsopplysninger og bildeoppslag er fortsatt separat og ikke innført i denne endringen.
+
+## 22.11.2026 – Automatisk bildeoppslag for fly og skip
+- [PR #30](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/30) er slått sammen i `main` (commit `84fc113d6f166ab6670932953d173158d7570e99`).
+- Fly: `aircraft-photos.js` gjør automatisk Wikimedia Commons-oppslag etter registreringsnummer. Bare nøyaktig identifisert registrering vises som individuelt foto; ved nulltreff vises eksisterende typefoto/illustrasjon.
+- Skip: `vessel-photos.js` søker IMO, MMSI og skipsnavn i denne rekkefølgen, med restriktiv filnavnsmatching. Treff som bare er basert på navn merkes «Mulig bilde»; ellers generisk skipsillustrasjon.
+- Fotoresultater caches lokalt i nettleseren (7 dager ved treff, 1 dag ved nulltreff), og kilde/fotograf/lisens vises.
+- Skipskortet viser også fart, kurs og AIS-tid når kjent. `worker/src/index.js` viderefører valgfrie IMO-/lengde-/breddefelt når upstream leverer dem. **Cloudflare Worker er ikke bekreftet publisert med ny kode; slike felt må ikke fremstilles som live-verifiserte.**
+- GitHub Actions syntakskontroll og nye bilde-/karttester besto. **Gjenstår:** bekrefte oppdatering av GitHub Pages, teste faktiske Commons-funn/feiltilfeller for fly og skip, og kontrollere Worker-utrulling separat.
+- Eldre [PR #25](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/25) inneholder overlappende endringer og skal ikke slås sammen uten ny gjennomgang.
