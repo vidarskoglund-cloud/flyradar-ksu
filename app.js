@@ -1414,17 +1414,15 @@ function smartMapCandidate(list){
         rank===3?(d<=8?11:9):7
     });
   }
-  // Fartøy styrer bare kartet når ingen mer relevante KSU-/lokalfly finnes.
+  // Fokus på AIS-bevegelse i havnen og inn-/utseiling, men aktive fly prioriteres.
   for(const v of vessels){
-    const lat=Number(v.lat),lon=Number(v.lon),speed=Number(v.speed);
-    if(!Number.isFinite(lat)||!Number.isFinite(lon)||
-       !Number.isFinite(speed)||speed<1.5)continue;
-    const d=nm(dist(lat,lon,mapAreas.city.lat,mapAreas.city.lon));
-    if(d>6)continue;
+    const m=movingHarborVessel(v);
+    if(!m)continue;
     choices.push({
-      key:'bat:'+(vesselKey(v)||lat+','+lon),rank:2,d,
-      points:[[63.1118,7.8245],kristiansundPoint(),[lat,lon]],
-      maxZoom:d<=2?11:10
+      key:'bat:'+m.key,rank:m.rank,d:m.d,
+      // Show Kristiansund harbour and the moving vessel, not the KSU runway.
+      points:[[VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]],[m.lat,m.lon]],
+      maxZoom:m.inHarbor?13:m.d<=3.5?12:11
     });
   }
   choices.sort((a,b)=>b.rank-a.rank||a.d-b.d);
@@ -1809,6 +1807,51 @@ function vesselKind(v){
 // Rotate through nearby AIS vessels and show a live information popup.
 let vesselFocusMmsi='',vesselFocusChangedAt=0,vesselLastFocusAt=0;
 const vesselMarkers=new Map();
+
+const VESSEL_HARBOR_CENTER=[63.1115,7.7600];
+const VESSEL_HARBOR_CORE_NM=2.2;
+const VESSEL_HARBOR_APPROACH_NM=6.0;
+const vesselMotionHistory=new Map();
+function updateVesselMotionHistory(items){
+  const now=Date.now(), seen=new Set();
+  for(const v of items||[]){
+    const key=vesselKey(v),lat=Number(v.lat),lon=Number(v.lon);
+    if(!key||!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+    seen.add(key);
+    const previous=vesselMotionHistory.get(key);
+    const distance=nm(dist(lat,lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]));
+    const movement=previous?nm(dist(lat,lon,previous.lat,previous.lon)):0;
+    const elapsed=previous?(now-previous.at)/1000:0;
+    // Require a new AIS position, not repeated polling of the same fix.
+    const newFix=Boolean(previous&&elapsed>=10&&movement>=0.015);
+    const change=previous?previous.distance-distance:0;
+    const trend=newFix&&Math.abs(change)>=0.035?(change>0?'inn':'ut'):(previous?.trend||'ukjent');
+    vesselMotionHistory.set(key,{lat,lon,at:newFix||!previous?now:previous.at,
+      distance,trend,observed:newFix?(previous?.observed||0)+1:(previous?.observed||0),
+      moving:newFix,previousDistance:previous?.distance??distance});
+  }
+  for(const [key,row] of vesselMotionHistory){
+    if(!seen.has(key)||now-row.at>3*60*1000)vesselMotionHistory.delete(key);
+  }
+}
+function movingHarborVessel(v){
+  const key=vesselKey(v),row=vesselMotionHistory.get(key);
+  const lat=Number(v.lat),lon=Number(v.lon),speed=Number(v.speed);
+  if(!key||!row||!Number.isFinite(lat)||!Number.isFinite(lon)||
+    !Number.isFinite(speed)||speed<1.5)return null;
+  const d=nm(dist(lat,lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]));
+  if(d>VESSEL_HARBOR_APPROACH_NM)return null;
+  // An observed position change in the recent AIS fixes is required:
+  // nonmoving or stale AIS targets never claim automatic map focus.
+  if(row.observed<1||Date.now()-row.at>100*1000)return null;
+  // For a second repeated snapshot retain focus only briefly, while AIS can be delayed.
+  const inHarbor=d<=VESSEL_HARBOR_CORE_NM;
+  const entering=row.trend==='inn'&&d>VESSEL_HARBOR_CORE_NM;
+  const exiting=row.trend==='ut'&&d>VESSEL_HARBOR_CORE_NM;
+  return {key,d,lat,lon,speed,inHarbor,entering,exiting,
+    rank:inHarbor?2.8:(entering||exiting?2.65:2.25)};
+}
+
 const escapeVesselText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function vesselKey(v){return String(v.mmsi||v.name||'').trim();}
 function vesselDetail(v){
@@ -1929,6 +1972,7 @@ async function loadVessels(){
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
     vessels=Array.isArray(j?.vessels)?j.vessels:[];
+    updateVesselMotionHistory(vessels);
     renderVessels();
     if(selectedVesselTypeKey)updateTypeCard(selected);
     fitMap(planes,settings());
