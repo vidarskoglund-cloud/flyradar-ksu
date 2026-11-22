@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v2', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v3', pending=new Map();
 function get(key){
  try{const item=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];return item&&item.until>Date.now()?{hit:true,photo:item.photo}:{hit:false};}catch(e){return {hit:false};}
 }
