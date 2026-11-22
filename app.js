@@ -2490,7 +2490,8 @@ function ksuOperationalStatus(p){
       if(physicallyDown)return 'Landet på Kvernberget';
     }
     if(movement==='Ser ut til å være på innflyging')return 'På innflyging til Kvernberget';
-    if(movement==='Nærmer seg KSU')return 'KSU-ankomst nærmer seg';
+    if(movement==='På vei til KSU')return 'På vei til KSU';
+    if(movement==='Mulig innflyging mot KSU')return 'Mulig innflyging mot KSU';
     return info.status==='Landet'?'Avinor: landet · følger fortsatt signal':'Planlagt ankomst KSU';
   }
   if(info.status==='Avreist')return 'Avreist fra Kvernberget';
