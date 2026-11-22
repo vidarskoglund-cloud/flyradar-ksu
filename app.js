@@ -2043,7 +2043,7 @@ function autoSelectHarborVessel(now=Date.now()){
  const vessel=key?vessels.find(v=>vesselKey(v)===key):null;
  if(!vessel){
    // Keep an existing ship card until a flight takes priority or the target disappears.
-   if(selectedVesselTypeKey&&first&&!first.key.startsWith('bat:')){
+   if(selectedVesselTypeKey&&((first&&!first.key.startsWith('bat:'))||!vessels.some(v=>vesselKey(v)===selectedVesselTypeKey))){
      selectedVesselTypeKey='';
      updateTypeCard(selected);
      if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
@@ -2943,6 +2943,8 @@ function render(autoFit=false){
     updateTypeCard(null);
     routeLayer.clearLayers();
   }
+  // Keep detail selection synchronized with the latest aircraft priority, not only the 30s AIS poll.
+  autoSelectHarborVessel();
   if(autoFit) fitMap(list,s);
 }
 if($('cards'))$('cards').addEventListener('click',event=>{
