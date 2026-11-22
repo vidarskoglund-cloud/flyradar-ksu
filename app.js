@@ -1507,7 +1507,10 @@ function fitMap(list,s){
   let target=best||glimpse;
   // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
   if(best)smartMapLastTrafficAt=now;
-  if(!best&&!glimpse&&smartMapTarget?.key!=='normal'&&
+  const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&
+    Number.isFinite(Number(selected.lat))&&Number.isFinite(Number(selected.lon))&&
+    !map.getBounds().pad(-0.06).contains([Number(selected.lat),Number(selected.lon)]);
+  if(!best&&!glimpse&&!focusedOffscreen&&smartMapTarget?.key!=='normal'&&
      !String(smartMapTarget?.key).startsWith('glimt:')&&
      now-smartMapLastTrafficAt<SMART_MAP_RETURN_DELAY_MS)return;
   // Hold på samme mål i minst 30 sekunder, unntatt høyere prioritet.
