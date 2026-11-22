@@ -84,7 +84,7 @@ test('manual map gestures retain the two-minute pause without a focus button',()
  assert.match(source,/SMART_MAP_MANUAL_MS=120000/);
  assert.match(source,/map\.on\('dragstart',\(\)=>\{manualMapUntil=Date\.now\(\)\+120000/);
  assert.match(source,/if\(now<manualMapUntil\)return/);
- assert.match(source,/if\(!autoMapTransition\)manualMapUntil=Date\.now\(\)\+SMART_MAP_MANUAL_MS/);
+ assert.match(source,/if\(!autoMapTransition\)\{manualMapUntil=Date\.now\(\)\+SMART_MAP_MANUAL_MS;updateMapFocusStatus\(\);\}/);
  assert.doesNotMatch(source,/Vis fly på kart/);
 });
 test('idle aircraft phase cannot override active KSU or AIS candidates',()=>{

@@ -1156,7 +1156,7 @@ function focusIdleCandidate(list,advance=false){
   }
   return true;
 }
-map.on('dragstart',()=>{manualMapUntil=Date.now()+120000;idleViewStartedAt=null;idleViewPhase=-1;});
+map.on('dragstart',()=>{manualMapUntil=Date.now()+120000;idleViewStartedAt=null;idleViewPhase=-1;updateMapFocusStatus();});
 function confirmedKsuArrival(p){
   const info=ksuFlightInfo(p);
   if(info && info.direction==='Ankomst KSU' && info.status!=='Innstilt')return true;
@@ -1393,6 +1393,37 @@ let smartMapTarget=null, smartMapChangedAt=0, autoMapTransition=false;
 let smartMapLastTrafficAt=0,smartMapLastMoveAt=0;
 const SMART_MAP_RETURN_DELAY_MS=25000;
 const SMART_MAP_MOVE_COOLDOWN_MS=12000;
+
+/* Header status describes the actual automatic map target, not the aircraft
+   remembered in the information panel. Counts are shown in the stats row. */
+function mapFocusStatusText(now=Date.now()){
+  if(now<manualMapUntil)return 'Kartvisning valgt manuelt';
+  const key=String(smartMapTarget?.key||'');
+  if(key.startsWith('bat:')){
+    const id=key.slice(4);
+    const vessel=vessels.find(v=>vesselKey(v)===id);
+    if(vessel&&Number.isFinite(Number(vessel.lat))&&Number.isFinite(Number(vessel.lon)))
+      return 'Følger fartøy '+(vessel.name||('MMSI '+(vessel.mmsi||'ukjent')));
+  }
+  const flightKey=key.startsWith('fly:')?key.slice(4):
+    key.startsWith('glimt:fly:')?key.slice('glimt:fly:'.length):'';
+  if(flightKey){
+    const p=planes.find(p=>smartPlaneIdentity(p).slice(4)===flightKey&&!p.signalLost);
+    if(p){
+      const label=p.flight||p.reg||p.hex||'ukjent';
+      return key.startsWith('glimt:')?'Viser fly '+label:'Følger fly '+label;
+    }
+  }
+  return 'Oversikt Kristiansund';
+}
+function updateMapFocusStatus(now=Date.now()){
+  if(document.body.dataset.liveSource!=='direct')return;
+  const value=mapFocusStatusText(now)+' · '+
+    new Date(now).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'});
+  if($('status')){$('status').textContent=value;$('status').className='ok';}
+  if($('fs-status'))$('fs-status').textContent=value;
+}
+
 // A brief, low-priority view of a distant aircraft when local traffic is quiet.
 const IDLE_GLIMPSE_CYCLE_MS=90000;
 const IDLE_GLIMPSE_FROM_MS=60000;
@@ -1561,7 +1592,7 @@ function fitMap(list,s){
 }
 // Brukerens zoom og panorering skal overstyre automatisk fokus i to minutter.
 map.on('zoomstart',()=>{
-  if(!autoMapTransition)manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
+  if(!autoMapTransition){manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;updateMapFocusStatus();}
 });
 function airportLabel(a){
   if(!a)return'';
@@ -2235,6 +2266,7 @@ function renderVessels(){
     updateVesselContext(v);
     if($('cards'))$('cards').hidden=true;
     updateTypeCard(selected);
+    updateMapFocusStatus();
   });
   vesselMarkers.set(vesselKey(v),marker);
  }
@@ -2891,13 +2923,6 @@ async function refresh(){
     check50NmNotifications(planes);
     if(proximityCrossings(planes).length)playProximityTone();
     renderProximityAlert(planes);
-    const localCount=planes.filter(withinKsuAlertArea).length;
-    const priority=priorityKsuAircraft(planes);
-    const passerby=!priority?priorityPasserby(planes):null;
-    const followed=priority||passerby||planes.filter(localRelevant).sort((a,b)=>a.d-b.d)[0];
-    const followText=followed?' · følger '+(priority?'KSU ':passerby?'lokalt ':'')+(followed.flight||followed.reg||followed.hex):'';
-    $('status').textContent=`${localCount} fly innen 50 NM${followText} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
-    $('status').className='ok';
     document.body.dataset.liveSource='direct';
     render(true);
     // The explicit 25 NM pilot runs one FREE lookup per flight/day, no paid fallback.
@@ -2911,6 +2936,7 @@ async function refresh(){
       const localCount=planes.filter(withinKsuAlertArea).length;
       $('status').textContent=`${localCount} fly innen 50 NM · viser sist kjente data`;
       $('status').className='muted';
+      document.body.dataset.liveSource='stale';
       render(false);
       return;
     }
@@ -3061,10 +3087,7 @@ function render(autoFit=false){
     ?nearest:(current||nearest);
   if(shown){
     selected=shown;
-    const localCountNow=planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length;
-    const activePrefix=shown.ksuFlight?'KSU ':observablePasserby(shown)?'lokalt ':'';
-    $('status').textContent=`${localCountNow} fly innen 50 NM · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
-    $('status').className='ok';
+
     const selectedNm=ksuDistanceNm(shown);
     const selectedKsuFlight=ksuFlightInfo(shown);
     if(!selectedVesselTypeKey){
@@ -3124,9 +3147,7 @@ function render(autoFit=false){
     updateTypeCard(shown);
   }else{
     selected=null;
-    $('status').textContent=`${planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
-    $('status').className='ok';
     $('cards').innerHTML='';
     updateTypeCard(null);
     routeLayer.clearLayers();
@@ -3134,6 +3155,7 @@ function render(autoFit=false){
   // Keep detail selection synchronized with the latest aircraft priority, not only the 30s AIS poll.
   autoSelectHarborVessel();
   if(autoFit) fitMap(list,s);
+  updateMapFocusStatus();
 }
 function toggleDisplay(){
   display=!display;
