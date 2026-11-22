@@ -1025,8 +1025,14 @@ function ksuMovementStatus(p){
   if(distanceNm<=18 && Number.isFinite(alt) && alt<=9000 && descending && (approachingByTrack||approachingByTrend)){
     return {label:'Ser ut til å være på innflyging',detail:'mot Kvernberget'};
   }
-  if((approachingByTrend || (approachingByTrack && distanceNm<=50)) && headingToKsu!==null && headingToKsu<=55){
-    return {label:'Nærmer seg KSU',detail:`${Math.round(headingToKsu)}° fra direkte kurs mot KSU`};
+  // Heading alone does not establish an approach to KSU.
+  const confirmedArrival=confirmedKsuArrival(p);
+  if(confirmedArrival&&distanceNm<=100&&headingToKsu!==null&&headingToKsu<=75){
+    return {label:'På vei til KSU',detail:'Bekreftet KSU-destinasjon'};
+  }
+  if(!confirmedArrival && distanceNm<=25 && Number.isFinite(alt) && alt<=10000 &&
+     descending && approachingByTrend && headingToKsu!==null && headingToKsu<=55){
+    return {label:'Mulig innflyging mot KSU',detail:'Basert på bevegelse og nedstigning'};
   }
   if(leavingByTrend || (leavingByTrack && distanceNm<=50)){
     if(p.ksuFlight?.arr_dep==='D'){
@@ -1037,6 +1043,9 @@ function ksuMovementStatus(p){
       return {label:`Flyr ${dir}over`,detail:`kurs ${Math.round(tr)}° · bort fra KSU`};
     }
     return {label:'Flyr bort fra KSU',detail:''};
+  }
+  if(!confirmedArrival&&distanceNm>25){
+    return {label:'Passerer regionen',detail:tr!==null?'kurs '+Math.round(tr)+'°':''};
   }
   if(tr!==null){
     return {label:`Flyr ${courseLabel(tr)}over`,detail:`kurs ${Math.round(tr)}°`};
@@ -1540,6 +1549,19 @@ function fitMap(list,s){
 map.on('zoomstart',()=>{
   if(!autoMapTransition)manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
 });
+function selectedAircraftVisibleOnMap(p,position){
+  if(!p||p.signalLost)return false;
+  const pos=position||(planeKey(p)&&motionMarkers.get(planeKey(p))?.marker.getLatLng());
+  const lat=Number(pos?.lat??pos?.[0]??p.lat),lon=Number(pos?.lng??pos?.[1]??p.lon);
+  return Number.isFinite(lat)&&Number.isFinite(lon)&&
+    map.getBounds().pad(-0.06).contains([lat,lon]);
+}
+function updateShowAircraftOnMapButton(){
+  const button=$('show-aircraft-on-map');
+  if(!button)return;
+  button.hidden=!selected||selectedVesselTypeKey!==''||selectedAircraftVisibleOnMap(selected);
+}
+map.on('moveend zoomend',updateShowAircraftOnMapButton);
 function showSelectedAircraftOnMap(){
   const p=selected&&planes.find(item=>planeKey(item)===planeKey(selected)&&!item.signalLost);
   if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return;
@@ -1550,6 +1572,7 @@ function showSelectedAircraftOnMap(){
   autoMapTransition=true;
   map.once('moveend',()=>{autoMapTransition=false;});
   map.flyToBounds(bounds,{padding:[70,70],maxZoom:12,animate:!reduced,duration:2});
+  updateShowAircraftOnMapButton();
 }
 function airportLabel(a){
   if(!a)return'';
@@ -2828,6 +2851,7 @@ function select(p,lookupRoute=true){
   }
   selected=p;
   highlightSelectedAircraft();
+  updateShowAircraftOnMapButton();
   if(lookupRoute && p.flight && !p.routeData && canLookupRoute(p) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   drawTrackAndPrediction(p);
@@ -2956,7 +2980,7 @@ function render(autoFit=false){
       </div>
       ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
-      <button type="button" class="show-aircraft-on-map" id="show-aircraft-on-map">Vis fly på kart</button>
+      <button type="button" class="show-aircraft-on-map" id="show-aircraft-on-map" ${selectedAircraftVisibleOnMap(shown)?'hidden':''}>Vis fly på kart</button>
       <div class="aircraft-metrics">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
         <div><span>FART</span><b>${f(shown.gs,' kt')}</b></div>
@@ -2973,8 +2997,10 @@ function render(autoFit=false){
     </div>`;
     select(shown,false);
     updateTypeCard(shown);
+    updateShowAircraftOnMapButton();
   }else{
     selected=null;
+    updateShowAircraftOnMapButton();
     $('status').textContent=`${planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
     $('status').className='ok';
@@ -3107,6 +3133,7 @@ function animateAircraftMotion(frameAt){
     const closestText=Number.isFinite(closest)?closest.toFixed(1)+' NM':'–';
     if($('closest'))$('closest').textContent=closestText;
     if($('fs-closest'))$('fs-closest').textContent=closestText;
+    updateShowAircraftOnMapButton();
   }
 }
 function nextRefreshMs(){ return 15000; } // Aircraft snapshot every 15 seconds; vessel polling unchanged.
