@@ -2159,8 +2159,44 @@ const VESSEL_HARBOR_CENTER=[63.1115,7.7600];
 const VESSEL_HARBOR_CORE_NM=2.2;
 const VESSEL_HARBOR_APPROACH_NM=6.0;
 const vesselMotionHistory=new Map();
-const VESSEL_TRACK_KEEP_MS=10*60*1000;
-const VESSEL_TRACK_MAX_FIXES=12;
+const VESSEL_TRACK_KEEP_MS=30*60*1000;
+const VESSEL_TRACK_MAX_FIXES=120;
+const VESSEL_TRACK_STORAGE_KEY='trafikkradar-vessel-trails-v1';
+const VESSEL_TRACK_MAX_VESSELS=100;
+function validVesselTrackFix(p,now=Date.now()){
+  return p && Number.isFinite(p.lat) && Math.abs(p.lat)<=90 &&
+    Number.isFinite(p.lon) && Math.abs(p.lon)<=180 &&
+    Number.isFinite(p.at) && p.at<=now+10000 && now-p.at<=VESSEL_TRACK_KEEP_MS;
+}
+function loadStoredVesselTracks(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(VESSEL_TRACK_STORAGE_KEY)||'[]');
+    if(!Array.isArray(saved))return;
+    const now=Date.now();
+    for(const row of saved.slice(0,VESSEL_TRACK_MAX_VESSELS)){
+      if(!row||typeof row.key!=='string'||row.key.length>80||!Array.isArray(row.fixes))continue;
+      const fixes=row.fixes.map(p=>({lat:Number(p.lat),lon:Number(p.lon),at:Number(p.at)}))
+        .filter(p=>validVesselTrackFix(p,now)).sort((a,b)=>a.at-b.at).slice(-VESSEL_TRACK_MAX_FIXES);
+      if(!fixes.length)continue;
+      const last=fixes[fixes.length-1];
+      vesselMotionHistory.set(row.key,{
+        lat:last.lat,lon:last.lon,at:last.at,
+        distance:nm(dist(last.lat,last.lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1])),
+        trend:'ukjent',observed:0,moving:false,fixes
+      });
+    }
+  }catch(e){console.warn('Kunne ikke hente lagrede AIS-spor:',e);}
+}
+function persistVesselTracks(){
+  try{
+    const now=Date.now();
+    const saved=[...vesselMotionHistory].map(([key,row])=>({
+      key,fixes:(row.fixes||[]).filter(p=>validVesselTrackFix(p,now)).slice(-VESSEL_TRACK_MAX_FIXES)
+    })).filter(row=>row.fixes.length).slice(-VESSEL_TRACK_MAX_VESSELS);
+    localStorage.setItem(VESSEL_TRACK_STORAGE_KEY,JSON.stringify(saved));
+  }catch(e){console.warn('Kunne ikke lagre AIS-spor:',e);}
+}
+loadStoredVesselTracks();
 function updateVesselMotionHistory(items){
   const now=Date.now(), seen=new Set();
   for(const v of items||[]){
@@ -2175,18 +2211,21 @@ function updateVesselMotionHistory(items){
     const newFix=Boolean(previous&&elapsed>=10&&movement>=0.015);
     const change=previous?previous.distance-distance:0;
     const trend=newFix&&Math.abs(change)>=0.035?(change>0?'inn':'ut'):(previous?.trend||'ukjent');
-    const fixes=Array.isArray(previous?.fixes)?previous.fixes.filter(p=>now-p.at<=VESSEL_TRACK_KEEP_MS):[];
-    if(!fixes.length || (newFix && nm(dist(lat,lon,fixes[fixes.length-1].lat,fixes[fixes.length-1].lon))<=1.5)){
-      if(!fixes.length||newFix)fixes.push({lat,lon,at:now});
-    }
+    let fixes=Array.isArray(previous?.fixes)?previous.fixes.filter(p=>validVesselTrackFix(p,now)):[];
+    const lastFix=fixes[fixes.length-1];
+    const fixDistance=lastFix?nm(dist(lat,lon,lastFix.lat,lastFix.lon)):0;
+    // Avoid drawing a line across missing AIS coverage or improbable jumps.
+    if(lastFix && fixDistance>1.5)fixes=[];
+    if(!fixes.length || (newFix && fixDistance>=0.015))fixes.push({lat,lon,at:now});
     vesselMotionHistory.set(key,{lat,lon,at:newFix||!previous?now:previous.at,
       distance,trend,observed:newFix?(previous?.observed||0)+1:(previous?.observed||0),
       moving:newFix,previousDistance:previous?.distance??distance,
       fixes:fixes.slice(-VESSEL_TRACK_MAX_FIXES)});
   }
   for(const [key,row] of vesselMotionHistory){
-    if(!seen.has(key)||now-row.at>3*60*1000)vesselMotionHistory.delete(key);
+    if(!seen.has(key) && now-row.at>VESSEL_TRACK_KEEP_MS)vesselMotionHistory.delete(key);
   }
+  persistVesselTracks();
 }
 function movingHarborVessel(v){
   const key=vesselKey(v),row=vesselMotionHistory.get(key);
@@ -2409,8 +2448,8 @@ function renderVesselGuides(){
     const key=vesselKey(v),row=vesselMotionHistory.get(key);
     if(!key||!row)continue;
     const lat=Number(v.lat),lon=Number(v.lon),speed=Number(v.speed);
-    if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(speed)||speed<1.5)continue;
-    // Previous route: observed AIS positions only.
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))continue;
+    // Previous route: observed AIS positions only, also after a vessel stops.
     const fixes=(row.fixes||[]).filter(p=>now-p.at<=VESSEL_TRACK_KEEP_MS);
     if(fixes.length>=2){
       L.polyline(fixes.map(p=>[p.lat,p.lon]),{
@@ -2418,6 +2457,7 @@ function renderVesselGuides(){
       }).addTo(vesselGuideLayer);
     }
     // Short course-over-ground guide, NOT a predicted destination.
+    if(!Number.isFinite(speed)||speed<1.5)continue;
     if(v.course===null||v.course===undefined||v.course==='')continue;
     const course=Number(v.course);
     if(!Number.isFinite(course)||course<0||course>=360)continue;
