@@ -43,3 +43,11 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - GitHub Actions-test for kartfokus besto. Fire eldre tester i `tests/motion.test.cjs` feilet fra eksisterende testharness; de er synlig kjørt separat, og er ikke bekreftet løst.
 - **Liveverifisering:** GitHub `main` er kontrollert; reell nettleser-/trafikktest av publisert Pages-kart og AIS gjenstår.
 - Urelatert [PR #25 om skipsinformasjon](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/25) er ikke slått sammen i denne endringen.
+
+## Oppdatering – 22.11.2026: rolig visning av fjerntrafikk
+- [PR #28](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/28) er slått sammen i `main` (commit `56aa51fdfd7ff8c910d6ef40216c6a771043ae69`).
+- Når ingen kvalifiserte KSU-fly eller bevegelige prioriterte AIS-fartøy krever kartfokus, vises vanlig Kristiansund-oversikt før et kort glimt av nærmeste aktive fly mellom 25 og 120 NM. Glimtvindu: sekund 60–75 i en 90-sekunders syklus. Deretter tilbake til oversikt. Signaltapte fly er utelukket.
+- Flypanelet har «Vis fly på kart», som viser Kristiansund og valgt fly og låser manuell visning i to minutter.
+- 30 sekunders fokusbyttelås, to minutters manuell pause, KSU/AIS-prioritet, ADS-B-kilde, ruter og varsler er beholdt.
+- GitHub Actions syntakskontroll og nye karttester besto. Eldre `motion.test.cjs` har tidligere kjente feil som fortsatt kjøres separat uten å blokkere ny kart-CI.
+- **Gjenstår:** Kontrollere GitHub Pages-utrulling og observere faktisk kartbevegelse over en full 90-sekunders syklus med og uten lokal trafikk. PR #25 (skipsdetaljer) er fortsatt utenfor.
