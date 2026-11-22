@@ -20,6 +20,17 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
 .fa-bar i{display:block;height:100%;width:0;background:#66e1a0;border-radius:99px}
 .fa-note{grid-column:1/-1;color:#9db2c7;font-size:11px}
 @media(max-width:650px){.fa-usage{grid-template-columns:repeat(2,minmax(0,1fr))}.fa-note,.fa-bar{grid-column:1/-1}}
+.data-flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:12px 0}
+.data-step{border:1px solid #29415a;background:#101e30;border-radius:10px;padding:12px;flex:1 1 175px;min-width:0}
+.data-step b{display:block;font-size:14px;margin:4px 0}
+.data-step small{display:block;color:#9db2c7;line-height:1.45}
+.data-arrow{align-self:center;color:#76d8ff;font-size:20px}
+.source-active{border-color:#376b72}
+.source-secondary{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
+.source-secondary .card strong{font-size:17px}
+.source-secondary .card{min-height:110px}
+.source-info{color:#9db2c7;font-size:12px;line-height:1.5}
+@media(max-width:760px){.data-flow{flex-direction:column}.data-arrow{align-self:center;transform:rotate(90deg)}}
 </style></head>
 <body><header><div><h1>Kristiansund Trafikkradar · Administrasjon</h1><small>Status, diagnostikk og lokal historikk</small></div><a href="./">Tilbake til flykartet</a></header>
 <main>
@@ -37,8 +48,29 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
 </section>
 <p class="note">Statusen er basert på oppslag som denne nettleseren har registrert. Den viser ikke alle besøkendes trafikk eller Cloudflare-serverlogger. Historikk lagres lokalt i nettleseren og kan eksporteres.</p>
 <div class="actions"><button id="refresh">Oppdater visning</button><button id="json">Eksporter JSON</button><button id="csv">Eksporter CSV</button><button id="clear">Slett lokal historikk</button><small id="stamp"></small></div>
-<section><h2>Datakilder · siste registrerte oppslag</h2><div class="grid" id="sources"></div></section>
-<section><h2>FlightAware – oppslag og forbruk</h2><section class="fa-usage" id="fa-usage">
+<section id="source-priority">
+ <h2>Datakilder og prioritering</h2>
+ <p class="note">Flyposisjoner, ruteoppslag og AIS er ulike datastrømmer. En kilde som står som «Ikke brukt», er ikke nødvendigvis ute av drift. Tallene nedenfor gjelder registreringer i denne nettleseren.</p>
+ <h3>1. Flyposisjoner – aktiv kilde</h3>
+ <div id="sources" class="grid"></div>
+ <h3>2. Ruteoppslag – egen tjeneste</h3>
+ <div class="source-secondary">
+  <div class="card"><small>GRATIS FØRST</small><strong>adsb.lol via Cloudflare Worker</strong><p class="source-info">Automatisk rutetest for identifiserte fly innen 25 NM. Maksimalt 120 forsøk per dato og ett hvert 15. sekund i samme nettleser. Treff og feil telles separat nedenfor.</p></div>
+  <div class="card"><small>BETALT RESERVE – IKKE I 25 NM-TESTEN</small><strong>FlightAware</strong><p class="source-info">Bare kvalifiserte øvrige ruteoppslag kan bruke betalt fallback. Worker har egen intern sikkerhetsgrense på 4,50 USD per måned. Se kostnadskontrollen nedenfor.</p></div>
+ </div>
+ <h3>3. Flyposisjonskilder som ikke brukes nå</h3>
+ <div id="inactive-sources" class="source-secondary"></div>
+ <h3>Slik flyter dataene</h3>
+ <div class="data-flow" aria-label="Flyt for posisjoner">
+  <div class="data-step"><small>AKTIV POSISJONSKILDE</small><b>adsb.fi via lokal server</b><small>Leverer flyposisjoner</small></div>
+  <div class="data-arrow" aria-hidden="true">→</div>
+  <div class="data-step"><small>NETTSIDEN</small><b>Kristiansund Trafikkradar</b><small>Viser fly på kartet, avstander og nærhetsvarsler</small></div>
+  <div class="data-arrow" aria-hidden="true">→</div>
+  <div class="data-step"><small>INNEN 25 NM MED FLYNUMMER</small><b>Gratis ruteoppslag</b><small>Worker → adsb.lol. Finner og viser rute når den finnes, uten betalt fallback i piloten</small></div>
+ </div>
+ <p class="source-info">AIS for fartøy hentes også via Cloudflare Worker, men er uavhengig av flyposisjonene. Avinor leverer rutetider for KSU. At Worker står «ikke brukt» i historikken nedenfor, gjelder bare Worker som posisjonskilde for fly – ikke rute- eller fartøyfunksjonene.</p>
+</section>
+<section><h2>FlightAware – oppslag og forbruk (separat budsjett)</h2><section class="fa-usage" id="fa-usage">
   <div><span>FLIGHTAWARE</span><b id="fa-state" class="fa-ok">Aktiv</b></div>
   <div><span>OPPSLAG</span><b id="fa-calls">–</b></div>
   <div><span>ESTIMERT</span><b id="fa-spent">–</b></div>
@@ -57,7 +89,7 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
 </div>
 <p class="muted">Piloten gjør bare gratis rutekall til adsb.lol via Worker, ett nytt flynummer per dato innen 25 NM, maksimalt 120 forsøk per dag og ett nytt oppslag hvert 15. sekund. Telleren gjelder kun denne nettleseren. Betalt FlightAware-forbruk fra alle andre oppslag vises i seksjonen over og begrenses på Worker-siden til USD 4,50/måned som sikkerhetsmargin under målet på USD 5. Faktiske leverandørkostnader kan avvike fra estimater.</p>
 </section>
-<section><h2>Nøkkeltall</h2><div class="grid" id="metrics"></div></section>
+<section><h2>Driftsdiagnostikk · lokale målinger</h2><div class="grid" id="metrics"></div></section>
 <section class="card"><h2>Feilsøking av adsb.fi</h2><div id="diagnosis" class="note"></div><p class="note">Offisielt oppslag: <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener">adsb.fi v3 · KSU 75 NM</a>. Åpning av lenken er en manuell test og bruker et API-oppslag.</p></section>
 <section class="card"><h2>API-diagnose · manuell test</h2>
 <p class="note">Tester Worker og direkte adsb.fi fra denne nettleseren. Testen utføres kun når du trykker på knappen. En blokkert nettleserforespørsel kan ikke alltid avsløre HTTP-status.</p>
