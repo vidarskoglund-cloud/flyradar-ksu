@@ -123,14 +123,86 @@ function mergeAircraft(...sources) {
   return [...byKey.values()];
 }
 
+const NORWAY_INTERVAL_MS=600000;
+const NORWAY_MAX_CALLS_DAY=900;
+const NORWAY_AREAS=[
+ {name:'Sør-Norge, Bergen og Oslo',lat:59.65,lon:8.5,r:240},
+ {name:'Vestlandet og Møre',lat:62.6,lon:7.5,r:240},
+ {name:'Trøndelag og Helgeland',lat:65.1,lon:12.6,r:240},
+ {name:'Nordland og Lofoten',lat:67.6,lon:15.2,r:240},
+ {name:'Troms',lat:69.3,lon:19.1,r:240},
+ {name:'Finnmark',lat:70.4,lon:27.1,r:240}
+];
+function norwayPosition(a){
+ const lat=Number(a?.lat),lon=Number(a?.lon);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat<57||lat>72.5||lon<3||lon>32||
+   Number(a.seen_pos??0)>90)return null;
+ return {hex:String(a.hex||'').slice(0,12),flight:String(a.flight||'').trim().slice(0,20),
+   r:String(a.r||'').slice(0,20),t:String(a.t||'').slice(0,12),lat,lon,
+   alt_baro:a.alt_baro??null,gs:a.gs??null,track:a.track??null};
+}
 export class TrackStore extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.aircraftFetchPromise = null;
+    this.norwayFetchPromise = null;
   }
 
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    if(request.method==='GET'&&url.pathname==='/norway-shared'){
+      const now=Date.now(),saved=await this.ctx.storage.get('norwaySnapshot')||null;
+      if(saved&&now-saved.generated_at_ms<NORWAY_INTERVAL_MS)
+        return Response.json({...saved,cache:'hit'});
+      if(!this.norwayFetchPromise){
+        this.norwayFetchPromise=(async()=>{
+          const day=new Date().toISOString().slice(0,10);
+          let quota=await this.ctx.storage.get('norwayQuota')||{day,count:0};
+          if(quota.day!==day)quota={day,count:0};
+          const blocked=Number(await this.ctx.storage.get('norwayBlockedUntil')||0);
+          if(blocked>now||quota.count+NORWAY_AREAS.length>NORWAY_MAX_CALLS_DAY)
+            return saved?{...saved,stale:true,cache:'stale',blocked_until:blocked}:
+              {ok:false,ac:[],error:'Norgesøk midlertidig begrenset'};
+          const merged=new Map();let completed=0,error=null;
+          for(const area of NORWAY_AREAS){
+            if(completed)await new Promise(resolve=>setTimeout(resolve,1600));
+            const url='https://opendata.adsb.fi/api/v3/lat/'+area.lat+'/lon/'+area.lon+'/dist/'+area.r;
+            quota.count++;await this.ctx.storage.put('norwayQuota',quota);
+            let response;
+            try{response=await fetch(url,{headers:{Accept:'application/json'},
+              signal:AbortSignal.timeout(12000)});}
+            catch(e){error='Nettverksfeil fra adsb.fi';break;}
+            if(!response.ok){
+              error='HTTP '+response.status;
+              if([400,401,403,404,429].includes(response.status))
+                await this.ctx.storage.put('norwayBlockedUntil',Date.now()+
+                  (response.status===429?30:15)*60000);
+              break;
+            }
+            let body;
+            try{body=await response.json();}catch(e){error='Ugyldig JSON';break;}
+            if(!Array.isArray(body?.ac)){error='Uventet ADS-B-format';break;}
+            for(const raw of body.ac){
+              const a=norwayPosition(raw);
+              if(!a)continue;
+              const key=a.hex||a.r||a.flight;
+              if(key)merged.set(key,a);
+            }
+            completed++;
+          }
+          const snapshot={ok:completed>0,partial:completed<NORWAY_AREAS.length,
+            regions_completed:completed,regions_total:NORWAY_AREAS.length,
+            generated_at:new Date().toISOString(),generated_at_ms:Date.now(),
+            count:merged.size,ac:[...merged.values()].slice(0,2200),error,
+            source:'adsb.fi',cache:'miss'};
+          if(completed>0)await this.ctx.storage.put('norwaySnapshot',snapshot);
+          else await this.ctx.storage.put('norwayBlockedUntil',Date.now()+300000);
+          return completed===0&&saved?{...saved,stale:true,error,cache:'stale'}:snapshot;
+        })().finally(()=>{this.norwayFetchPromise=null;});
+      }
+      return Response.json(await this.norwayFetchPromise);
+    }
 
     if (request.method === "GET" && url.pathname === "/aircraft-shared") {
       const now = Date.now();
@@ -944,6 +1016,22 @@ export default {
         return new Response(JSON.stringify({ ok: false }), {
           status: 500,
           headers: { ...corsHeaders(), "Cache-Control": "no-store" },
+        });
+      }
+    }
+
+    if(url.pathname==='/norway-aircraft'){
+      const stub=env.TRACK_STORE.get(env.TRACK_STORE.idFromName('ksu'));
+      try{
+        const r=await stub.fetch('https://track-store/norway-shared');
+        const data=await r.json();
+        return new Response(JSON.stringify(data),{
+          status:data.ok?200:503,
+          headers:{...corsHeaders(),'Cache-Control':'public, max-age=120, s-maxage=120'}
+        });
+      }catch(e){
+        return new Response(JSON.stringify({ok:false,ac:[],error:'Norgesøk utilgjengelig'}),{
+          status:503,headers:{...corsHeaders(),'Cache-Control':'no-store'}
         });
       }
     }
