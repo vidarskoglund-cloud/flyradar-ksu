@@ -1080,7 +1080,7 @@ function focusIdleCandidate(list,advance=false){
   }
   return true;
 }
-map.on('dragstart',()=>{manualMapUntil=Date.now()+30000;idleViewStartedAt=null;idleViewPhase=-1;});
+map.on('dragstart',()=>{manualMapUntil=Date.now()+120000;idleViewStartedAt=null;idleViewPhase=-1;});
 function confirmedKsuArrival(p){
   const info=ksuFlightInfo(p);
   if(info && info.direction==='Ankomst KSU' && info.status!=='Innstilt')return true;
@@ -1312,9 +1312,98 @@ function followNearest(list,s){
 
   if(!focusIdleCandidate(sorted,false))applyMapLevel(s);
 }
-function fitMap(list,s){
-  // Automatic aircraft zoom and tracking disabled; keep user's map position.
+// Automatisk kartfokus: KSU-fly foran lokaltrafikk, deretter fartøy nær byen.
+let smartMapTarget=null, smartMapChangedAt=0, autoMapTransition=false;
+const SMART_MAP_HOLD_MS=30000;
+const SMART_MAP_MANUAL_MS=120000;
+function smartPlaneIdentity(p){
+  return 'fly:'+(planeKey(p)||p.hex||p.flight||p.reg||'ukjent');
 }
+function smartMapCandidate(list){
+  const active=(list||[]).filter(p=>!p.signalLost &&
+    Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
+  const choices=[];
+  for(const p of active){
+    const d=ksuDistanceNm(p);
+    if(!Number.isFinite(d))continue;
+    const info=ksuFlightInfo(p);
+    const arrival=confirmedKsuArrival(p)&&info?.status!=='Innstilt';
+    const departure=info?.direction==='Avgang KSU'&&info.status!=='Innstilt';
+    const approach=arrival?ksuApproachContext(p):null;
+    const heading=getTrackDeg(p);
+    const bearing=bearingBetween(p.lat,p.lon,63.1118,7.8245);
+    const towardKsu=heading!==null&&angleDiff(heading,bearing)<=75;
+    let rank=0;
+    if(arrival&&d<=100&&(approach||d<=50))rank=5;
+    else if(departure&&d<=25)rank=4;
+    else if(d<=25)rank=3;
+    else if(arrival&&d<=100&&towardKsu)rank=1;
+    if(!rank)continue;
+    choices.push({
+      key:smartPlaneIdentity(p),rank,d,
+      points:[[63.1118,7.8245],[p.lat,p.lon]],
+      maxZoom:rank===5?(d<=8?12:d<=25?10:d<=50?9:7):
+        rank===4?(d<=8?12:10):rank===3?(d<=8?11:9):7
+    });
+  }
+  // Fartøy styrer bare kartet når ingen mer relevante KSU-/lokalfly finnes.
+  for(const v of vessels){
+    const lat=Number(v.lat),lon=Number(v.lon),speed=Number(v.speed);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||
+       !Number.isFinite(speed)||speed<1.5)continue;
+    const d=nm(dist(lat,lon,mapAreas.city.lat,mapAreas.city.lon));
+    if(d>6)continue;
+    choices.push({
+      key:'bat:'+(vesselKey(v)||lat+','+lon),rank:2,d,
+      points:[[63.1118,7.8245],kristiansundPoint(),[lat,lon]],
+      maxZoom:d<=2?11:10
+    });
+  }
+  choices.sort((a,b)=>b.rank-a.rank||a.d-b.d);
+  return choices;
+}
+function fitMap(list,s){
+  const now=Date.now();
+  if(now<manualMapUntil)return;
+  const candidates=smartMapCandidate(list);
+  const best=candidates[0]||null;
+  const current=candidates.find(x=>x.key===smartMapTarget?.key)||null;
+  let target=best;
+  // Hold på samme mål i minst 30 sekunder, unntatt høyere prioritet.
+  if(current&&best&&current.key!==best.key&&
+     now-smartMapChangedAt<SMART_MAP_HOLD_MS&&best.rank<=current.rank){
+    target=current;
+  }
+  if(!target){
+    if(smartMapTarget?.key!=='normal'){
+      smartMapTarget={key:'normal',rank:0};
+      smartMapChangedAt=now;
+    }
+  }else if(smartMapTarget?.key!==target.key){
+    smartMapTarget={key:target.key,rank:target.rank};
+    smartMapChangedAt=now;
+  }
+  const bounds=target
+    ?L.latLngBounds(target.points)
+    :areaBounds(mapAreas.airport.lat,mapAreas.airport.lon,22);
+  const maxZoom=target?target.maxZoom:10;
+  const padding=target?[65,65]:[28,28];
+  const wantedZoom=Math.min(maxZoom,map.getBoundsZoom(bounds,false,L.point(padding[0]*2,padding[1]*2)));
+  const inside=map.getBounds().pad(-0.15);
+  const pointsVisible=target?target.points.every(pos=>inside.contains(pos)):
+    inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
+  if(pointsVisible&&Math.abs(map.getZoom()-wantedZoom)<=1)return;
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  autoMapTransition=true;
+  const opts={padding,maxZoom,animate:!reduced,duration:1.5};
+  map.once('moveend',()=>{autoMapTransition=false;});
+  if(reduced)map.fitBounds(bounds,opts);
+  else map.flyToBounds(bounds,opts);
+}
+// Brukerens zoom og panorering skal overstyre automatisk fokus i to minutter.
+map.on('zoomstart',()=>{
+  if(!autoMapTransition)manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
+});
 function airportLabel(a){
   if(!a)return'';
   const code=a.iata||a.icao||a.code||'';
@@ -1689,6 +1778,7 @@ async function loadVessels(){
     const j=await r.json();
     vessels=Array.isArray(j?.vessels)?j.vessels:[];
     renderVessels();
+    fitMap(planes,settings());
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent=vessels.length
       ?vessels.length+' fartøy i bevegelse · AIS fra Kystverket'
