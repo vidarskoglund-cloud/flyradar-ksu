@@ -145,12 +145,12 @@ function airportIcon(code,label,kind='route',compact=false){
       <span class="airport-symbol">✈</span>
       <div><b>${safeCode}</b>${showLabel?`<small>${safeLabel}</small>`:''}</div>
     </div>`,
-    iconSize:isHome?(compact?[58,30]:[104,38]):[58,30],
-    iconAnchor:isHome?(compact?[15,15]:[18,19]):[15,15]
+    iconSize:isHome?[48,24]:[58,30],
+    iconAnchor:isHome?[24,12]:[15,15]
   });
 }
 let home=L.marker([63.1118,7.8245],{
-  icon:airportIcon('KSU','Kvernberget','home',false),
+  icon:airportIcon('KSU','Kvernberget','home',true),
   zIndexOffset:900
 }).bindTooltip('KSU / Kvernberget',{direction:'top'}).addTo(map);
 function updateHomeAirportMarker(){
@@ -160,8 +160,7 @@ function updateHomeAirportMarker(){
     return;
   }
   if(!map.hasLayer(home))home.addTo(map);
-  const compact=zoom>=11 || window.innerWidth<=600;
-  home.setIcon(airportIcon('KSU','Kvernberget','home',compact));
+  home.setIcon(airportIcon('KSU','Kvernberget','home',true));
 }
 map.on('zoomend',()=>{document.getElementById('map').classList.toggle('wide-map',map.getZoom()<9);try{updateRangeRings(settings());renderNorwayAirports();updateHomeAirportMarker()}catch(e){}});
 renderNorwayAirports();
