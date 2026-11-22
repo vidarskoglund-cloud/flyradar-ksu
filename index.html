@@ -552,6 +552,22 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  .nearest-panel details.road-status-side summary small{font-size:9px;font-weight:400;white-space:nowrap;color:var(--m)}
  .nearest-panel details.road-status-side[open] .road-status-list{margin-top:5px}
 }
+/* Compact desktop sidebar: each data group expands independently.
+   All data fetches remain active while a group is collapsed. */
+@media(min-width:900px){
+ .nearest-panel details.sidebar-fold{display:block;flex-shrink:0;overflow:visible;max-height:none;min-height:0}
+ .nearest-panel details.sidebar-fold summary{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  min-height:26px;cursor:pointer;list-style:none;font-size:11px;
+  font-weight:700;color:var(--m);letter-spacing:0;text-transform:none;
+ }
+ .nearest-panel details.sidebar-fold summary::-webkit-details-marker{display:none}
+ .nearest-panel details.sidebar-fold summary span:before{content:"▸ ";color:var(--a)}
+ .nearest-panel details.sidebar-fold[open] summary span:before{content:"▾ "}
+ .nearest-panel details.sidebar-fold summary small{font-weight:400;font-size:9px;color:var(--m);white-space:nowrap;text-transform:none;letter-spacing:0}
+ .nearest-panel details.sidebar-fold[open]>:not(summary){margin-top:5px}
+ .nearest-panel details.fs-schedule[open] #avinor-list-side{overflow:visible}
+}
 </style>
 </head>
 <body>
@@ -571,15 +587,15 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div><b id="fs-updated">–</b><span>oppdatert</span></div>
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
-<section class="schedule nearest-panel"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div><div class="fs-schedule"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></div>
-<div class="speedboat-side"><h3>Hurtigbåt · Kristiansund</h3><div id="speedboat-list-side" aria-live="polite"><div class="schedule-empty">Henter rutetider fra Entur…</div></div>
-<small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></div>
+<section class="schedule nearest-panel"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div><details class="fs-schedule sidebar-fold"><summary><span>Flyavganger og ankomster · KSU</span><small>Vis flytider</small></summary><div id="avinor-list-side"></div></details>
+<details class="speedboat-side sidebar-fold"><summary><span>Hurtigbåt · Kristiansund</span><small>Vis rutetider</small></summary><div id="speedboat-list-side" aria-live="polite"><div class="schedule-empty">Henter rutetider fra Entur…</div></div>
+<small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></details>
 <details class="road-status-side">
 <summary><span>Veitrafikk · Kristiansund</span><small>5 forbindelser · ikke kontrollert</small></summary>
 <div class="road-status-list" id="road-status-side"></div>
 <small class="road-status-credit">Ingen direkte DATEX-tilgang ennå · <a href="https://www.vegvesen.no/trafikk/" target="_blank" rel="noopener noreferrer">Kontroller hos Vegvesenet</a></small>
 </details>
-<div class="weather-side"><h3>Vær · Kristiansund</h3><div id="weather-side" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></div></section>
+<details class="weather-side sidebar-fold"><summary><span>Vær · Kristiansund</span><small>Kvernberget og prognose</small></summary><div id="weather-side" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></details></section>
 <section class="schedule"><h2>Flyavganger og ankomster · KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 <section class="schedule speedboat-regular"><h2>Hurtigbåt · Kristiansund</h2><div id="speedboat-list"><div class="schedule-empty">Henter rutetider fra Entur…</div></div><small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></section>
 <section class="schedule road-status-regular"><h2>Veitrafikk · Kristiansund</h2>

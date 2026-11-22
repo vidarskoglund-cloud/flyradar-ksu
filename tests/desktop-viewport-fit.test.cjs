@@ -51,3 +51,20 @@ test('desktop road traffic details start closed and retain all five names when e
  assert.match(html,/details\.road-status-side\[open\] summary/);
  assert.match(html,/class="schedule road-status-regular"/);
 });
+
+test('all four desktop information groups are independently collapsible without hiding the data',()=>{
+ for(const [klass,child] of [
+  ['fs-schedule','avinor-list-side'],
+  ['speedboat-side','speedboat-list-side'],
+  ['road-status-side','road-status-side'],
+  ['weather-side','weather-side']
+ ]){
+  const tag=new RegExp('<details class="([^"]*\\b'+klass+'\\b[^"]*)"([^>]*)>([\\s\\S]*?)<\\/details>');
+  const match=html.match(tag);
+  assert.ok(match,klass+' is a details element');
+  assert.doesNotMatch(match[2],/\bopen\b/,klass+' is closed by default');
+  assert.match(match[3],/<summary>/,klass+' has an accessible expand control');
+  assert.ok(match[3].includes('id="'+child+'"'),klass+' retains data container');
+ }
+ assert.match(html,/details\.sidebar-fold\[open\] summary/);
+});

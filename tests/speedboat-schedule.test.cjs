@@ -22,7 +22,7 @@ function call(options={}){
   destinationDisplay:{frontText:'Trondheim'},...options};
 }
 test('field appears directly beneath flights in desktop and mobile',()=>{
- assert.match(html,/<div id="avinor-list-side"><\/div><\/div>\s*<div class="speedboat-side">/);
+ assert.match(html,/<div id="avinor-list-side"><\/div><\/details>\s*<details class="speedboat-side sidebar-fold">/);
  assert.match(html,/<section class="schedule speedboat-regular">/);
  assert.match(html,/id="speedboat-list"/);
  assert.match(html,/id="speedboat-list-side"/);
