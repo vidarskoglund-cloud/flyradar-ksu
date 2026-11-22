@@ -2817,7 +2817,15 @@ function highlightSelectedAircraft(){
 }
 function select(p,lookupRoute=true){
   if(!p)return;
-  if(lookupRoute)selectedVesselTypeKey='';
+  if(lookupRoute){
+    // An explicit aircraft click should replace, not coexist with, vessel details.
+    selectedVesselTypeKey='';
+    manualVesselSelectionUntil=Date.now()+SMART_MAP_MANUAL_MS;
+    syncVesselSelectionMarkers();
+    if($('cards'))$('cards').hidden=false;
+    if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Valgt fly';
+    updateTypeCard(p);
+  }
   selected=p;
   highlightSelectedAircraft();
   if(lookupRoute && p.flight && !p.routeData && canLookupRoute(p) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
