@@ -21,6 +21,8 @@ function setup({offscreen=true,manual=false,lost=false}={}){
      lon>=Math.min(...longitudes)-0.001&&lon<=Math.max(...longitudes)+0.001;
   }
   extend(p){this.points.push(p);changes.extended.push(p);return this;}
+  getNorthEast(){return [Math.max(...this.points.map(p=>p[0])),Math.max(...this.points.map(p=>p[1]))];}
+  getSouthWest(){return [Math.min(...this.points.map(p=>p[0])),Math.min(...this.points.map(p=>p[1]))];}
  }
  const map={
   getBounds:()=>({pad:()=>({contains:p=>p[0]>63&&p[0]<63.2&&p[1]>7.6&&p[1]<8})}),
