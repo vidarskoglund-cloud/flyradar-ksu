@@ -162,3 +162,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Hvis flyet ikke er synlig, kan dette overstyre vanlig automatisk rezoom-cooldown og ventetiden før retur til normalvisning. Automatisk zoom skjer fortsatt **ikke** under den etablerte pausen på to minutter etter manuell zoom/panorering. Ved mistet signal utvides ikke utsnittet på grunn av den gamle flyposisjonen. Skip/KSU-prioritering, bevegelsesinterpolering, datakilder og API-intervaller er beholdt.
 - Testene ble tilpasset knappfri løsning. Ny simulert Leaflet-test kontrollerer utvidelse av kartgrensene, fly som allerede vises, signalbortfall og manuell pause. GitHub Actions var `success` ved sammenslåing.
 - **Åpent:** Verifiser på publisert GitHub Pages at fokusert fly er synlig ved endret avstand og at zoomanimasjon ikke gir unødig hopping i reell trafikk. Ingen nettleserverifisert publisering.
+
+## 22.11.2026 – Toppstatus beskriver faktisk kartfokus (PR #43)
+- [PR #43](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/43) er slått sammen i `main` (commit `1a12b9755d4f0fe851557979d1f702e307c0c52d`).
+- Tidligere kunne toppstatus si «0 fly innen 50 NM · følger SAS1326» mens kart og høyrepanel viste fartøyet HOPSFJORD. Årsak: statusen ble skrevet ut fra siste prioriterte/valgte fly, ikke kartets `smartMapTarget`.
+- Statusen bygges nå av aktivt automatisk kartmål: «Følger fartøy NAVN» for `bat:<id>`, «Følger fly IDENTIFIKATOR» for `fly:<id>`, «Viser fly IDENTIFIKATOR» for korte fjernflyglimt, ellers «Oversikt Kristiansund». Når bruker styrer kartet manuelt (to minutters pause), vises «Kartvisning valgt manuelt» i stedet for en falsk «følger»-påstand.
+- Antall fly innen 50 NM er fjernet fra toppteksten fordi det allerede vises i statistikklinjen. Toppstatus har klokkeslett. Fullskjermstatus oppdateres sammen med vanlig header.
+- Ved ADS-B-feil beholdes eksisterende tydelig beskjed om feil eller sist kjente data, ikke falsk kartfokus-status. Eksisterende kartvalg, kildeprioritering, autozoom, AIS-oppdateringer og kostnadsoppsett er uendret.
+- Automatiske tester for fly, fartøy, tomt kartmål, manuell styring, eldre data og oppdatering ved `render` ble lagt til. Eldre karttest for manuell zoom ble oppdatert og GitHub Actions besto for PR #43.
+- **Åpent:** Praktisk kontroll på publisert nettside ved skifte mellom fartøy, fly, oversikt og manuell kartstyring.
