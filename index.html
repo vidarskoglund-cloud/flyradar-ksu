@@ -434,6 +434,13 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     border-top:1px solid var(--line);
   }
 }
+
+/* Compact schedule time: only label "Ny tid" for a confirmed Avinor revision. */
+.schedule-clock{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap}
+.schedule-clock .schedule-time{font-size:12px;line-height:1.1}
+.schedule-time-label{font-size:9px;color:var(--m);font-weight:400;line-height:1.1}
+.schedule-live-detail{line-height:1.3}
+@media(min-width:900px){.nearest-panel .fs-schedule h3{font-size:11px;letter-spacing:0;text-transform:none}}
 </style>
 </head>
 <body>
@@ -453,8 +460,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div><b id="fs-updated">–</b><span>oppdatert</span></div>
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
-<section class="schedule nearest-panel"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div><div class="fs-schedule"><h3>Neste på KSU</h3><div id="avinor-list-side"></div></div></section>
-<section class="schedule"><h2>Neste på KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
+<section class="schedule nearest-panel"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div><div class="fs-schedule"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></div></section>
+<section class="schedule"><h2>Flyavganger og ankomster · KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 
 <details class="settings-panel" style="margin-top:12px"><summary>Varsler og lyd</summary>
 
@@ -470,6 +477,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="aircraft-photos.js?v=1"></script>
 <script src="vessel-photos.js?v=4"></script>
 <script src="vessel-wikidata.js?v=1"></script>
-<script src="app.js?v=186"></script>
+<script src="app.js?v=187"></script>
 
 </body></html>

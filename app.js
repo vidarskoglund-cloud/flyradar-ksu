@@ -2339,55 +2339,71 @@ function upcomingSchedule(f,now){
   const status=String(f.status_code||'').toUpperCase();
   if(status==='A'||status==='D')return false;
   const time=scheduleDisplayTime(f);
-  return Number.isFinite(time) && time>=now-30*60*1000;
+  // A flight with confirmed cancellation is still shown until the planned time
+  // has passed; remove flights when they are more than 30 minutes out of date.
+  return Number.isFinite(time)&&time>=now-30*60*1000;
+}
+function avinorTimeInfo(f){
+  const scheduled=Date.parse(f.schedule_time||'');
+  const revised=String(f.status_code||'').toUpperCase()==='E'
+    ?Date.parse(f.status_time||''):NaN;
+  const changed=Number.isFinite(scheduled)&&Number.isFinite(revised)
+    &&Math.abs(revised-scheduled)>=60000;
+  const display=changed?revised:scheduled;
+  const format=t=>Number.isFinite(t)
+    ?new Date(t).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
+  return {changed,delayed:changed&&revised>scheduled,
+    time:format(display),scheduled:format(scheduled)};
+}
+function avinorLivePlane(f){
+  const key=avinorFlightKey(f);
+  return planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&!p.signalLost)||null;
 }
 function renderAvinor(){
-  const el=$('avinor-list');
-  const side=$('avinor-list-side');
+  const el=$('avinor-list'),side=$('avinor-list-side');
   if(!el&&!side)return;
   if(!avinorFlights.length){
-    if(el)el.innerHTML='<div class="schedule-empty">Ingen planlagte KSU-data tilgjengelig akkurat nå.</div>';
-    if(side)side.innerHTML='<div class="schedule-empty">Ingen kommende fly.</div>';
+    if(el)el.innerHTML='<div class="schedule-empty">Ingen flytider fra Avinor tilgjengelig akkurat nå.</div>';
+    if(side)side.innerHTML='<div class="schedule-empty">Ingen flytider fra Avinor tilgjengelig.</div>';
     return;
   }
   const now=Date.now();
+  // When a flight is matched to a live ADS-B position, keep it prominent.
+  // The remaining flights retain chronological order.
   const rows=avinorFlights
     .filter(f=>upcomingSchedule(f,now))
-    .sort((a,b)=>scheduleDisplayTime(a)-scheduleDisplayTime(b))
+    .map(f=>({f,livePlane:avinorLivePlane(f)}))
+    .sort((a,b)=>Number(Boolean(b.livePlane))-Number(Boolean(a.livePlane))
+      ||scheduleDisplayTime(a.f)-scheduleDisplayTime(b.f))
     .slice(0,4);
 
-  const rowHtml=(f,index,compact=false)=>{
-    const t=Number.isFinite(scheduleDisplayTime(f))?new Date(scheduleDisplayTime(f)).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'}):'–';
+  const rowHtml=({f,livePlane},index,compact=false)=>{
+    const info=avinorTimeInfo(f);
     const dep=f.arr_dep==='D';
-    const heli=/^(HKS|HMB)/i.test(f.flight_id||'') || /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
+    const heli=/^(HKS|HMB)/i.test(f.flight_id||'') ||
+      /helicopter/i.test((f.airline_name||'')+' '+(f.airline||''));
     const route=f.airport==='KSU'?'':`${dep?'Til':'Fra'} ${f.airport||'–'}`;
     const key=avinorFlightKey(f);
-    const livePlane=planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&!p.signalLost)||null;
     const stalePlane=planes.find(p=>p.ksuFlight&&avinorFlightKey(p.ksuFlight)===key&&p.signalLost)||null;
-    const matched=Boolean(livePlane);
-    const staleMatched=Boolean(stalePlane);
-    const statusText=avinorStatusText(f);
-    const sched=Date.parse(f.schedule_time||'');
-    const nearWindow=Number.isFinite(sched)&&Math.abs(sched-now)<=120*60*1000;
-
-    let opStatus='';
-    let statusClass='neutral';
-    if(matched){
-      opStatus='Følges nå';
-      statusClass='live';
-    }else if(statusText){
-      opStatus=statusText;
-      statusClass=statusText==='Innstilt'?'cancelled':statusText==='Landet'||statusText==='Avreist'?'done':'changed';
+    const matched=Boolean(livePlane),staleMatched=Boolean(stalePlane);
+    const status=String(f.status_code||'').toUpperCase();
+    let opStatus='',statusClass='neutral';
+    if(status==='C'){
+      opStatus='Innstilt';statusClass='cancelled';
+    }else if(matched){
+      opStatus='Følges nå';statusClass='live';
+    }else if(info.delayed){
+      opStatus='Forsinket';statusClass='changed';
+    }else if(info.changed){
+      opStatus='Tid endret';statusClass='changed';
     }else if(staleMatched){
-      opStatus='Signal mistet';
-      statusClass='stale';
-    }else if(nearWindow){
-      opStatus='';
-      statusClass='waiting';
+      opStatus='Signal mistet';statusClass='stale';
     }
-
-    const distanceText=livePlane?`${nm(livePlane.d).toFixed(0)} NM fra KSU`:'';
-    const nextClass=index===0&&!statusText&&!matched?' next':'';
+    const distanceText=matched&&Number.isFinite(Number(livePlane.d))
+      ?`${nm(livePlane.d).toFixed(0)} NM fra KSU`:'';
+    const extra=[info.changed?`Planlagt ${info.scheduled}`:'',
+      matched?distanceText:''].filter(Boolean).join(' · ');
+    const nextClass=index===0&&!matched?' next':'';
     return `<div class="schedule-row ${heli?'heli':''} ${matched?'matched':''} ${staleMatched?'stale':''}${nextClass}">
       <div class="schedule-direction ${dep?'dep':'arr'}">${dep?'AVG':'ANK'}</div>
       <div class="schedule-main">
@@ -2396,14 +2412,17 @@ function renderAvinor(){
           <span class="schedule-route">${route}</span>
           ${opStatus?`<span class="schedule-status ${statusClass}">${opStatus}</span>`:''}
         </div>
-        ${!compact&&distanceText?`<div class="schedule-live-detail">${distanceText}</div>`:compact&&matched?`<div class="schedule-live-detail">${distanceText}</div>`:''}
+        ${extra?`<div class="schedule-live-detail">${extra}</div>`:''}
       </div>
-      <div class="schedule-time">${t}</div>
+      <div class="schedule-clock"><strong class="schedule-time">${info.time}</strong>
+        <small class="schedule-time-label">${info.changed?'Ny tid':'Planlagt'}</small>
+      </div>
     </div>`;
   };
-
-  if(el)el.innerHTML=rows.map((f,index)=>rowHtml(f,index,false)).join('') || '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
-  if(side)side.innerHTML=rows.slice(0,5).map((f,index)=>rowHtml(f,index,true)).join('') || '<div class="schedule-empty">Ingen kommende fly.</div>';
+  if(el)el.innerHTML=rows.map((row,index)=>rowHtml(row,index,false)).join('')||
+    '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
+  if(side)side.innerHTML=rows.map((row,index)=>rowHtml(row,index,true)).join('')||
+    '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
 
 function compactFlightId(value){
