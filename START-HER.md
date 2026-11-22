@@ -140,3 +140,9 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Fullscreen og mobil får uendret layout. Eksisterende id-er og automatiske statistikkoppdateringer, AIS-felt, kart, skip/fly-kort og funksjoner er beholdt. Ingen endringer i datakilder eller oppdateringsintervaller.
 - Nye tester og hele GitHub Actions-kjøringen besto på PR #39.
 - **Åpent:** Visuell kontroll på publisert GitHub Pages ved brukerens PC-oppløsning. Dette er første trinn i å minimere rulling; hele desktop-sidens høydedisponering og behovet for scrollbar er ennå ikke verifisert/fjernet på alle skjermstørrelser. Ikke skjul viktig informasjon eller snarveier for å fjerne scrollbar.
+
+## 22.11.2026 – Desktopvisningen tilpasses vindushøyden (PR #40)
+- Skjermbilde fra bruker viste fremdeles global vertikal scrollbar etter PR #39. Årsaken i CSS var at kartet fikk høyde basert på hele skjermhøyden mens header, kompakt statustripel, innstillinger og footer fortsatt krevde plass.
+- [PR #40](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/40) slått sammen i `main` (commit `653fba561964fbb376b38ab6ab8a7ca2dcc32f4f`). Vanlig desktop-nettleser i minst 900×640 piksler får nå en viewportbundet grid: header, fleksibel kart-/panelrad og synlig kildefooter. Kartet bruker tilgjengelig gridhøyde uten kunstig 100vh-basert minstehøyde.
+- Høyrepanelet kan rulle *internt* dersom fly-, skip- eller Wikidata-informasjonen er større enn tilgjengelig plass. Varsler og lyd forblir tilgjengelige, også ved åpning; lange detaljer klippes ikke bevisst. Fullscreen og mobilregler er ikke endret.
+- CI syntaks-, layout- og regresjonstester besto for PR #40. **Praktisk verifikasjon gjenstår:** Bekreft at vertikal siderulling er borte på brukerens PC ved vanlig desktop-visning, og at all viktig informasjon fortsatt er tilgjengelig.
