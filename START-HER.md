@@ -117,3 +117,11 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Betalt FlightAware-fallback brukes **ikke** i pilotens `pilot25-free`-scope, men kan gjelde andre kvalifiserte oppslag. Eksisterende Worker-kode har intern 4,50 USD/måned-reservasjon og faktiskforbrukskontroll; dette er ingen garanti om samlet faktura under 5 USD. Faktisk utrullet Worker-versjon er fortsatt ikke kontrollert.
 - GitHub Actions syntaks-, kart-, skip-, bildestatus-, pilot-, administrasjons- og nye regresjonstester besto etter oppdatering av eldre tester som forventet fast skipsoverskrift. Øvrig sporingslogikk, prioritering, Worker/AIS/ADS-B, fotokilder og kostnadspolicy er uendret.
 - **Åpent:** Verifiser live GitHub Pages og overskrift for skip med faktisk inn-/utgående AIS-bevegelse og ruteteller/Worker i nettleser.
+
+## 22.11.2026 – Forbedret søk etter skipsbilder i Wikimedia Commons
+- [PR #37](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/37) slått sammen i `main` (commit `f2965567f371ddbf9ee19e803f39ef9877bb5faf`).
+- Bildeoppslaget prøver fortsatt IMO/MMSI først, men søker deretter etter «<skipsnavn> ship», «<skipsnavn> vessel» og skipsnavnet alene. Utvidet søket til flere bilder per søk og leser kategori-/beskrivelsesmetadata fra Commons.
+- Tidligere ble relevante bilder med kun navn og årstall i filnavnet ofte avvist; nå kan maritim kategori bekrefte konteksten. Kandidater med eksakt IMO eller MMSI prioriteres foran treff på navn. Navnetreff uten slik ID vises fortsatt tydelig som «Mulig foto».
+- Søket krever gjenbrukbar Wikimedia-lisens; CC-NC og CC-ND avvises. Fotograf, lisens og Commons-kilde krediteres. Ingen bilder hentes automatisk fra søkemotorer eller andre nettsteder med uklar lisens.
+- Negativ bildecache endret til v4 så eldre «ingen treff» ikke hindrer nytt søk. Egne regresjonstester for bildetitler, Commons-kategorier, eksakt IMO og forvekslingsfare besto i GitHub Actions.
+- **Gjenstår:** Test faktisk søk på publisert nettside og verifiser bildet visuelt mot det konkrete fartøyet. Navnet «hiosfjord» brukt som eksempel i samtalen er ikke bekreftet som identisk med et bestemt Commons-fartøy. Ingen endringer i AIS, flydata, Worker eller kostnader.
