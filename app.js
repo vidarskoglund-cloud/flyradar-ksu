@@ -2723,25 +2723,38 @@ function findKsuFlight(p){
   const carrier=callsign.startsWith('WIF')?'WF':callsign.startsWith('SAS')?'SK':'';
   if(!carrier)return null;
 
-  // Ankomster skal ikke lenger matches bare på flyselskap/tidsvindu.
-  // De fanges via eksakt flightnummer eller fjernsporing/rutekontroll.
-  // Dette hindrer f.eks. at et BGO→TOS-fly blir koblet til en gammel BGO→KSU-rad.
+  // ADS-B-kallesignal (f.eks. WIF7D) er ikke et Avinor-flynummer.
+  // Bruk aldri bare flyselskap og tid som bekreftet identitet.
   const dNm=nm(p.d);
-  const leaving=ksuMovementStatus(p).label==='Har forlatt KSU';
+  if(!Number.isFinite(dNm)||dNm>50||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return null;
+  const track=getTrackDeg(p);
+  const toKsu=bearingBetween(p.lat,p.lon,63.1118,7.8245);
+  const awayByHeading=track!==null&&angleDiff(track,toKsu)>=125;
+  const history=trackHistory.get(planeKey(p))||[];
+  const first=history[0],last=history[history.length-1];
+  const awayByHistory=history.length>=2 &&
+    nm(dist(63.1118,7.8245,last.lat,last.lon))-
+    nm(dist(63.1118,7.8245,first.lat,first.lon))>=1;
+  // Unngaa sirkelavhengighet: «Har forlatt KSU» krever Avinor-kobling.
+  if(dNm>8 && !awayByHeading && !awayByHistory)return null;
 
+  const confirmedDestination=confirmedRouteDestination(p);
   const fallback=avinorFlights.filter(f=>{
     if(f.arr_dep!=='D')return false;
     if(!compactFlightId(f.flight_id).startsWith(carrier))return false;
     if(!avinorMatchPlausible(p,f,false))return false;
+    if(!airportByCode(f.airport)||!plausibleKsuRouteCorridor(p,f))return false;
+    if(confirmedDestination && confirmedDestination.code!==f.airport)return false;
     const t=Date.parse(f.schedule_time||'');
     if(!Number.isFinite(t))return false;
-    if(dNm>20)return false;
-    if(!leaving && dNm>8)return false;
-    return t>=now-30*60*1000 && t<=now+60*60*1000;
+    const maxAge=dNm>15?45:60;
+    const futureAllowance=dNm>15?5:20;
+    return t>=now-maxAge*60*1000 && t<=now+futureAllowance*60*1000;
   });
 
   if(fallback.length!==1)return null;
-  return fallback[0];
+  // Match mot rute/korridor er sannsynlig, ikke bekreftet identitet.
+  return {...fallback[0],_inferredKsuMatch:true};
 }
 function attachAvinorMatches(){
   planes.forEach(p=>{
@@ -3298,7 +3311,7 @@ function render(autoFit=false){
         </div>
         <div class="dist">${shown.signalLost?'Siste kjente avstand · ':''}${liveDistanceText(shown)}</div>
       </div>
-      ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
+      ${ksuInfo?`<div class="ksu-flight"><b>${shown.ksuFlight?._inferredKsuMatch?'Mulig KSU-avgang':ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}${shown.ksuFlight?._inferredKsuMatch?' · sannsynlig kobling, ikke bekreftet':''}</span></div>`:''}
       ${routeBlock}
       ${pilot25LookupStatus(shown)?`<div class="route-pilot-note">${pilot25LookupStatus(shown)}</div>`:''}
       <div class="aircraft-metrics">
