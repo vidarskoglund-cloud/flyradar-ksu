@@ -10,6 +10,7 @@ on:
       - 'vessel-photos.js'
       - 'vessel-wikidata.js'
       - 'speedboat-schedule.js'
+      - 'road-status.js'
       - 'worker/src/index.js'
       - 'tests/**'
       - '.github/workflows/map-focus-tests.yml'
@@ -31,6 +32,7 @@ jobs:
           node --check vessel-photos.js
           node --check vessel-wikidata.js
           node --check speedboat-schedule.js
+          node --check road-status.js
           node --check worker/src/index.js
       - name: New map focus regression tests
         run: node --test tests/map-focus.test.cjs
@@ -64,6 +66,8 @@ jobs:
         run: node --test tests/speedboat-schedule.test.cjs
       - name: Specialized aircraft classification and type photo tests
         run: node --test tests/aircraft-special-photo.test.cjs
+      - name: Road, AIS vessel motion and free pilot tests
+        run: node --test tests/traffic-three-features.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs

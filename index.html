@@ -462,6 +462,17 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .special-flight-tag{display:inline-flex;width:max-content;max-width:100%;margin-top:5px;padding:3px 8px;border:1px solid #3e8192;border-radius:7px;color:#b9f3ff;background:#123345;font-size:10px;font-weight:700;letter-spacing:.02em}
 .special-flight-tag[data-special-role="rescue"],.special-flight-tag[data-special-role="ambulance"]{border-color:#85aa65;background:#1d342c;color:#dcffbc}
 .special-flight-tag[data-special-role="military"]{border-color:#9a8a5c;color:#f3dca6;background:#332c1b}
+/* Road traffic without verified DATEX credentials: never infer "open" status. */
+.road-status-side{display:none}
+.road-status-list{display:grid;gap:0}
+.road-status-row{display:flex;gap:8px;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #1b2d43}
+.road-status-row:first-child{border-top:0}
+.road-status-name{font-size:11px;font-weight:600}
+.road-status-unknown{font-size:10px;color:var(--m);text-align:right}
+.road-status-credit{display:block;margin-top:7px;color:var(--m);font-size:9px}
+.road-status-credit a{color:var(--a)}
+.route-pilot-note{margin-top:4px;color:#8da6bb;font-size:10px}
+@media(min-width:900px){.nearest-panel .road-status-side{display:block;margin-top:13px;padding-top:12px;border-top:1px solid #1b2d43}.nearest-panel .road-status-side h3{color:var(--m);font-size:11px;margin:0 0 7px}main>.road-status-regular{display:none!important}}
 </style>
 </head>
 <body>
@@ -483,9 +494,18 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </div>
 <section class="schedule nearest-panel"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div><div class="fs-schedule"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></div>
 <div class="speedboat-side"><h3>Hurtigbåt · Kristiansund</h3><div id="speedboat-list-side" aria-live="polite"><div class="schedule-empty">Henter rutetider fra Entur…</div></div>
-<small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></div></section>
+<small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></div>
+<div class="road-status-side">
+<h3>Veitrafikk · Kristiansund</h3>
+<div class="road-status-list" id="road-status-side"></div>
+<small class="road-status-credit">Ingen direkte DATEX-tilgang ennå · <a href="https://www.vegvesen.no/trafikk/" target="_blank" rel="noopener noreferrer">Kontroller hos Vegvesenet</a></small>
+</div></section>
 <section class="schedule"><h2>Flyavganger og ankomster · KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 <section class="schedule speedboat-regular"><h2>Hurtigbåt · Kristiansund</h2><div id="speedboat-list"><div class="schedule-empty">Henter rutetider fra Entur…</div></div><small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></section>
+<section class="schedule road-status-regular"><h2>Veitrafikk · Kristiansund</h2>
+<div class="road-status-list" id="road-status"></div>
+<small class="road-status-credit">Ingen direkte DATEX-tilgang ennå · <a href="https://www.vegvesen.no/trafikk/" target="_blank" rel="noopener noreferrer">Kontroller hos Vegvesenet</a></small>
+</section>
 
 <details class="settings-panel" style="margin-top:12px"><summary>Varsler og lyd</summary>
 
@@ -502,6 +522,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="vessel-photos.js?v=4"></script>
 <script src="vessel-wikidata.js?v=1"></script>
 <script src="speedboat-schedule.js?v=2"></script>
-<script src="app.js?v=191"></script>
+<script src="road-status.js?v=1"></script>
+<script src="app.js?v=192"></script>
 
 </body></html>
