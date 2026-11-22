@@ -1481,6 +1481,7 @@ function fitMap(list,s){
      now-smartMapChangedAt<SMART_MAP_HOLD_MS&&best.rank<=current.rank){
     target=current;
   }
+  const targetChanged=smartMapTarget?.key!==(target?.key||'normal');
   if(!target){
     if(smartMapTarget?.key!=='normal'){
       smartMapTarget={key:'normal',rank:0};
@@ -1501,7 +1502,7 @@ function fitMap(list,s){
     inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
   if(pointsVisible&&Math.abs(map.getZoom()-wantedZoom)<=1)return;
   // Samme mål får korte perioder uten rezoom; viktig innflyging (<5 NM) kan oppdateres raskt.
-  if(target&&now-smartMapLastMoveAt<SMART_MAP_MOVE_COOLDOWN_MS&&target.d>5)return;
+  if(target&&!targetChanged&&now-smartMapLastMoveAt<SMART_MAP_MOVE_COOLDOWN_MS&&target.d>5)return;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   autoMapTransition=true;
   const opts={padding,maxZoom,animate:!reduced,duration:2.2};
