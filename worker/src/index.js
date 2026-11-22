@@ -73,9 +73,13 @@ function normalizeVesselFeature(feature) {
   const heading = vesselNumber(p, ["true_heading","trueHeading","heading"]);
   const destination = vesselText(p, ["destination","dest"]);
   const msgtime = vesselText(p, ["msgtime","timestamp","time","date_time_utc"]);
+  // Static fields are optional; never manufacture missing IMO or vessel dimensions.
+  const imo = vesselText(p, ["imo","IMO","imo_number","imoNumber"]);
+  const length = vesselNumber(p, ["length","ship_length","shipLength","length_overall","loa"]);
+  const width = vesselNumber(p, ["width","breadth","ship_width","shipWidth","beam"]);
 
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
-  return { lat, lon, shipType, mmsi, name, speed, course, heading, destination, msgtime };
+  return { lat, lon, shipType, mmsi, name, speed, course, heading, destination, msgtime, imo, length, width };
 }
 
 function relevantPassengerVessel(v) {

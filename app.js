@@ -2009,30 +2009,33 @@ function aircraftTypeCard(p){
  const name=info?.[0]||p.desc||(heli?'Helikopter':'Flytype ukjent');
  const label=info?.[1]||(heli?'Helikopter':'Fly');
  return '<details class="type-info" open><summary>Om flytypen</summary><div class="type-info-inner">'+
- aircraftPhotoMarkup(p,typeIllustration(info?.[2]||(heli?'heli':'jet')))+'<strong>'+escapeVesselText(name)+'</strong>'+
+ '<div id="aircraft-photo-slot">'+aircraftPhotoMarkup(p,typeIllustration(info?.[2]||(heli?'heli':'jet')))+'</div><strong>'+escapeVesselText(name)+'</strong>'+
  '<span>'+escapeVesselText(label)+(code?' · '+escapeVesselText(code):'')+'</span>'+
- '<small>'+(AIRCRAFT_REG_PHOTOS[String(p.reg||'').trim().toUpperCase()]?'Foto av registreringen '+escapeVesselText(p.reg):'Typebilde eller illustrasjon – ikke nødvendigvis samme fly')+'</small></div></details>';
+ '<small id="aircraft-photo-note">'+(AIRCRAFT_REG_PHOTOS[String(p.reg||'').trim().toUpperCase()]?'Foto av registreringen '+escapeVesselText(p.reg):'Typebilde eller illustrasjon – ikke nødvendigvis samme fly')+'</small></div></details>';
 }
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
- const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m']];
+ const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['Fart',v.speed!=null&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],['Kurs',v.course!=null&&Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],['AIS-tid',v.msgtime]];
  return '<details class="type-info" open><summary>Om valgt fartøy</summary><div class="type-info-inner">'+
  '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div><strong>'+escapeVesselText(title)+'</strong>'+
  fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span>'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+
  '<small id="vessel-photo-note">Generell illustrasjon · AIS fra Kystverket</small></div></details>';
 }
-let lastTypeCardIdentity='';
+let lastTypeCardIdentity='',lastTypeCardSignature='';
 function updateTypeCard(p){
  const el=$('type-info');
  if(!el)return;
  const vessel=selectedVesselTypeKey?vessels.find(v=>vesselKey(v)===selectedVesselTypeKey):null;
  const identity=vessel?'vessel:'+vesselKey(vessel):p?'aircraft:'+String(p.type||'').toUpperCase()+':'+String(p.reg||'').toUpperCase():'';
- if(identity===lastTypeCardIdentity)return;
+ const signature=vessel?JSON.stringify([identity,vessel.name,vessel.mmsi,vessel.imo,vessel.destination,vessel.length,vessel.width,vessel.speed,vessel.course,vessel.msgtime]):identity;
+ if(signature===lastTypeCardSignature)return;
  lastTypeCardIdentity=identity;
+ lastTypeCardSignature=signature;
  el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
  el.dataset.photoIdentity=identity;
  if(vessel&&window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
+ if(!vessel&&p&&window.loadSelectedAircraftPhoto)void window.loadSelectedAircraftPhoto(p,identity);
 }
 
 // Only promote a vessel when it is moving and no more important KSU aircraft needs focus.
