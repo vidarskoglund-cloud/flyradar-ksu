@@ -154,3 +154,11 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Fly som er landet/avreist eller mer enn 30 minutter forbi oppgitt tid, vises ikke. Inntil fire kommende flyvninger vises. Fly med sikker aktiv KSU-kobling i ADS-B får prioritet i listen og får «Følges nå» samt avstand fra KSU når tilgjengelig; øvrige sorteres kronologisk. Avlyste fly vises merket «Innstilt» så lenge de ligger innenfor tidsvinduet.
 - Avinor JSON-fil, innhentingsintervall (10 minutter), datafangst og fly-/skipskilder er uendret. Relevante automatiserte tester og CI kjørte med `success`.
 - **Åpent:** Kontroll av faktisk publisert visning på PC, særlig små sidepanel og håndtering av ufullstendige statusfelt i reelle Avinor-data.
+
+## 22.11.2026 – Automatisk kartutsnitt for fokusert fly (PR #42)
+- [PR #42](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/42) er slått sammen i `main` (commit `8e16ac846824fb87296b2d18a3a9b77d85cc6015`).
+- Fjernet «Vis fly på kart»-knappen med tilhørende HTML/CSS, klikkhendelse og gjentatt kontroll i animasjonsløkka. Den var en manuell løsning når flyet vist i informasjonspanelet lå utenfor kartet.
+- `fitMap` utvider nå automatisk kartets målgrenser med posisjonen til flyet i informasjonspanelet dersom det har aktivt signal og befinner seg utenfor det vanlige målutsnittet. Kartet zoomer ut til et område som viser både det valgte flyet og de øvrige lokale fokusmålene, fremfor å be bruker trykke knapp.
+- Hvis flyet ikke er synlig, kan dette overstyre vanlig automatisk rezoom-cooldown og ventetiden før retur til normalvisning. Automatisk zoom skjer fortsatt **ikke** under den etablerte pausen på to minutter etter manuell zoom/panorering. Ved mistet signal utvides ikke utsnittet på grunn av den gamle flyposisjonen. Skip/KSU-prioritering, bevegelsesinterpolering, datakilder og API-intervaller er beholdt.
+- Testene ble tilpasset knappfri løsning. Ny simulert Leaflet-test kontrollerer utvidelse av kartgrensene, fly som allerede vises, signalbortfall og manuell pause. GitHub Actions var `success` ved sammenslåing.
+- **Åpent:** Verifiser på publisert GitHub Pages at fokusert fly er synlig ved endret avstand og at zoomanimasjon ikke gir unødig hopping i reell trafikk. Ingen nettleserverifisert publisering.
