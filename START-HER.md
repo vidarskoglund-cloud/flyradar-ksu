@@ -125,3 +125,11 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Søket krever gjenbrukbar Wikimedia-lisens; CC-NC og CC-ND avvises. Fotograf, lisens og Commons-kilde krediteres. Ingen bilder hentes automatisk fra søkemotorer eller andre nettsteder med uklar lisens.
 - Negativ bildecache endret til v4 så eldre «ingen treff» ikke hindrer nytt søk. Egne regresjonstester for bildetitler, Commons-kategorier, eksakt IMO og forvekslingsfare besto i GitHub Actions.
 - **Gjenstår:** Test faktisk søk på publisert nettside og verifiser bildet visuelt mot det konkrete fartøyet. Navnet «hiosfjord» brukt som eksempel i samtalen er ikke bekreftet som identisk med et bestemt Commons-fartøy. Ingen endringer i AIS, flydata, Worker eller kostnader.
+
+## 22.11.2026 – Flere skipsopplysninger fra Wikidata (PR #38)
+- [PR #38](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/38) er slått sammen i `main` (commit `11d3fae42d1eac94f0dae4d0da304b24ed842c00`). GitHub Actions-kontroll for PR-hodet ble fullført med `success`.
+- Valgt skipskort har en ny, egen seksjon «Flere skipsopplysninger · Wikidata». Viser skipstype (P31), operatør (P137), registreringsland (P8047) og tatt i bruk-år (P729), dersom disse feltene finnes. En lenke leder til den eksakte Q-posten.
+- Søket gjøres fra nettleseren mot Wikidata Query Service: først eksakt IMO (P458), deretter MMSI (P587) hvis første oppslag ikke ga et entydig treff. Det brukes **aldri navnetreff alene**. Motstridende IMO/MMSI avvises og flere mulige Q-poster fører ikke til automatisk valg.
+- Resultater lagres lokalt i nettleseren i 7 døgn, negative treff i 1 døgn, og parallelle oppslag for samme identifikator dedupliseres. Oppslag skjer ved valg av fartøy, ikke for alle AIS-objekter i hver oppdatering.
+- Dynamisk AIS fra Kystverket (posisjon, kurs, fart, AIS-destinasjon, lengde/bredde) er uendret og atskilt fra potensielt ufullstendige/utdaterte Wikidata-opplysninger. Ingen MarineTraffic-data brukes, ingen betalte API-er eller Worker-endringer.
+- **Kontrollstatus:** JavaScript-syntaks og regresjonstester for identitet, flertydighet og tilleggsvisning besto. Åpent: faktisk oppslag/visning via Wikidata API og GitHub Pages etter utrulling; offentlig Wikidata-tjeneste kan ha tilgjengelighetsbegrensninger og endringer.
