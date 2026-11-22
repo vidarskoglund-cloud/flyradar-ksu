@@ -38,7 +38,7 @@ function chooseExactRegistration(reg,pages){
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
   if(!info||!meta)continue;
   const licence=plain(meta.LicenseShortName?.value);
-  if(!/^(?:CC BY|CC0|PUBLIC DOMAIN|PD-)/i.test(licence))continue;
+  if(!/^(?:CC BY|CC0|PUBLIC DOMAIN|PD-)/i.test(licence)||/\b(?:NC|ND)\b/i.test(licence))continue;
   const src=info.thumburl||info.url,source=info.descriptionurl;
   if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||
      !/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
@@ -74,7 +74,7 @@ function chooseTypePhoto(type,pages){
   if(!/\.(?:jpe?g|webp)$/i.test(filename)||
     /\b(?:logo|drawing|illustration|render|model|diagram|cockpit|interior|seat|simulator)\b/i.test(filename))continue;
   const categories=(page.categories||[]).map(c=>String(c.title||'').replace(/^Category:/i,'')).join(' ');
-  const matchTitle=spec.patterns.some(rx=>rx.test(filename));
+  const matchTitle=spec.patterns.some(rx=>rx.test(filename.replace(/_/g,' ')));
   const matchCategory=spec.patterns.some(rx=>rx.test(categories));
   if(!matchTitle&&!matchCategory)continue;
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
