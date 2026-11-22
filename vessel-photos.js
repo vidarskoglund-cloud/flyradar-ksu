@@ -47,13 +47,20 @@ async function search(v){
  if(pending.has(key))return pending.get(key);
  const task=(async()=>{
   try{
-   if(name.length<7)return null;
-   const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
-    gsrsearch:'"'+name.replace(/"/g,'').slice(0,60)+'"',gsrnamespace:'6',gsrlimit:'12',
-    prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'720'});
-   const r=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{credentials:'omit',signal:AbortSignal.timeout(8000)});
-   if(!r.ok)throw Error('HTTP '+r.status);
-   const j=await r.json(),photo=pick(v,j.query?.pages);
+   const imo=String(v.imo||'').replace(/\D/g,'');
+   if(name.length<5&&imo.length!==7)return null;
+   const searches=[name.length>=5?'"'+name.replace(/"/g,'').slice(0,60)+'"':'',imo.length===7?'"'+imo+'"':''].filter(Boolean);
+   let photo=null;
+   for(const term of searches){
+    const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
+     gsrsearch:term,gsrnamespace:'6',gsrlimit:'20',
+     prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'720'});
+    const r=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{credentials:'omit',signal:AbortSignal.timeout(8000)});
+    if(!r.ok)throw Error('HTTP '+r.status);
+    const j=await r.json();
+    photo=pick(v,j.query?.pages);
+    if(photo)break;
+   }
    save(key,photo);return photo;
   }catch(e){console.warn('Fartøyfoto ikke tilgjengelig',e);return null;}
   finally{pending.delete(key);}

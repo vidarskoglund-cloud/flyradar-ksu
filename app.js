@@ -1829,7 +1829,7 @@ function vesselIcon(v){
   const tr=Number.isFinite(Number(v.heading))?Number(v.heading):(Number.isFinite(Number(v.course))?Number(v.course):0);
   return L.divIcon({
     className:'vessel-wrap',
-    html:`<div class="vessel-marker" style="transform:rotate(${tr}deg)">▲</div>`,
+    html:`<div class="vessel-marker${vesselKey(v)===selectedVesselTypeKey?' selected':''}" style="transform:rotate(${tr}deg)">▲</div>`,
     iconSize:[26,26],iconAnchor:[13,13]
   });
 }
@@ -1893,8 +1893,8 @@ function vesselDetail(v){
  const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
  const fields=[
-  ['Type',category],['MMSI',v.mmsi],['Fart',Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],
-  ['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],
+  ['Type',category],['MMSI',v.mmsi],['Fart',v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],
+  ['Kurs',v.course!=null&&v.course!==''&&Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],
   ['Avstand KSU',Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM':''],
   ['Destinasjon',v.destination],['AIS-tid',v.msgtime]
  ];
@@ -1969,20 +1969,34 @@ function aircraftTypeCard(p){
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
- const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m']];
+ const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['Fart',v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],['AIS-tid',v.msgtime]];
  return '<details class="type-info" open><summary>Om valgt fartøy</summary><div class="type-info-inner">'+
  '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div><strong>'+escapeVesselText(title)+'</strong>'+
  fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span>'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+
  '<small id="vessel-photo-note">Generell illustrasjon · AIS fra Kystverket</small></div></details>';
 }
-let lastTypeCardIdentity='';
+let lastTypeCardIdentity='',lastTypeCardSignature='';
+function updateVesselSelectionBanner(){
+ const banner=$('vessel-selection-banner');
+ if(!banner)return;
+ const v=selectedVesselTypeKey?vessels.find(item=>vesselKey(item)===selectedVesselTypeKey):null;
+ banner.hidden=!v;
+ if(!v)return;
+ const parts=['Valgt skip: '+(v.name||('MMSI '+(v.mmsi||'ukjent')))];
+ if(v.mmsi)parts.push('MMSI '+v.mmsi);
+ if(v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed)))parts.push(Number(v.speed).toFixed(1)+' knop');
+ banner.textContent=parts.join(' · ');
+}
 function updateTypeCard(p){
  const el=$('type-info');
  if(!el)return;
  const vessel=selectedVesselTypeKey?vessels.find(v=>vesselKey(v)===selectedVesselTypeKey):null;
  const identity=vessel?'vessel:'+vesselKey(vessel):p?'aircraft:'+String(p.type||'').toUpperCase()+':'+String(p.reg||'').toUpperCase():'';
- if(identity===lastTypeCardIdentity)return;
+ const signature=vessel?JSON.stringify([identity,vessel.name,vessel.category,vessel.shipType,vessel.mmsi,vessel.imo,vessel.destination,vessel.length,vessel.width,vessel.speed,vessel.course,vessel.msgtime]):identity;
+ updateVesselSelectionBanner();
+ if(signature===lastTypeCardSignature)return;
  lastTypeCardIdentity=identity;
+ lastTypeCardSignature=signature;
  el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
  el.dataset.photoIdentity=identity;
  if(vessel&&window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
@@ -1998,7 +2012,12 @@ function renderVessels(){
    .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
    .bindPopup(vesselDetail(v),{autoPan:false})
    .addTo(vesselLayer);
-  marker.on('click',()=>{selectedVesselTypeKey=vesselKey(v);updateTypeCard(selected);});
+  marker.on('click',()=>{
+    selectedVesselTypeKey=vesselKey(v);
+    for(const m of vesselMarkers.values())m.getElement()?.querySelector('.vessel-marker')?.classList.remove('selected');
+    marker.getElement()?.querySelector('.vessel-marker')?.classList.add('selected');
+    updateTypeCard(selected);
+  });
   vesselMarkers.set(vesselKey(v),marker);
  }
 
@@ -2012,6 +2031,7 @@ async function loadVessels(){
     updateVesselMotionHistory(vessels);
     renderVessels();
     if(selectedVesselTypeKey)updateTypeCard(selected);
+    else updateVesselSelectionBanner();
     fitMap(planes,settings());
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent=vessels.length
@@ -2020,6 +2040,7 @@ async function loadVessels(){
   }catch(e){
     vessels=[];
     vesselLayer.clearLayers();
+    updateVesselSelectionBanner();
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent='AIS-data er ikke tilgjengelige akkurat nå';
   }
