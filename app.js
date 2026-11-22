@@ -11,7 +11,7 @@ const remoteKsuIdentityCache=new Map();
 const ksuLastKnownCache=new Map();
 const liveDistanceState=new Map();
 const LOST_SIGNAL_KEEP_MS=3*60*1000;
-const KSU_LOST_SIGNAL_KEEP_MS=60*1000;
+const KSU_LOST_SIGNAL_KEEP_MS=2*60*1000;
 let notified50=new Set(), notificationBaselineReady=false;
 const WORKER_URL='https://flyradar-ksu.vidar-skoglund.workers.dev/aircraft';
 const mapAreas={
@@ -209,7 +209,8 @@ function retainRecentPlanes(current){
   for(const [key,entry] of recentPlaneCache){
     if(currentKeys.has(key))continue;
     const age=now-entry.lastSeenAt;
-    const keepMs=entry.plane.ksuFlight?KSU_LOST_SIGNAL_KEEP_MS:LOST_SIGNAL_KEEP_MS;
+    const nearKsuOnGround=ksuDistanceNm(entry.plane)<=3.5 && isGroundOrTaxi(entry.plane);
+    const keepMs=(entry.plane.ksuFlight||nearKsuOnGround)?KSU_LOST_SIGNAL_KEEP_MS:LOST_SIGNAL_KEEP_MS;
     if(age>keepMs){
       recentPlaneCache.delete(key);
       continue;
@@ -275,7 +276,7 @@ function ksuParkedState(p){
     ? Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000))
     : 0;
 
-  if(p.signalLost&&ageSec>=60)return {label:'Parkert ved KSU',ageSec};
+  if(p.signalLost&&ageSec>=60)return {label:'Siste kjente posisjon ved KSU',ageSec};
   return {label:'På bakken ved KSU',ageSec};
 }
 
@@ -284,6 +285,7 @@ function signalStateText(p){
   const ageSec=Math.max(0,Math.round((Date.now()-(p.lastSeenAt||Date.now()))/1000));
   const parked=ksuParkedState(p);
   if(parked)return parked.label;
+  if(ksuDistanceNm(p)<=3.5 && isGroundOrTaxi(p))return `Siste kjente posisjon ved KSU · signal mistet for ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
   if(p.ksuFlight)return `Signal midlertidig mistet · siste kjente posisjon · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
   return `Signal mistet · sist sett ${ageSec<60?ageSec+' sek':Math.round(ageSec/60)+' min'} siden`;
 }
@@ -1314,6 +1316,7 @@ function followNearest(list,s){
 }
 // Automatisk kartfokus: KSU-fly foran lokaltrafikk, deretter fartøy nær byen.
 let smartMapTarget=null, smartMapChangedAt=0, autoMapTransition=false;
+const smartGroundStillSince=new Map();
 const SMART_MAP_HOLD_MS=30000;
 const SMART_MAP_MANUAL_MS=120000;
 function smartPlaneIdentity(p){
@@ -1339,18 +1342,44 @@ function smartMapCandidate(list){
     const motion=ksuMovementStatus(p).label;
     const inboundByMotion=(motion==='Nærmer seg KSU' ||
       motion==='Ser ut til å være på innflyging') && towardKsu && d<=100;
+    const low=Number(p.alt);
+    const speed=Number(p.gs);
+    const groundLike=d<=3.5&&isGroundOrTaxi(p);
+    // Skille aktiv taksing fra et luftfartoy som har sluttet a bevege seg.
+    // Manglende eller gammel ADS-B-posisjon er aldri dokumentert parkering.
+    const key=smartPlaneIdentity(p);
+    const stopped=groundLike&&Number.isFinite(speed)&&speed<=5;
+    const still=smartGroundStillSince.get(key);
+    if(stopped){
+      if(!still || nm(dist(still.lat,still.lon,p.lat,p.lon))>0.1){
+        smartGroundStillSince.set(key,{lat:p.lat,lon:p.lon,since:Date.now()});
+      }
+    }else smartGroundStillSince.delete(key);
+    const stationary=stopped&&smartGroundStillSince.has(key)&&
+      Date.now()-smartGroundStillSince.get(key).since>=2*60*1000;
+    const finalApproach=d<=5&&Number.isFinite(low)&&low<=3500&&
+      !groundLike&&(arrival||inboundByMotion);
     let rank=0;
-    if(arrival&&d<=100&&(approach||d<=50))rank=5;
-    else if(departure&&d<=25)rank=4;
+    if(groundLike&&!stationary)rank=6;
+    else if(finalApproach)rank=5.5;
+    else if(arrival&&d<=100&&(approach||d<=50))rank=5;
+    else if(departure&&d<=25&&!stationary)rank=4;
     else if(inboundByMotion&&d<=50)rank=3.5;
-    else if(d<=25)rank=3;
+    else if(d<=25&&!stationary)rank=3;
     else if(inboundByMotion)rank=2.5;
     else if(arrival&&d<=100&&towardKsu)rank=2.5;
     if(!rank)continue;
+    // Nar luftfartoyet er pa bakken skal kartet folge posisjonen,
+    // ikke presse hele flyplassomradet inn i samme bilde.
+    const closeGround=groundLike&&d<=2;
     choices.push({
-      key:smartPlaneIdentity(p),rank,d,
-      points:[[63.1118,7.8245],[p.lat,p.lon]],
-      maxZoom:rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
+      key,rank,d,
+      points:closeGround
+        ?[[p.lat-0.002,p.lon-0.003],[p.lat+0.002,p.lon+0.003]]
+        :[[63.1118,7.8245],[p.lat,p.lon]],
+      maxZoom:groundLike?16:
+        finalApproach?(d<=1?16:d<=2.5?15:14):
+        rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
         rank>=3.5?(d<=8?12:d<=25?10:9):
         rank===3?(d<=8?11:9):7
     });
