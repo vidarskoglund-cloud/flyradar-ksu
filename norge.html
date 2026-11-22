@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08111f">
+<title>Fly i Norge · Kristiansund Trafikkradar</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:dark;--bg:#08111f;--panel:#0f1b2d;--line:#203753;--text:#f4f7fb;--muted:#9aadc2}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px system-ui,Arial,sans-serif}
+body{display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+header{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{font-size:18px;margin:0 0 3px}
+header small,.source-note{color:var(--muted)}
+header a{color:#8de5ff;text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:8px 10px;white-space:nowrap}
+main{min-height:0;position:relative}
+#norway-map{height:100%;width:100%;background:#d5e4ea}
+.info{position:absolute;top:10px;right:12px;z-index:500;background:#0f1b2df2;border:1px solid #294562;max-width:310px;padding:9px 12px;border-radius:11px;box-shadow:0 2px 16px #0005;font-size:12px}
+.info strong{display:block;font-size:17px}
+.info .note{font-size:11px;color:var(--muted);margin-top:4px}
+footer{padding:7px 12px;font-size:11px;color:var(--muted);border-top:1px solid var(--line)}
+footer a{color:#8de5ff}
+.aircraft-pin{display:grid;place-items:center;width:24px;height:24px;font-size:20px;color:#0e556d;text-shadow:0 0 3px #fff,1px 1px 2px #fff}
+.leaflet-popup-content{font:13px system-ui,sans-serif;min-width:165px;color:#1b2733}
+.leaflet-popup-content b{font-size:15px}
+.leaflet-popup-content small{color:#566677}
+@media(max-width:650px){h1{font-size:15px}header{padding:7px 9px}.info{left:10px;right:10px;top:8px;max-width:none;pointer-events:none}}
+</style>
+</head>
+<body>
+<header><div><h1>Fly i Norge</h1><small>Kristiansund Trafikkradar · egen landsoversikt</small></div><a href="./">Tilbake til Kristiansund</a></header>
+<main><div id="norway-map" aria-label="Kart over fly i Norge"></div><aside class="info" role="status" aria-live="polite">
+<strong id="aircraft-count">Henter flydata…</strong>
+<div id="coverage-status" class="note">Bergen, Gardermoen og resten av Norge</div>
+<div id="last-updated" class="note">Oppdateres maksimalt hvert 10. minutt</div>
+</aside></main>
+<footer>Flyposisjoner: <a href="https://adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> · Privat, ikke-kommersiell visning · Dekningen avhenger av ADS-B-mottakere. Nærliggende fly utenfor Norge kan forekomme. Ingen lokale KSU-varsler her.</footer>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="norway.js?v=1"></script>
+</body></html>
