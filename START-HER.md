@@ -146,3 +146,11 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - [PR #40](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/40) slått sammen i `main` (commit `653fba561964fbb376b38ab6ab8a7ca2dcc32f4f`). Vanlig desktop-nettleser i minst 900×640 piksler får nå en viewportbundet grid: header, fleksibel kart-/panelrad og synlig kildefooter. Kartet bruker tilgjengelig gridhøyde uten kunstig 100vh-basert minstehøyde.
 - Høyrepanelet kan rulle *internt* dersom fly-, skip- eller Wikidata-informasjonen er større enn tilgjengelig plass. Varsler og lyd forblir tilgjengelige, også ved åpning; lange detaljer klippes ikke bevisst. Fullscreen og mobilregler er ikke endret.
 - CI syntaks-, layout- og regresjonstester besto for PR #40. **Praktisk verifikasjon gjenstår:** Bekreft at vertikal siderulling er borte på brukerens PC ved vanlig desktop-visning, og at all viktig informasjon fortsatt er tilgjengelig.
+
+## 22.11.2026 – Tydeligere Avinor-panel for Kvernberget
+- [PR #41](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/41) slått sammen i `main` (commit `5b77b1b705c3a0245c86edeee6e4dbc7b4c82b1a`).
+- Paneloverskriften i både hoved-/sidevisning er endret fra «Neste på KSU» til «Flyavganger og ankomster · KSU» for å tydeliggjøre at begge flyretninger vises.
+- Rader med Avinors normale planlagte tid merkes «Planlagt». Bare når `status_code=E` og en gyldig `status_time` avviker med minst ett minutt fra `schedule_time`, merkes klokkeslettet «Ny tid», og opprinnelig planlagt klokkeslett vises i en liten linje. En senere tid gir «Forsinket»; en tidligere tid gir «Tid endret». Ingen generisk «Ny tid»-merking for alle fly.
+- Fly som er landet/avreist eller mer enn 30 minutter forbi oppgitt tid, vises ikke. Inntil fire kommende flyvninger vises. Fly med sikker aktiv KSU-kobling i ADS-B får prioritet i listen og får «Følges nå» samt avstand fra KSU når tilgjengelig; øvrige sorteres kronologisk. Avlyste fly vises merket «Innstilt» så lenge de ligger innenfor tidsvinduet.
+- Avinor JSON-fil, innhentingsintervall (10 minutter), datafangst og fly-/skipskilder er uendret. Relevante automatiserte tester og CI kjørte med `success`.
+- **Åpent:** Kontroll av faktisk publisert visning på PC, særlig små sidepanel og håndtering av ufullstendige statusfelt i reelle Avinor-data.
