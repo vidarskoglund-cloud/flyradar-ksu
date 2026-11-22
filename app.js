@@ -2145,7 +2145,9 @@ function vesselDetail(v){
  ];
  return '<div style="min-width:190px"><b>'+escapeVesselText(name)+'</b>'+
   fields.filter(([,value])=>value!==''&&value!=null).map(([key,value])=>'<div><strong>'+escapeVesselText(key)+':</strong> '+escapeVesselText(value)+'</div>').join('')+
-  '<small>AIS · Kystverket</small></div>';
+  '<small>AIS · Kystverket</small>'+ 
+  '<div class="vessel-popup-photo-slot" data-vessel-photo-key="'+escapeVesselText(vesselKey(v))+'">'+
+  '<small>Søker etter fartøyfoto…</small></div></div>';
 }
 
 const AIRCRAFT_TYPE_INFO={
@@ -2339,13 +2341,18 @@ function renderVessels(){
    // Reuse the DOM marker instead of deleting it at every AIS refresh.
    scheduleVesselMotion(marker,key,v);
    marker.setTooltipContent('Fartøy: '+escapeVesselText(name));
-   marker.setPopupContent(vesselDetail(v));
+   // Preserve an open popup (and its loaded photo) during 30-second AIS refreshes.
+   if(!marker.isPopupOpen())marker.setPopupContent(vesselDetail(v));
    continue;
   }
   marker=L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
    .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
    .bindPopup(vesselDetail(v),{autoPan:false})
    .addTo(vesselLayer);
+  marker.on('popupopen',event=>{
+   const current=vessels.find(item=>vesselKey(item)===key)||v;
+   if(window.loadVesselPopupPhoto)void window.loadVesselPopupPhoto(current,event.popup.getElement());
+  });
   marker.on('click',()=>{
    const current=vessels.find(item=>vesselKey(item)===key)||v;
    selectedVesselTypeKey=key;
