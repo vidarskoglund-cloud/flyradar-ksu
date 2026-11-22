@@ -80,10 +80,12 @@ test('idle view does not select aircraft with stale signal or implausible distan
  assert.equal(c.idleAircraftGlimpse([plane(56,{signalLost:true})],1000),null);
  assert.equal(c.idleAircraftGlimpse([plane(125)],1000),null);
 });
-test('manual aircraft focus retains the two-minute pause',()=>{
- assert.match(source,/manualMapUntil=Date\.now\(\)\+SMART_MAP_MANUAL_MS/);
- assert.match(source,/function showSelectedAircraftOnMap\(\)/);
- assert.match(source,/Vis fly på kart/);
+test('manual map gestures retain the two-minute pause without a focus button',()=>{
+ assert.match(source,/SMART_MAP_MANUAL_MS=120000/);
+ assert.match(source,/map\.on\('dragstart',\(\)=>\{manualMapUntil=Date\.now\(\)\+120000/);
+ assert.match(source,/if\(now<manualMapUntil\)return/);
+ assert.match(source,/if\(!autoMapTransition\)manualMapUntil=Date\.now\(\)\+SMART_MAP_MANUAL_MS/);
+ assert.doesNotMatch(source,/Vis fly på kart/);
 });
 test('idle aircraft phase cannot override active KSU or AIS candidates',()=>{
  assert.match(source,/const glimpse=!best\?idleAircraftGlimpse\(list,now\):null/);
