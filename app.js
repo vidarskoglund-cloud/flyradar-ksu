@@ -1835,10 +1835,15 @@ const AIRCRAFT_TYPE_INFO={
  DH8A:['De Havilland Dash 8-100','Turboprop regionalfly','prop'],
  S92:['Sikorsky S-92','Transport- og offshorehelikopter','heli'],
  E190:['Embraer E190','Regionalt jetfly','jet'],
+ E195:['Embraer ERJ-190-200 (E195)','Regionalt jetfly','jet'],
  E290:['Embraer E190-E2 / ERJ-190-300','Regionalt jetfly','jet']
 };
 
+const AIRCRAFT_REG_PHOTOS={
+ 'SE-RSI':{file:'SE-RSI Embraer 195 SAS ARN 01.jpg',credit:'Bene Riobó',license:'Lisens på bildesiden',exact:true}
+};
 const AIRCRAFT_TYPE_PHOTOS={
+ E195:{file:'SE-RSK Embraer E195LR SAS.jpg',credit:'Marius Vassnes',license:'CC BY-SA 4.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/4.0/'},
  S92:{file:'Sikorsky S-92.jpg',credit:'David Monniaux',license:'CC BY-SA 3.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/'},
  DH8D:{file:'Widerøe LN-WDE Q400.jpg',credit:'Alasdair McLellan',license:'CC BY-SA 3.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/'},
  DH8A:{file:'Widerøe - LN-WIM - De Havilland Canada DHC-8-100 Dash 8 8Q - Oslo Gardermoen Airport.jpg',credit:'Mitchul Hope',license:'Se Commons'},
@@ -1846,14 +1851,16 @@ const AIRCRAFT_TYPE_PHOTOS={
  A320:{file:'EasyJet Airbus A320.jpg',credit:'RubenVanKuik',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'},
  E290:{file:'Embraer E190-E2 (ERJ190-300) ‘LN-WEA’ Widerøe (49502451571).jpg',credit:'Alan Wilson',license:'CC BY-SA 2.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/2.0/'}
 };
-function aircraftPhotoMarkup(code,illustration){
- const photo=AIRCRAFT_TYPE_PHOTOS[code];
+function aircraftPhotoMarkup(p,illustration){
+ const code=String(p?.type||'').trim().toUpperCase();
+ const reg=String(p?.reg||'').trim().toUpperCase();
+ const photo=AIRCRAFT_REG_PHOTOS[reg]||AIRCRAFT_TYPE_PHOTOS[code];
  if(!photo)return illustration;
  const filename=encodeURIComponent(photo.file.replace(/ /g,'_'));
  const source='https://commons.wikimedia.org/wiki/File:'+filename;
  const src='https://commons.wikimedia.org/wiki/Special:FilePath/'+filename+'?width=640';
  return '<div class="type-photo-wrap">'+
-  '<img class="type-photo" src="'+src+'" alt="Fotografi av flytypen '+escapeVesselText(code)+'" loading="lazy" decoding="async" '+
+  '<img class="type-photo" src="'+src+'" alt="'+(photo.exact?'Fotografi av fly '+escapeVesselText(reg):'Fotografi av flytypen '+escapeVesselText(code))+'" loading="lazy" decoding="async" '+
   'onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
   '<div class="type-photo-fallback" hidden>'+illustration+'</div></div>'+
   '<small class="type-credit">Foto: <a href="'+source+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.credit)+'</a> · '+(photo.licenseUrl?'<a href="'+photo.licenseUrl+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.license)+'</a>':escapeVesselText(photo.license))+' · Wikimedia Commons</small>';
@@ -1877,9 +1884,9 @@ function aircraftTypeCard(p){
  const name=info?.[0]||p.desc||(heli?'Helikopter':'Flytype ukjent');
  const label=info?.[1]||(heli?'Helikopter':'Fly');
  return '<details class="type-info" open><summary>Om flytypen</summary><div class="type-info-inner">'+
- aircraftPhotoMarkup(code,typeIllustration(info?.[2]||(heli?'heli':'jet')))+'<strong>'+escapeVesselText(name)+'</strong>'+
+ aircraftPhotoMarkup(p,typeIllustration(info?.[2]||(heli?'heli':'jet')))+'<strong>'+escapeVesselText(name)+'</strong>'+
  '<span>'+escapeVesselText(label)+(code?' · '+escapeVesselText(code):'')+'</span>'+
- '<small>Foto eller illustrasjon viser flytypen, ikke nødvendigvis det konkrete flyet</small></div></details>';
+ '<small>'+(AIRCRAFT_REG_PHOTOS[String(p.reg||'').trim().toUpperCase()]?'Foto av registreringen '+escapeVesselText(p.reg):'Typebilde eller illustrasjon – ikke nødvendigvis samme fly')+'</small></div></details>';
 }
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
@@ -1895,7 +1902,7 @@ function updateTypeCard(p){
  const el=$('type-info');
  if(!el)return;
  const vessel=selectedVesselTypeKey?vessels.find(v=>vesselKey(v)===selectedVesselTypeKey):null;
- const identity=vessel?'vessel:'+vesselKey(vessel):p?'aircraft:'+String(p.type||'').toUpperCase():'';
+ const identity=vessel?'vessel:'+vesselKey(vessel):p?'aircraft:'+String(p.type||'').toUpperCase()+':'+String(p.reg||'').toUpperCase():'';
  if(identity===lastTypeCardIdentity)return;
  lastTypeCardIdentity=identity;
  el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
