@@ -2367,7 +2367,32 @@ function check50NmNotifications(list){
 }
 // Proximity is always measured from KSU, independent of map centre and filters.
 const proximityState=new Map();
-let proximityReady=false, proximityAudio=null, proximitySound=false;
+const PROXIMITY_SOUND_PREF_KEY='flyradar-ksu-proximity-sound-v1';
+let proximityReady=false, proximityAudio=null, proximitySound=true;
+try{proximitySound=localStorage.getItem(PROXIMITY_SOUND_PREF_KEY)!=='off';}catch(e){}
+function saveProximitySoundPreference(){
+  try{localStorage.setItem(PROXIMITY_SOUND_PREF_KEY,proximitySound?'on':'off');}catch(e){}
+}
+function renderProximitySoundButton(){
+  const button=$('proximity-sound');
+  if(!button)return;
+  button.textContent=proximitySound?'Nærhetslyd: på':'Nærhetslyd: av';
+  button.setAttribute('aria-pressed',String(proximitySound));
+  const note=$('sound-note');
+  if(note)note.textContent=proximitySound&&(!proximityAudio||proximityAudio.state!=='running')
+    ?'Lyd er på som standard. Nettleseren kan kreve ett trykk på siden før lyd spilles.'
+    :'Lydinnstillingen lagres på denne enheten.';
+}
+async function unlockProximityAudio(){
+  if(!proximitySound)return;
+  try{
+    const Audio=window.AudioContext||window.webkitAudioContext;
+    if(!Audio)return;
+    proximityAudio=proximityAudio||new Audio();
+    if(proximityAudio.state!=='running')await proximityAudio.resume();
+  }catch(e){}
+  renderProximitySoundButton();
+}
 function ksuDistanceNm(p){return nm(dist(63.1118,7.8245,Number(p.lat),Number(p.lon)))}
 function proximityCrossings(list){
   const events=[];
@@ -2394,14 +2419,10 @@ function playProximityTone(){
   oscillator.start(t);oscillator.stop(t+.36);
 }
 async function toggleProximitySound(){
-  const button=$('proximity-sound');
-  if(proximitySound){proximitySound=false;button.textContent='Nærhetslyd: av';button.setAttribute('aria-pressed','false');return;}
-  try{
-    const Audio=window.AudioContext||window.webkitAudioContext;
-    proximityAudio=proximityAudio||new Audio();
-    await proximityAudio.resume();
-    proximitySound=true;button.textContent='Nærhetslyd: på';button.setAttribute('aria-pressed','true');playProximityTone();
-  }catch(e){button.textContent='Lyd kunne ikke aktiveres';}
+  proximitySound=!proximitySound;
+  saveProximitySoundPreference();
+  if(proximitySound)await unlockProximityAudio();
+  renderProximitySoundButton();
 }
 function withinKsuAlertArea(p){return !p.signalLost&&ksuDistanceNm(p)<=50}
 function renderProximityAlert(list){
@@ -2740,6 +2761,9 @@ function toggleDisplay(){
 if($('mode'))$('mode').onclick=toggleDisplay;
 if($('notify'))$('notify').onclick=requestNotifications;
 if($('proximity-sound'))$('proximity-sound').onclick=toggleProximitySound;
+renderProximitySoundButton();
+document.addEventListener('pointerdown',()=>{if(proximitySound)void unlockProximityAudio();},{once:true});
+document.addEventListener('keydown',()=>{if(proximitySound)void unlockProximityAudio();},{once:true});
 let refreshTimer=null;
 function interpolatedPlanePosition(p,now=Date.now()){
   if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return null;
