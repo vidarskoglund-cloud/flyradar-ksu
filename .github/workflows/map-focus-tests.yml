@@ -4,6 +4,8 @@ on:
     paths:
       - 'app.js'
       - 'index.html'
+      - 'admin.html'
+      - 'admin.js'
       - 'aircraft-photos.js'
       - 'vessel-photos.js'
       - 'worker/src/index.js'
@@ -32,6 +34,8 @@ jobs:
         run: node --test tests/vessel-panel.test.cjs
       - name: Flight status and conditional map button tests
         run: node --test tests/flight-status-button.test.cjs
+      - name: Free 25 NM route pilot and cost safety tests
+        run: node --test tests/route25-pilot.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
