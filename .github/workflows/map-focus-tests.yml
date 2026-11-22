@@ -48,6 +48,8 @@ jobs:
         run: node --test tests/vessel-wikidata.test.cjs
       - name: Desktop compact status layout tests
         run: node --test tests/compact-desktop-stats.test.cjs
+      - name: Desktop viewport fit tests
+        run: node --test tests/desktop-viewport-fit.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
