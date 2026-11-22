@@ -26,6 +26,7 @@ function ctx(){
    movingHarborVessel:v=>v,
    VESSEL_HARBOR_CENTER:[63.1115,7.7600]
  });
+ vm.runInContext('const IDLE_GLIMPSE_CYCLE_MS=90000,IDLE_GLIMPSE_FROM_MS=60000,IDLE_GLIMPSE_TO_MS=75000;let idleGlimpseSince=null;const mapAreas={city:{lat:63.11,lon:7.74}};',c);
  vm.runInContext(extract('function smartMapCandidate','function fitMap'),c);
  return c;
 }
@@ -63,4 +64,29 @@ test('panel changes title based on fly relevance, and 25 NM banner stays separat
  assert.match(source,/aircraft-panel-title/);
  assert.match(source,/Fly i området/);
  assert.match(source,/function withinKsuAlertArea\(p\)\{return !p\.signalLost&&ksuDistanceNm\(p\)<=25\}/);
+});
+
+test('idle long-distance view starts only briefly after one quiet minute',()=>{
+ const c=ctx(),p=plane(56,{hex:'far'});
+ assert.equal(c.idleAircraftGlimpse([p],1000),null);
+ assert.equal(c.idleAircraftGlimpse([p],59000),null);
+ const glimpse=c.idleAircraftGlimpse([p],61000);
+ assert.equal(glimpse.key,'glimt:fly:far');
+ assert.equal(glimpse.maxZoom,9);
+ assert.equal(c.idleAircraftGlimpse([p],77000),null);
+});
+test('idle view does not select aircraft with stale signal or implausible distance',()=>{
+ const c=ctx();
+ assert.equal(c.idleAircraftGlimpse([plane(56,{signalLost:true})],1000),null);
+ assert.equal(c.idleAircraftGlimpse([plane(125)],1000),null);
+});
+test('manual aircraft focus retains the two-minute pause',()=>{
+ assert.match(source,/manualMapUntil=Date\.now\(\)\+SMART_MAP_MANUAL_MS/);
+ assert.match(source,/function showSelectedAircraftOnMap\(\)/);
+ assert.match(source,/Vis fly på kart/);
+});
+test('idle aircraft phase cannot override active KSU or AIS candidates',()=>{
+ assert.match(source,/const glimpse=!best\?idleAircraftGlimpse\(list,now\):null/);
+ assert.match(source,/let target=best\|\|glimpse/);
+ assert.match(source,/if\(best\)idleGlimpseSince=null/);
 });
