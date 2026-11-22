@@ -42,7 +42,7 @@ function pick(v,pages){
   const src=info.thumburl||info.url,source=info.descriptionurl;
   if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||!/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
   const lic=String(meta.LicenseUrl?.value||'');
-  options.push({score:(sameImo?20:0)+(sameMmsi?15:0)+(sameName?8:0)+(singleName?3:0),photo:{src,source,license,
+  options.push({score:(sameImo?20:0)+(sameMmsi?15:0)+(sameName?8:0)+(singleName?3:0),photo:{src,source,license,confirmedId:sameImo||sameMmsi,
    licenseUrl:/^https:\/\/(creativecommons\.org|commons\.wikimedia\.org)\//.test(lic)?lic:source,
    credit:plain(meta.Artist?.value||meta.Credit?.value||info.user||'Se bildekilde')}});
  }
@@ -83,7 +83,7 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  const slot=document.getElementById('vessel-photo-slot'),fallback=document.getElementById('vessel-photo-fallback');
  const note=document.getElementById('vessel-photo-note');
  if(!slot||!fallback)return;
- const img=document.createElement('img');img.className='type-photo';img.loading='lazy';img.decoding='async';img.alt='Foto av '+String(v.name||'fartøy');
+ const img=document.createElement('img');img.className='type-photo';img.loading='lazy';img.decoding='async';img.alt=(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
  img.onerror=()=>{slot.replaceChildren();fallback.hidden=false;if(note)note.textContent='Generell illustrasjon · foto kunne ikke lastes';};
  const wrap=document.createElement('div');wrap.className='type-photo-wrap';wrap.append(img);
  const credit=document.createElement('small');credit.className='type-credit';
@@ -91,7 +91,7 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  const licence=document.createElement('a');licence.href=photo.licenseUrl;licence.target='_blank';licence.rel='noopener noreferrer';licence.textContent=photo.license;
  credit.append('Foto: ',by,' · ',licence,' · Wikimedia Commons');
  slot.replaceChildren(wrap,credit);fallback.hidden=true;
- if(note)note.textContent='Foto fra Wikimedia Commons · AIS fra Kystverket';
+ if(note)note.textContent=(photo.confirmedId?'Foto knyttet til IMO/MMSI':'Mulig bilde funnet via skipsnavn')+' · Wikimedia Commons · AIS fra Kystverket';
  img.src=photo.src;
 };
 })();
