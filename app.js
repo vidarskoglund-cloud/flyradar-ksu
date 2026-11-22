@@ -1836,6 +1836,26 @@ const AIRCRAFT_TYPE_INFO={
  S92:['Sikorsky S-92','Transport- og offshorehelikopter','heli'],
  E190:['Embraer E190','Regionalt jetfly','jet']
 };
+
+const AIRCRAFT_TYPE_PHOTOS={
+ S92:{file:'Sikorsky S-92.jpg',credit:'David Monniaux',license:'CC BY-SA 3.0'},
+ DH8D:{file:'Widerøe LN-WDE Q400.jpg',credit:'Alasdair McLellan',license:'Se Commons'},
+ DH8A:{file:'Widerøe - LN-WIM - De Havilland Canada DHC-8-100 Dash 8 8Q - Oslo Gardermoen Airport.jpg',credit:'Mitchul Hope',license:'Se Commons'},
+ A20N:{file:'G-UJEC A320neo, easyJet, Palma de Mallorca 09-05-26.jpg',credit:'Duncan Kirk',license:'CC BY 4.0'},
+ A320:{file:'EasyJet Airbus A320.jpg',credit:'RubenVanKuik',license:'CC BY 4.0'}
+};
+function aircraftPhotoMarkup(code,illustration){
+ const photo=AIRCRAFT_TYPE_PHOTOS[code];
+ if(!photo)return illustration;
+ const filename=encodeURIComponent(photo.file.replace(/ /g,'_'));
+ const source='https://commons.wikimedia.org/wiki/File:'+filename;
+ const src='https://commons.wikimedia.org/wiki/Special:FilePath/'+filename+'?width=640';
+ return '<div class="type-photo-wrap">'+
+  '<img class="type-photo" src="'+src+'" alt="Fotografi av flytypen '+escapeVesselText(code)+'" loading="lazy" decoding="async" '+
+  'onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
+  '<div class="type-photo-fallback" hidden>'+illustration+'</div></div>'+
+  '<small class="type-credit">Typefoto: <a href="'+source+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.credit)+'</a> · '+escapeVesselText(photo.license)+'</small>';
+}
 let selectedVesselTypeKey='';
 function typeIllustration(kind){
  const paths={
@@ -1855,9 +1875,9 @@ function aircraftTypeCard(p){
  const name=info?.[0]||p.desc||(heli?'Helikopter':'Flytype ukjent');
  const label=info?.[1]||(heli?'Helikopter':'Fly');
  return '<details class="type-info" open><summary>Om flytypen</summary><div class="type-info-inner">'+
- typeIllustration(info?.[2]||(heli?'heli':'jet'))+'<strong>'+escapeVesselText(name)+'</strong>'+
+ aircraftPhotoMarkup(code,typeIllustration(info?.[2]||(heli?'heli':'jet')))+'<strong>'+escapeVesselText(name)+'</strong>'+
  '<span>'+escapeVesselText(label)+(code?' · '+escapeVesselText(code):'')+'</span>'+
- '<small>Typeillustrasjon – ikke bilde av det konkrete flyet</small></div></details>';
+ '<small>Foto eller illustrasjon viser flytypen, ikke nødvendigvis det konkrete flyet</small></div></details>';
 }
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
@@ -1868,10 +1888,14 @@ function vesselTypeCard(v){
  fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span>'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+
  '<small>Generell illustrasjon · AIS fra Kystverket</small></div></details>';
 }
+let lastTypeCardIdentity='';
 function updateTypeCard(p){
  const el=$('type-info');
  if(!el)return;
  const vessel=selectedVesselTypeKey?vessels.find(v=>vesselKey(v)===selectedVesselTypeKey):null;
+ const identity=vessel?'vessel:'+vesselKey(vessel):p?'aircraft:'+String(p.type||'').toUpperCase():'';
+ if(identity===lastTypeCardIdentity)return;
+ lastTypeCardIdentity=identity;
  el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
 }
 
