@@ -84,3 +84,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Status «Nærmer seg KSU» vises ikke lenger kun på bakgrunn av kurs/avstand for et høytflygende passerende fly, som WIF2U (40 025 ft / 43 NM). Ubekreftet fjerntrafikk vises som «Passerer regionen». Bekreftet KSU-destinasjon vises som «På vei til KSU» og mulig innflyging som «Mulig innflyging mot KSU» bare ved flere relevante bevegelsestegn.
 - GitHub Actions med syntaks-, kart-, bilde-, skips- og nye flystatus-/knappetester besto. Tidligere feil i `motion.test.cjs` fortsatt separat. **Liveverifisering:** hovedgrenen er kontrollert; publisert Pages og praktisk test med live fly gjenstår.
 - Fly-/AIS-kilder, oppdateringsintervaller, båtsporing og varsling er ikke endret.
+
+## 22.11.2026 – Gratis pilot for automatisk rutekontroll innen 25 NM
+- [PR #33](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/33) slått sammen i `main` (commit `3c35029a2de0f07095760e396f295f5ab8b0bcfa`).
+- Når et ferskt fly med flynummer er innen 25 NM fra KSU, forsøker nettleseren automatisk et ruteoppslag via Worker med `fa_scope=pilot25-free`. Dagens Worker gir **ikke** tilgang til betalt FlightAware for denne verdien: bare gratis adsb.lol forsøkes. Manglende flynummer kan ikke oppslås på denne måten.
+- Maks ett nytt flynummer per UTC-dato per nettleser, ett nytt oppslag per 15 sekunder og 120 forsøk per dag. Positiver mellomlagres i eksisterende rutehistorikk.
+- Egen teller i `admin.html` viser dagens forsøk, rutetreff, ingen rute, feil og testens betalte API-kall/estimerte kostnad (0 USD). Denne telleren er **lokal per nettleser**, ikke et autoritativt globalt regnskap.
+- Eksisterende FlightAware-status på administrasjonssiden viser betalt forbruk fra Worker/leverandør. Worker-koden håndhever en separat 4,50 USD per måned intern reservasjon, faktisk forbrukskontroll og avvisning ved manglende leverandørstatus. Dette er en sikkerhetsmargin mot målet under 5 USD, **ikke garanti om samlet plattformfaktura**.
+- GitHub Actions syntakskontroll, kostnadssikkerhets- og kartregresjonstester besto. Eldre kjente motion-testfeil kjøres separat. **Gjenstår:** kontrollere live Worker-versjon og faktisk gratis 25 NM-ruteoppslag, teller og rutetreff i nettleser etter Pages-utrulling. Før betalte pilotkall eventuelt vurderes, må globalt og faktisk USD-forbruk kontrolleres og ny endring godkjennes.
+- ADS-B-kilde, AIS, kartprioritering og varsler er uendret.
