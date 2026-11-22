@@ -1384,6 +1384,11 @@ let smartMapTarget=null, smartMapChangedAt=0, autoMapTransition=false;
 let smartMapLastTrafficAt=0,smartMapLastMoveAt=0;
 const SMART_MAP_RETURN_DELAY_MS=25000;
 const SMART_MAP_MOVE_COOLDOWN_MS=12000;
+// A brief, low-priority view of a distant aircraft when local traffic is quiet.
+const IDLE_GLIMPSE_CYCLE_MS=90000;
+const IDLE_GLIMPSE_FROM_MS=60000;
+const IDLE_GLIMPSE_TO_MS=75000;
+let idleGlimpseSince=null;
 const smartGroundStillSince=new Map();
 const SMART_MAP_HOLD_MS=30000;
 const SMART_MAP_MANUAL_MS=120000;
@@ -1466,16 +1471,36 @@ function smartMapCandidate(list){
   choices.sort((a,b)=>b.rank-a.rank||a.d-b.d);
   return choices;
 }
+function idleAircraftGlimpse(list,now){
+  const distant=(list||[]).filter(p=>!p.signalLost&&
+    Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&
+    Number.isFinite(ksuDistanceNm(p))&&ksuDistanceNm(p)>25&&ksuDistanceNm(p)<=120);
+  if(!distant.length){idleGlimpseSince=null;return null;}
+  if(idleGlimpseSince===null)idleGlimpseSince=now;
+  const phase=(now-idleGlimpseSince)%IDLE_GLIMPSE_CYCLE_MS;
+  if(phase<IDLE_GLIMPSE_FROM_MS||phase>=IDLE_GLIMPSE_TO_MS)return null;
+  const p=distant.sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0];
+  return {
+    key:'glimt:'+smartPlaneIdentity(p),rank:0.5,d:ksuDistanceNm(p),
+    points:[[mapAreas.city.lat,mapAreas.city.lon],[p.lat,p.lon]],
+    maxZoom:9
+  };
+}
 function fitMap(list,s){
   const now=Date.now();
   if(now<manualMapUntil)return;
   const candidates=smartMapCandidate(list);
   const best=candidates[0]||null;
+  // KSU-fly og aktive havnefartøy har alltid forrang over fjerntrafikk.
+  if(best)idleGlimpseSince=null;
+  const glimpse=!best?idleAircraftGlimpse(list,now):null;
   const current=candidates.find(x=>x.key===smartMapTarget?.key)||null;
-  let target=best;
+  let target=best||glimpse;
   // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
   if(best)smartMapLastTrafficAt=now;
-  if(!best&&smartMapTarget?.key!=='normal'&&now-smartMapLastTrafficAt<SMART_MAP_RETURN_DELAY_MS)return;
+  if(!best&&!glimpse&&smartMapTarget?.key!=='normal'&&
+     !String(smartMapTarget?.key).startsWith('glimt:')&&
+     now-smartMapLastTrafficAt<SMART_MAP_RETURN_DELAY_MS)return;
   // Hold på samme mål i minst 30 sekunder, unntatt høyere prioritet.
   if(current&&best&&current.key!==best.key&&
      now-smartMapChangedAt<SMART_MAP_HOLD_MS&&best.rank<=current.rank){
@@ -1515,6 +1540,17 @@ function fitMap(list,s){
 map.on('zoomstart',()=>{
   if(!autoMapTransition)manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
 });
+function showSelectedAircraftOnMap(){
+  const p=selected&&planes.find(item=>planeKey(item)===planeKey(selected)&&!item.signalLost);
+  if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return;
+  // Explicit selection pauses automatic zoom for two minutes.
+  manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
+  const bounds=L.latLngBounds([[mapAreas.city.lat,mapAreas.city.lon],[p.lat,p.lon]]);
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  autoMapTransition=true;
+  map.once('moveend',()=>{autoMapTransition=false;});
+  map.flyToBounds(bounds,{padding:[70,70],maxZoom:12,animate:!reduced,duration:2});
+}
 function airportLabel(a){
   if(!a)return'';
   const code=a.iata||a.icao||a.code||'';
@@ -2840,6 +2876,7 @@ function render(autoFit=false){
       </div>
       ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
+      <button type="button" class="show-aircraft-on-map" id="show-aircraft-on-map">Vis fly på kart</button>
       <div class="aircraft-metrics">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
         <div><span>FART</span><b>${f(shown.gs,' kt')}</b></div>
@@ -2867,6 +2904,9 @@ function render(autoFit=false){
   }
   if(autoFit) fitMap(list,s);
 }
+if($('cards'))$('cards').addEventListener('click',event=>{
+  if(event.target.closest('#show-aircraft-on-map'))showSelectedAircraftOnMap();
+});
 function toggleDisplay(){
   display=!display;
   document.body.classList.toggle('display-on',display);
