@@ -50,6 +50,8 @@ jobs:
         run: node --test tests/compact-desktop-stats.test.cjs
       - name: Desktop viewport fit tests
         run: node --test tests/desktop-viewport-fit.test.cjs
+      - name: Avinor next flights labels and timing tests
+        run: node --test tests/avinor-schedule-clarity.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
