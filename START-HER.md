@@ -187,3 +187,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Rutetabellen beskriver **linjen**, ikke hvilket bestemt AIS-fartøy som kjører en gitt avgang. Verken TRANEN eller annet skip knyttes til en bestemt rutetid uten dokumentert kobling. AtB/Entur kilde vises i panelet.
 - Eksisterende AIS, Avinor, flyradar, automatiske kartfunksjoner og kostnadskontroll ble ikke endret. Nye enhetstester for planlagt/sanntid, rute 800-filter, identifikasjon av kaia og visningsplassering besto i GitHub Actions.
 - **Åpent:** Verifiser live-nettleserkall mot Entur Geocoder og Journey Planner fra GitHub Pages, at korrekt kai returneres og at faktiske avganger vises. Hvis kilde utilgjengelig vises tydelig feilmelding; ingen rutetider er oppdiktet. Dette er kode/CI-verifisert, men ikke verifisert mot faktisk respons fra Entur.
+
+## 22.11.2026 – Feilretting av Entur-hurtigbåttider (PR #46)
+- Brukerens publiserte skjermbilde viste «Rutetider fra Entur er ikke tilgjengelige akkurat nå» etter PR #45, altså ingen verifisert rutetabell i produksjon.
+- [PR #46](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/46) slått sammen i `main` (commit `815ad4d292f317f3e165f78390be8cbe3d7463ef`).
+- Kodekontroll og offisiell Entur Journey Planner v3-dokumentasjon viste sannsynlig hovedårsak: `EstimatedCall` har ikke et direkte `line`-felt i den API-modellen som ble brukt. Spørringen er rettet til `serviceJourney { line { publicCode transportMode } }`. Filteret for rute 800 er tilsvarende rettet til `call.serviceJourney.line`.
+- `stopPlace.estimatedCalls` har som standard `arrivalDeparture: departures`. Det er nå eksplisitt satt til `arrivalDeparture: both`, slik at både ankomster og avganger kan returneres, med litt større søkegrense (80).
+- Stoppestedet forsøkes først funnet med «Kristiansund hurtigbåtkai» og deretter alternativt «Kristiansund», med samme strenge navn-/geografikontroll før noe sted godtas.
+- Testdata og tester er tilpasset reell GraphQL-feltnesting og både ankomster/avganger. Den gamle første CI-runden feilet på testforventning til cache-versjon; dette ble rettet. Siste CI var `success` før sammenslåing. Frontend cache-versjon økt til v2.
+- **Åpent:** Nettleser-/API-test med faktisk Entur-svar, eventuell CORS/begrensninger, og verifisert entydig Kristiansund hurtigbåtkai i Geocoder. Direkte API-test lot seg ikke fullføre i kontrollmiljøet. Ingen rutetider hevdes bekreftet før publisert felt viser kildedata. Ikke endret fly, AIS, kart eller betalte API-er.
