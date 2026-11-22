@@ -1834,15 +1834,17 @@ const AIRCRAFT_TYPE_INFO={
  DH8C:['De Havilland Dash 8-300','Turboprop regionalfly','prop'],
  DH8A:['De Havilland Dash 8-100','Turboprop regionalfly','prop'],
  S92:['Sikorsky S-92','Transport- og offshorehelikopter','heli'],
- E190:['Embraer E190','Regionalt jetfly','jet']
+ E190:['Embraer E190','Regionalt jetfly','jet'],
+ E290:['Embraer E190-E2 / ERJ-190-300','Regionalt jetfly','jet']
 };
 
 const AIRCRAFT_TYPE_PHOTOS={
- S92:{file:'Sikorsky S-92.jpg',credit:'David Monniaux',license:'CC BY-SA 3.0'},
- DH8D:{file:'Widerøe LN-WDE Q400.jpg',credit:'Alasdair McLellan',license:'Se Commons'},
+ S92:{file:'Sikorsky S-92.jpg',credit:'David Monniaux',license:'CC BY-SA 3.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/'},
+ DH8D:{file:'Widerøe LN-WDE Q400.jpg',credit:'Alasdair McLellan',license:'CC BY-SA 3.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/'},
  DH8A:{file:'Widerøe - LN-WIM - De Havilland Canada DHC-8-100 Dash 8 8Q - Oslo Gardermoen Airport.jpg',credit:'Mitchul Hope',license:'Se Commons'},
- A20N:{file:'G-UJEC A320neo, easyJet, Palma de Mallorca 09-05-26.jpg',credit:'Duncan Kirk',license:'CC BY 4.0'},
- A320:{file:'EasyJet Airbus A320.jpg',credit:'RubenVanKuik',license:'CC BY 4.0'}
+ A20N:{file:'G-UJEC A320neo, easyJet, Palma de Mallorca 09-05-26.jpg',credit:'Duncan Kirk',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'},
+ A320:{file:'EasyJet Airbus A320.jpg',credit:'RubenVanKuik',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'},
+ E290:{file:'Embraer E190-E2 (ERJ190-300) ‘LN-WEA’ Widerøe (49502451571).jpg',credit:'Alan Wilson',license:'CC BY-SA 2.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/2.0/'}
 };
 function aircraftPhotoMarkup(code,illustration){
  const photo=AIRCRAFT_TYPE_PHOTOS[code];
@@ -1854,7 +1856,7 @@ function aircraftPhotoMarkup(code,illustration){
   '<img class="type-photo" src="'+src+'" alt="Fotografi av flytypen '+escapeVesselText(code)+'" loading="lazy" decoding="async" '+
   'onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
   '<div class="type-photo-fallback" hidden>'+illustration+'</div></div>'+
-  '<small class="type-credit">Typefoto: <a href="'+source+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.credit)+'</a> · '+escapeVesselText(photo.license)+'</small>';
+  '<small class="type-credit">Foto: <a href="'+source+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.credit)+'</a> · '+(photo.licenseUrl?'<a href="'+photo.licenseUrl+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.license)+'</a>':escapeVesselText(photo.license))+' · Wikimedia Commons</small>';
 }
 let selectedVesselTypeKey='';
 function typeIllustration(kind){
