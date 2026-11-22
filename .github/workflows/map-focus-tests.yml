@@ -40,6 +40,8 @@ jobs:
         run: node --test tests/map-focus.test.cjs
       - name: Image identification and cache tests
         run: node --test tests/photos.test.cjs
+      - name: Vessel AIS map popup photograph tests
+        run: node --test tests/vessel-popup-photos.test.cjs
       - name: Vessel panel rendering and selection tests
         run: node --test tests/vessel-panel.test.cjs
       - name: Flight status and conditional map button tests
