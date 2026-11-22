@@ -99,3 +99,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - `admin.html` har en egen datert seksjon «Prosjektstatus» med siste implementerte endring (#33), automatisk teststatus, åpne livekontroller og lenker til PR-er/denne overleveringen. Driftsdiagnostikk og nettlesertellere er fortsatt adskilt fra prosjektstatus.
 - Seksjonen er en manuelt oppdatert oppsummering ved kode-/dokumentasjonsendringer, ikke automatisk synkronisering fra chattens innhold. Denne START-HER.md er den detaljerte autoritative overleveringen.
 - Prosjektseksjonens innhold er kontrollert i GitHub `main`. Publisering på GitHub Pages er ikke nettleserverifisert.
+
+## 22.11.2026 – Datakilder organisert på administrasjonssiden
+- [PR #35](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/35) slått sammen i `main` (commit `893c751f5e7c55c351c9f6395579556b9c7167f2`). Oppfølgende prosjektstatusoppdatering i `admin.html`.
+- Administrasjonssiden viser nå aktiv flyposisjonskilde først: `adsb.fi` via lokal Flyradar-server (15 sekunder), med lokal tilgjengelighetsstatistikk og siste vellykkede posisjonsoppslag.
+- Ruteoppslag er separat: gratis `adsb.lol` via Cloudflare Worker for 25 NM-piloten (#33); eventuell betalt FlightAware-fallback kun for andre kvalifiserte oppslag med eksisterende sikkerhetsgrense på 4,50 USD per måned. Den automatiske piloten tillater ikke betalte fallback-kall.
+- Worker, adsb.lol og Airplanes.live vises under **inaktive flyposisjonskilder**, ikke som feilende tjenester. Worker brukes fremdeles til ruter og AIS; `adsb.lol`-posisjonsmåleren er ikke en indikator for rutetjenesten.
+- En enkel visuell flyt: adsb.fi → Trafikkradar kart/varsler → gratis ruteoppslag for kvalifiserte fly innen 25 NM.
+- Eksisterende statushistorikk, kostnadstall, AIS og manuell API-diagnose er beholdt. Misvisende «Worker-tilgjengelighet» er endret til «Worker brukt til flyposisjoner» og viser «Ikke brukt» når slike målinger mangler.
+- GitHub Actions regresjons- og syntakstester besto for PR #35. Live publisering på GitHub Pages er ikke verifisert i nettleser. Ingen endring i fly- eller skipskilder eller sporingsfunksjon.
