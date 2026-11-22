@@ -171,3 +171,10 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Ved ADS-B-feil beholdes eksisterende tydelig beskjed om feil eller sist kjente data, ikke falsk kartfokus-status. Eksisterende kartvalg, kildeprioritering, autozoom, AIS-oppdateringer og kostnadsoppsett er uendret.
 - Automatiske tester for fly, fartøy, tomt kartmål, manuell styring, eldre data og oppdatering ved `render` ble lagt til. Eldre karttest for manuell zoom ble oppdatert og GitHub Actions besto for PR #43.
 - **Åpent:** Praktisk kontroll på publisert nettside ved skifte mellom fartøy, fly, oversikt og manuell kartstyring.
+
+## 22.11.2026 – Unngå teknisk rutepolicy i flykort (PR #44)
+- Brukerens skjermbilde viste NOZ417 (55,7 NM) med «Rute ikke tilgjengelig» og «Ikke kvalifisert for ekstra ruteoppslag». Sistnevnte var intern rutekvalifisering (utenfor gratis 25 NM- og valgt fly innen 50 NM-området), ikke informasjon om flyvningens rute. Teksten var misvisende og tok unødvendig mye plass.
+- [PR #44](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/44) er slått sammen i `main` (commit `742a1251499610b940fc4c31b60b5c24134fb706`). Manglende rute uten forsøk vises nå som **én** nøktern linje «Avgang og destinasjon ikke bekreftet». Hvis oppslag faktisk kjøres: «Søker etter flyrute…», «Ingen bekreftet rute funnet» eller «Ruteinformasjon midlertidig utilgjengelig» ut fra tilstand. Ingen tekniske leverandør- eller prissperredetaljer i flykortet.
+- Faktisk oppslag/treff for NOZ417 er **ikke** verifisert, og vi påstår ingen bestemt avgang/destinasjon uten data. Eksisterende grense for betalte ruteoppslag, gratis 25 NM-test, kilder, autozoom, kartprioriteter, fly-/skipssporing er **uendret**.
+- Egne tester for offentlig rutetekst, oppslagstilstander og bevart rutepolicy er lagt til. GitHub Actions besto for PR #44.
+- **Åpent:** Kontroller kortet visuelt på publisert nettside, og vurder separat om vi ønsker flere gratis ruteoppslag for viste fly utenfor 25 NM. Dette skal ikke utvide betalt tilgang uten særskilt beslutning.
