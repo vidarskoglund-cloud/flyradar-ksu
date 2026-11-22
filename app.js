@@ -2026,6 +2026,49 @@ function vesselKind(v){
 // Rotate through nearby AIS vessels and show a live information popup.
 let vesselFocusMmsi='',vesselFocusChangedAt=0,vesselLastFocusAt=0;
 const vesselMarkers=new Map();
+const vesselAnimation=new Map();
+const VESSEL_TWEEN_MS=24000;
+function vesselMotionFrame(now=Date.now()){
+ for(const [key,entry] of vesselAnimation){
+  const marker=vesselMarkers.get(key);
+  if(!marker){vesselAnimation.delete(key);continue;}
+  const fraction=Math.min(1,Math.max(0,(now-entry.started)/entry.duration));
+  const t=fraction*fraction*(3-2*fraction);
+  const lat=entry.from.lat+(entry.to.lat-entry.from.lat)*t;
+  const lon=entry.from.lon+(entry.to.lon-entry.from.lon)*t;
+  marker.setLatLng([lat,lon]);
+  const turn=((entry.to.heading-entry.from.heading+540)%360)-180;
+  const angle=(entry.from.heading+turn*t+360)%360;
+  const icon=marker.getElement()?.querySelector('.vessel-marker');
+  if(icon)icon.style.transform='rotate('+angle+'deg)';
+  if(fraction>=1)vesselAnimation.delete(key);
+ }
+}
+function vesselHeading(v){
+ const heading=Number(v.heading),course=Number(v.course);
+ const h=Number.isFinite(heading)&&heading>=0&&heading<360?heading:course;
+ return Number.isFinite(h)&&h>=0&&h<360?h:0;
+}
+function scheduleVesselMotion(marker,key,v,now=Date.now()){
+ const position=marker.getLatLng();
+ const target={lat:Number(v.lat),lon:Number(v.lon),heading:vesselHeading(v)};
+ if(!Number.isFinite(target.lat)||!Number.isFinite(target.lon))return;
+ const icon=marker.getElement()?.querySelector('.vessel-marker');
+ const previous=vesselAnimation.get(key);
+ const oldHeading=previous?((previous.from.heading+
+  ((previous.to.heading-previous.from.heading+540)%360-180)*
+  Math.min(1,Math.max(0,(now-previous.started)/previous.duration)))+360)%360:vesselHeading(v);
+ const from={lat:position.lat,lon:position.lng,heading:oldHeading};
+ const distance=nm(dist(from.lat,from.lon,target.lat,target.lon));
+ // Ignore repeated AIS fixes, reject implausible jumps and stop short of
+ // extrapolating the vessel beyond its last confirmed AIS location.
+ if(distance<0.002)return;
+ if(distance>1.5){marker.setLatLng([target.lat,target.lon]);vesselAnimation.delete(key);return;}
+ const speed=Number(v.speed);
+ if(!Number.isFinite(speed)||speed<0.5){marker.setLatLng([target.lat,target.lon]);vesselAnimation.delete(key);return;}
+ vesselAnimation.set(key,{from,to:target,started:now,duration:VESSEL_TWEEN_MS});
+}
+
 
 const VESSEL_HARBOR_CENTER=[63.1115,7.7600];
 const VESSEL_HARBOR_CORE_NM=2.2;
@@ -2266,25 +2309,42 @@ function syncVesselSelectionMarkers(){
  }
 }
 function renderVessels(){
- vesselLayer.clearLayers();
- vesselMarkers.clear();
+ const seen=new Set();
  for(const v of vessels){
   if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon)))continue;
+  const key=vesselKey(v);
+  if(!key)continue;
+  seen.add(key);
+  let marker=vesselMarkers.get(key);
   const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
-  const marker=L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
+  if(marker){
+   // Reuse the DOM marker instead of deleting it at every AIS refresh.
+   scheduleVesselMotion(marker,key,v);
+   marker.setTooltipContent('Fartøy: '+escapeVesselText(name));
+   marker.setPopupContent(vesselDetail(v));
+   continue;
+  }
+  marker=L.marker([v.lat,v.lon],{icon:vesselIcon(v),zIndexOffset:500})
    .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
    .bindPopup(vesselDetail(v),{autoPan:false})
    .addTo(vesselLayer);
   marker.on('click',()=>{
-    selectedVesselTypeKey=vesselKey(v);
-    syncVesselSelectionMarkers();
-    manualVesselSelectionUntil=Date.now()+SMART_MAP_MANUAL_MS;
-    updateVesselContext(v);
-    if($('cards'))$('cards').hidden=true;
-    updateTypeCard(selected);
-    updateMapFocusStatus();
+   const current=vessels.find(item=>vesselKey(item)===key)||v;
+   selectedVesselTypeKey=key;
+   syncVesselSelectionMarkers();
+   manualVesselSelectionUntil=Date.now()+SMART_MAP_MANUAL_MS;
+   updateVesselContext(current);
+   if($('cards'))$('cards').hidden=true;
+   updateTypeCard(selected);
+   updateMapFocusStatus();
   });
-  vesselMarkers.set(vesselKey(v),marker);
+  vesselMarkers.set(key,marker);
+ }
+ for(const [key,marker] of vesselMarkers){
+  if(seen.has(key))continue;
+  vesselLayer.removeLayer(marker);
+  vesselMarkers.delete(key);
+  vesselAnimation.delete(key);
  }
  syncVesselSelectionMarkers();
 }
@@ -2304,8 +2364,11 @@ async function loadVessels(){
       ?vessels.length+' fartøy i bevegelse · AIS fra Kystverket'
       :'Ingen fartøy i bevegelse registrert innen 25 NM';
   }catch(e){
+    // Keep the last confirmed AIS position on transient errors; no motion extrapolation.
+    vesselAnimation.clear();
     vessels=[];
     vesselLayer.clearLayers();
+    vesselMarkers.clear();
     if(Date.now()>=manualVesselSelectionUntil){
       selectedVesselTypeKey='';
       syncVesselSelectionMarkers();
@@ -3262,6 +3325,7 @@ function animateAircraftMotion(frameAt){
   const dt=lastMotionFrame===null?0:Math.min(0.1,(frameAt-lastMotionFrame)/1000);
   lastMotionFrame=frameAt;
   const now=Date.now();
+  vesselMotionFrame(now);
   for(const entry of motionMarkers.values()){
     const pos=motionPosition(entry,now);
     if(pos)entry.marker.setLatLng(pos);
