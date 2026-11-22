@@ -100,6 +100,7 @@ let routeLayer=L.layerGroup().addTo(map);
 let trackLayer=L.layerGroup().addTo(map);
 let airportLayer=L.layerGroup().addTo(map);
 let vesselLayer=L.layerGroup().addTo(map);
+let vesselGuideLayer=L.layerGroup().addTo(map); // AIS guide overlays
 
 const norwayAirports=[
   {code:'OSL',name:'Oslo Gardermoen',lat:60.1939,lon:11.1004,major:true},
@@ -2158,6 +2159,8 @@ const VESSEL_HARBOR_CENTER=[63.1115,7.7600];
 const VESSEL_HARBOR_CORE_NM=2.2;
 const VESSEL_HARBOR_APPROACH_NM=6.0;
 const vesselMotionHistory=new Map();
+const VESSEL_TRACK_KEEP_MS=10*60*1000;
+const VESSEL_TRACK_MAX_FIXES=12;
 function updateVesselMotionHistory(items){
   const now=Date.now(), seen=new Set();
   for(const v of items||[]){
@@ -2172,9 +2175,14 @@ function updateVesselMotionHistory(items){
     const newFix=Boolean(previous&&elapsed>=10&&movement>=0.015);
     const change=previous?previous.distance-distance:0;
     const trend=newFix&&Math.abs(change)>=0.035?(change>0?'inn':'ut'):(previous?.trend||'ukjent');
+    const fixes=Array.isArray(previous?.fixes)?previous.fixes.filter(p=>now-p.at<=VESSEL_TRACK_KEEP_MS):[];
+    if(!fixes.length || (newFix && nm(dist(lat,lon,fixes[fixes.length-1].lat,fixes[fixes.length-1].lon))<=1.5)){
+      if(!fixes.length||newFix)fixes.push({lat,lon,at:now});
+    }
     vesselMotionHistory.set(key,{lat,lon,at:newFix||!previous?now:previous.at,
       distance,trend,observed:newFix?(previous?.observed||0)+1:(previous?.observed||0),
-      moving:newFix,previousDistance:previous?.distance??distance});
+      moving:newFix,previousDistance:previous?.distance??distance,
+      fixes:fixes.slice(-VESSEL_TRACK_MAX_FIXES)});
   }
   for(const [key,row] of vesselMotionHistory){
     if(!seen.has(key)||now-row.at>3*60*1000)vesselMotionHistory.delete(key);
@@ -2394,6 +2402,32 @@ function syncVesselSelectionMarkers(){
    if(el)el.classList.toggle('selected',key===selectedVesselTypeKey);
  }
 }
+function renderVesselGuides(){
+  vesselGuideLayer.clearLayers();
+  const now=Date.now();
+  for(const v of vessels){
+    const key=vesselKey(v),row=vesselMotionHistory.get(key);
+    if(!key||!row)continue;
+    const lat=Number(v.lat),lon=Number(v.lon),speed=Number(v.speed);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(speed)||speed<1.5)continue;
+    // Previous route: observed AIS positions only.
+    const fixes=(row.fixes||[]).filter(p=>now-p.at<=VESSEL_TRACK_KEEP_MS);
+    if(fixes.length>=2){
+      L.polyline(fixes.map(p=>[p.lat,p.lon]),{
+        color:'#13d3e6',weight:3,opacity:.8,interactive:false
+      }).addTo(vesselGuideLayer);
+    }
+    // Short course-over-ground guide, NOT a predicted destination.
+    if(v.course===null||v.course===undefined||v.course==='')continue;
+    const course=Number(v.course);
+    if(!Number.isFinite(course)||course<0||course>=360)continue;
+    const end=destinationPoint(lat,lon,Math.min(1,speed*2/60),course);
+    if(!end)continue;
+    L.polyline([[lat,lon],end],{
+      color:'#fbbf24',weight:3,opacity:.95,dashArray:'5 6',interactive:false
+    }).addTo(vesselGuideLayer);
+  }
+}
 function renderVessels(){
  const seen=new Set();
  for(const v of vessels){
@@ -2438,6 +2472,7 @@ function renderVessels(){
   vesselAnimation.delete(key);
  }
  syncVesselSelectionMarkers();
+ renderVesselGuides();
 }
 async function loadVessels(){
   try{
@@ -2459,6 +2494,7 @@ async function loadVessels(){
     vesselAnimation.clear();
     vessels=[];
     vesselLayer.clearLayers();
+    vesselGuideLayer.clearLayers();
     vesselMarkers.clear();
     if(Date.now()>=manualVesselSelectionUntil){
       selectedVesselTypeKey='';
