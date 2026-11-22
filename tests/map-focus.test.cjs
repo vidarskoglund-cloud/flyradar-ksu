@@ -90,3 +90,21 @@ test('idle aircraft phase cannot override active KSU or AIS candidates',()=>{
  assert.match(source,/let target=best\|\|glimpse/);
  assert.match(source,/if\(best\)idleGlimpseSince=null/);
 });
+
+test('automatic harbor selection requires vessel map priority and observed movement',()=>{
+ assert.match(source,/const first=smartMapCandidate\(planes\)\[0\]/);
+ assert.match(source,/first\?\.key\?\.startsWith\('bat:'\)/);
+ assert.match(source,/function movingHarborVessel/);
+ assert.match(source,/row\.observed<1/);
+ assert.match(source,/speed<1\.5/);
+});
+test('manually selected vessel stays selected for two minutes',()=>{
+ assert.match(source,/manualVesselSelectionUntil=Date\.now\(\)\+SMART_MAP_MANUAL_MS/);
+ assert.match(source,/if\(now<manualVesselSelectionUntil\)return/);
+});
+test('vessel detail hold and aircraft priority remain intact',()=>{
+ assert.match(source,/VESSEL_DETAIL_HOLD_MS=30000/);
+ assert.match(source,/if\(selectedVesselTypeKey!==key && now-vesselFocusChangedAt<VESSEL_DETAIL_HOLD_MS\)return/);
+ assert.match(source,/if\(selectedVesselTypeKey&&\(\(first&&!first\.key\.startsWith\('bat:'\)\)\|\|!vessels\.some/);
+ assert.match(source,/Fartøy ved Kristiansund havn/);
+});

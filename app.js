@@ -1989,7 +1989,8 @@ function aircraftPhotoMarkup(p,illustration){
   '<div class="type-photo-fallback" hidden>'+illustration+'</div></div>'+
   '<small class="type-credit">Foto: <a href="'+source+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.credit)+'</a> · '+(photo.licenseUrl?'<a href="'+photo.licenseUrl+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.license)+'</a>':escapeVesselText(photo.license))+' · Wikimedia Commons</small>';
 }
-let selectedVesselTypeKey='';
+let selectedVesselTypeKey='',manualVesselSelectionUntil=0;
+const VESSEL_DETAIL_HOLD_MS=30000;
 function typeIllustration(kind){
  const paths={
  jet:'M160 22 L171 31 192 107 285 144 285 154 190 146 176 203 213 221 213 230 160 217 107 230 107 221 144 203 130 146 35 154 35 144 128 107 149 31 Z',
@@ -2034,6 +2035,31 @@ function updateTypeCard(p){
  if(vessel&&window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
 }
 
+// Only promote a vessel when it is moving and no more important KSU aircraft needs focus.
+function autoSelectHarborVessel(now=Date.now()){
+ if(now<manualVesselSelectionUntil)return;
+ const first=smartMapCandidate(planes)[0];
+ const key=first?.key?.startsWith('bat:')?first.key.slice(4):'';
+ const vessel=key?vessels.find(v=>vesselKey(v)===key):null;
+ if(!vessel){
+   // Keep an existing ship card until a flight takes priority or the target disappears.
+   if(selectedVesselTypeKey&&((first&&!first.key.startsWith('bat:'))||!vessels.some(v=>vesselKey(v)===selectedVesselTypeKey))){
+     selectedVesselTypeKey='';
+     updateTypeCard(selected);
+     if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
+     if($('cards'))$('cards').hidden=false;
+   }
+   return;
+ }
+ if(selectedVesselTypeKey!==key && now-vesselFocusChangedAt<VESSEL_DETAIL_HOLD_MS)return;
+ if(selectedVesselTypeKey!==key){
+   selectedVesselTypeKey=key;
+   vesselFocusChangedAt=now;
+ }
+ if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fartøy ved Kristiansund havn';
+ if($('cards'))$('cards').hidden=true;
+ updateTypeCard(selected);
+}
 function renderVessels(){
  vesselLayer.clearLayers();
  vesselMarkers.clear();
@@ -2044,7 +2070,13 @@ function renderVessels(){
    .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
    .bindPopup(vesselDetail(v),{autoPan:false})
    .addTo(vesselLayer);
-  marker.on('click',()=>{selectedVesselTypeKey=vesselKey(v);updateTypeCard(selected);});
+  marker.on('click',()=>{
+    selectedVesselTypeKey=vesselKey(v);
+    manualVesselSelectionUntil=Date.now()+SMART_MAP_MANUAL_MS;
+    if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Valgt fartøy';
+    if($('cards'))$('cards').hidden=true;
+    updateTypeCard(selected);
+  });
   vesselMarkers.set(vesselKey(v),marker);
  }
 
@@ -2057,6 +2089,7 @@ async function loadVessels(){
     vessels=Array.isArray(j?.vessels)?j.vessels:[];
     updateVesselMotionHistory(vessels);
     renderVessels();
+    autoSelectHarborVessel();
     if(selectedVesselTypeKey)updateTypeCard(selected);
     fitMap(planes,settings());
     const el=document.getElementById('vessel-live-status');
@@ -2066,6 +2099,11 @@ async function loadVessels(){
   }catch(e){
     vessels=[];
     vesselLayer.clearLayers();
+    if(Date.now()>=manualVesselSelectionUntil){
+      selectedVesselTypeKey='';
+      if($('cards'))$('cards').hidden=false;
+      updateTypeCard(selected);
+    }
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent='AIS-data er ikke tilgjengelige akkurat nå';
   }
@@ -2840,9 +2878,12 @@ function render(autoFit=false){
     $('status').className='ok';
     const selectedNm=ksuDistanceNm(shown);
     const selectedKsuFlight=ksuFlightInfo(shown);
-    if($('aircraft-panel-title'))$('aircraft-panel-title').textContent=
-      selectedKsuFlight?'KSU-trafikk':selectedNm<=10?'Aktivt fly nær KSU':
-      selectedNm<=25?'Fly nær KSU':'Fly i området';
+    if(!selectedVesselTypeKey){
+      if($('cards'))$('cards').hidden=false;
+      if($('aircraft-panel-title'))$('aircraft-panel-title').textContent=
+        selectedKsuFlight?'KSU-trafikk':selectedNm<=10?'Aktivt fly nær KSU':
+        selectedNm<=25?'Fly nær KSU':'Fly i området';
+    }
     const rp=routeCardParts(shown);
     const service=specialService(shown);
     const ksuInfo=ksuFlightInfo(shown);
@@ -2902,6 +2943,8 @@ function render(autoFit=false){
     updateTypeCard(null);
     routeLayer.clearLayers();
   }
+  // Keep detail selection synchronized with the latest aircraft priority, not only the 30s AIS poll.
+  autoSelectHarborVessel();
   if(autoFit) fitMap(list,s);
 }
 if($('cards'))$('cards').addEventListener('click',event=>{
