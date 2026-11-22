@@ -34,3 +34,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 6. Privat Google Drive er langtidsarkiv for konsolidert status/historikk; kode og teknisk oppgavesporing ligger i GitHub.
 
 **Ikke endre fungerende produksjonskode, datakilder, frekvenser, AIS eller varsler som en ren dokumentasjonsjobb.**
+
+## Siste kodeendring – 22.11.2026
+- [PR #27 – roligere kartfokus og dynamisk flypanel](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/27) er slått sammen i `main` (commit `ab387af32f9307705612f86671d4002299976851`).
+- Passerende fly over 25 NM skal ikke dra kartfokuset bort fra Kristiansund. 10–25 NM gir moderat fokus og under 10 NM tettere fokus; bekreftede KSU-ankomster/avganger kan prioriteres før 25 NM.
+- Kartet vender tilbake til oversikt etter ca. 25 sekunder uten relevant trafikk; 30 sekunders fokusbyttelås og to minutters manuell pause er beholdt.
+- Høyrepanelet har dynamisk overskrift; 50 NM-telleren er korrigert uten å endre nærhetsbannerets 25 NM-grense.
+- GitHub Actions-test for kartfokus besto. Fire eldre tester i `tests/motion.test.cjs` feilet fra eksisterende testharness; de er synlig kjørt separat, og er ikke bekreftet løst.
+- **Liveverifisering:** GitHub `main` er kontrollert; reell nettleser-/trafikktest av publisert Pages-kart og AIS gjenstår.
+- Urelatert [PR #25 om skipsinformasjon](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/25) er ikke slått sammen i denne endringen.
