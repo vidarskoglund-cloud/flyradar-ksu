@@ -47,17 +47,24 @@ async function findStop(){
  });
  const info=await fetchJson(url);
  stopId=pickKristiansundQuay(info.features);
- if(!stopId)throw new Error('Fant ikke sikkert identifisert hurtigbåtkai');
+ if(!stopId){
+  // Names can be indexed differently; a second short search is safe because
+  // the same strict name + geographic coordinates are required for acceptance.
+  const fallback=await fetchJson(ENTUR+'/geocoder/v3/autocomplete?'+
+    new URLSearchParams({q:'Kristiansund',lang:'no',limit:'30',layers:'stopPlace'}));
+  stopId=pickKristiansundQuay(fallback.features);
+ }
+ if(!stopId)throw new Error('Fant ikke entydig stoppested for Kristiansund hurtigbåtkai');
  return stopId;
 }
 const BOARD_QUERY=`query KristiansundSpeedboat($id:String!){
  stopPlace(id:$id){
   id name
-  estimatedCalls(timeRange:86400,numberOfDepartures:60){
+  estimatedCalls(timeRange:86400,numberOfDepartures:80,arrivalDeparture:both){
    aimedArrivalTime expectedArrivalTime actualArrivalTime
    aimedDepartureTime expectedDepartureTime actualDepartureTime
    forAlighting forBoarding realtime cancellation predictionInaccurate
-   line{publicCode transportMode}
+   serviceJourney{line{publicCode transportMode}}
    destinationDisplay{frontText}
   }
  }
@@ -76,12 +83,12 @@ async function fetchBoard(){
 function toRows(calls,now=Date.now()){
  const results=[];
  for(const call of calls||[]){
-  if(text(call?.line?.publicCode)!=='800')continue;
+  const line=call?.serviceJourney?.line;
+  if(text(line?.publicCode)!=='800')continue;
   if(call.cancellation){
    // The board covers upcoming sailings, not cancelled trips.
    continue;
   }
-  const line=call.line;
   if(line.transportMode&&line.transportMode!=='water')continue;
   const label=text(call.destinationDisplay?.frontText)||'Rute 800';
   for(const [direction,allowed,aimed,expected,actual] of [
