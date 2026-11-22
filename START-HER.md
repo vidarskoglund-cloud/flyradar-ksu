@@ -178,3 +178,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Faktisk oppslag/treff for NOZ417 er **ikke** verifisert, og vi påstår ingen bestemt avgang/destinasjon uten data. Eksisterende grense for betalte ruteoppslag, gratis 25 NM-test, kilder, autozoom, kartprioriteter, fly-/skipssporing er **uendret**.
 - Egne tester for offentlig rutetekst, oppslagstilstander og bevart rutepolicy er lagt til. GitHub Actions besto for PR #44.
 - **Åpent:** Kontroller kortet visuelt på publisert nettside, og vurder separat om vi ønsker flere gratis ruteoppslag for viste fly utenfor 25 NM. Dette skal ikke utvide betalt tilgang uten særskilt beslutning.
+
+## 22.11.2026 – Hurtigbåtrute for Kristiansund under flytidene
+- [PR #45](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/45) er slått sammen i `main` (commit `3ba355b5d26ee77c87c18c8774627033c51a1dfb`).
+- Under «Flyavganger og ankomster · KSU» vises nå eget kompakt felt **«Hurtigbåt · Kristiansund»** for AtB hurtigbåtrute **800** (Trondheim–Brekstad–Hitra–Kristiansund), med inntil fire kommende avganger og ankomster fra Kristiansund hurtigbåtkai.
+- Ny uavhengig frontend-modul `speedboat-schedule.js` oppdager kaia ved Enturs Geocoder v3 med navne-/koordinatsjekk og slår opp `stopPlace.estimatedCalls` i Journey Planner v3. Enturs `ET-Client-Name` er `vidarskoglund-trafikkradar`; forespørslene går direkte fra nettleseren med 10-minutters intervall, ikke via Cloudflare Worker. Ingen nytt betalt API.
+- Viser kun rute 800, utelukker innstilte/allerede gjennomførte avganger, skiller **planlagt** fra **revidert sanntid**, og merker forsinkelse først ved reell senere forventet tid. Kompakt desktopversjon ligger i høyrepanelet; separat felt etter Avinor er laget for mindre skjermer.
+- Rutetabellen beskriver **linjen**, ikke hvilket bestemt AIS-fartøy som kjører en gitt avgang. Verken TRANEN eller annet skip knyttes til en bestemt rutetid uten dokumentert kobling. AtB/Entur kilde vises i panelet.
+- Eksisterende AIS, Avinor, flyradar, automatiske kartfunksjoner og kostnadskontroll ble ikke endret. Nye enhetstester for planlagt/sanntid, rute 800-filter, identifikasjon av kaia og visningsplassering besto i GitHub Actions.
+- **Åpent:** Verifiser live-nettleserkall mot Entur Geocoder og Journey Planner fra GitHub Pages, at korrekt kai returneres og at faktiske avganger vises. Hvis kilde utilgjengelig vises tydelig feilmelding; ingen rutetider er oppdiktet. Dette er kode/CI-verifisert, men ikke verifisert mot faktisk respons fra Entur.
