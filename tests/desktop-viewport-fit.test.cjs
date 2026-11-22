@@ -27,3 +27,15 @@ test('narrow viewport and fullscreen retain own layouts and controls',()=>{
  for(const id of ['count','closest','updated','map','vessel-live-status','cards','type-info','notify','proximity-sound'])
   assert.ok(html.includes('id="'+id+'"'),id);
 });
+
+test('at 100 percent zoom laptop view compacts every sidebar section but keeps them visible',()=>{
+ const css=html.slice(html.indexOf('/* Fit all live information at 100%'),html.indexOf('</style>'));
+ assert.match(css,/@media \(min-width:900px\) and \(max-height:1100px\) and \(display-mode:browser\)/);
+ assert.match(css,/\.type-photo-wrap\{height:96px\}/);
+ assert.match(css,/\.road-status-row\{padding:3px 0\}/);
+ assert.match(css,/\.weather-metrics\{gap:1px 8px/);
+ assert.match(css,/\.fs-schedule/);
+ assert.match(css,/@media \(min-width:900px\) and \(max-height:800px\)/);
+ assert.doesNotMatch(css,/display:none/);
+ assert.match(html,/\.nearest-panel\{[^}]*overflow-y:auto/);
+});
