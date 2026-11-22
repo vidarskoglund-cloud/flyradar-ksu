@@ -24,6 +24,7 @@ function ctx(){
    smartPlaneIdentity:p=>'fly:'+p.hex,
    nm:x=>x,dist:()=>0,
    movingHarborVessel:v=>v,
+   specialFlightCategory:()=>null,
    VESSEL_HARBOR_CENTER:[63.1115,7.7600]
  });
  vm.runInContext('const IDLE_GLIMPSE_CYCLE_MS=90000,IDLE_GLIMPSE_FROM_MS=60000,IDLE_GLIMPSE_TO_MS=75000;let idleGlimpseSince=null;const mapAreas={city:{lat:63.11,lon:7.74}};',c);
