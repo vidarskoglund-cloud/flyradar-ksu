@@ -1381,6 +1381,9 @@ function followNearest(list,s){
 }
 // Automatisk kartfokus: KSU-fly foran lokaltrafikk, deretter fartøy nær byen.
 let smartMapTarget=null, smartMapChangedAt=0, autoMapTransition=false;
+let smartMapLastTrafficAt=0,smartMapLastMoveAt=0;
+const SMART_MAP_RETURN_DELAY_MS=25000;
+const SMART_MAP_MOVE_COOLDOWN_MS=12000;
 const smartGroundStillSince=new Map();
 const SMART_MAP_HOLD_MS=30000;
 const SMART_MAP_MANUAL_MS=120000;
@@ -1430,7 +1433,7 @@ function smartMapCandidate(list){
     else if(arrival&&d<=100&&(approach||d<=50))rank=5;
     else if(departure&&d<=25&&!stationary)rank=4;
     else if(inboundByMotion&&d<=50)rank=3.5;
-    else if(d<=25&&!stationary)rank=3;
+    else if(d<=25&&!stationary)rank=d<=10?3.2:3;
     else if(inboundByMotion)rank=2.5;
     else if(arrival&&d<=100&&towardKsu)rank=2.5;
     if(!rank)continue;
@@ -1446,7 +1449,7 @@ function smartMapCandidate(list){
         finalApproach?(d<=1?16:d<=2.5?15:14):
         rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
         rank>=3.5?(d<=8?12:d<=25?10:9):
-        rank===3?(d<=8?11:9):7
+        rank>=3?(d<=10?12:10):7
     });
   }
   // Fokus på AIS-bevegelse i havnen og inn-/utseiling, men aktive fly prioriteres.
@@ -1470,11 +1473,15 @@ function fitMap(list,s){
   const best=candidates[0]||null;
   const current=candidates.find(x=>x.key===smartMapTarget?.key)||null;
   let target=best;
+  // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
+  if(best)smartMapLastTrafficAt=now;
+  if(!best&&smartMapTarget?.key!=='normal'&&now-smartMapLastTrafficAt<SMART_MAP_RETURN_DELAY_MS)return;
   // Hold på samme mål i minst 30 sekunder, unntatt høyere prioritet.
   if(current&&best&&current.key!==best.key&&
      now-smartMapChangedAt<SMART_MAP_HOLD_MS&&best.rank<=current.rank){
     target=current;
   }
+  const targetChanged=smartMapTarget?.key!==(target?.key||'normal');
   if(!target){
     if(smartMapTarget?.key!=='normal'){
       smartMapTarget={key:'normal',rank:0};
@@ -1486,17 +1493,20 @@ function fitMap(list,s){
   }
   const bounds=target
     ?L.latLngBounds(target.points)
-    :areaBounds(mapAreas.airport.lat,mapAreas.airport.lon,22);
+    :areaBounds(mapAreas.city.lat,mapAreas.city.lon,22);
   const maxZoom=target?target.maxZoom:10;
   const padding=target?[65,65]:[28,28];
   const wantedZoom=Math.min(maxZoom,map.getBoundsZoom(bounds,false,L.point(padding[0]*2,padding[1]*2)));
-  const inside=map.getBounds().pad(-0.15);
+  const inside=map.getBounds().pad(-0.08);
   const pointsVisible=target?target.points.every(pos=>inside.contains(pos)):
     inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
   if(pointsVisible&&Math.abs(map.getZoom()-wantedZoom)<=1)return;
+  // Samme mål får korte perioder uten rezoom; viktig innflyging (<5 NM) kan oppdateres raskt.
+  if(target&&!targetChanged&&now-smartMapLastMoveAt<SMART_MAP_MOVE_COOLDOWN_MS&&target.d>5)return;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   autoMapTransition=true;
-  const opts={padding,maxZoom,animate:!reduced,duration:1.5};
+  const opts={padding,maxZoom,animate:!reduced,duration:2.2};
+  smartMapLastMoveAt=now;
   map.once('moveend',()=>{autoMapTransition=false;});
   if(reduced)map.fitBounds(bounds,opts);
   else map.flyToBounds(bounds,opts);
@@ -2720,7 +2730,7 @@ function select(p,lookupRoute=true){
 function render(autoFit=false){
   const s=settings();
   let list=planes.slice();
-  const nearCount=planes.filter(withinKsuAlertArea).length;
+  const nearCount=planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length;
   const closestActive=planes.filter(p=>!p.signalLost&&Number.isFinite(ksuDistanceNm(p))).sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0];
   const closestText=closestActive?ksuDistanceNm(closestActive).toFixed(1)+' NM':'–';
   const updatedText=new Date().toLocaleTimeString('no-NO');
@@ -2781,15 +2791,22 @@ function render(autoFit=false){
       liveDistanceState.delete(key);
     }
   }
-  const nearest=list.find(p=>!p.signalLost)||null;
+  const nearest=list.filter(p=>!p.signalLost&&Number.isFinite(ksuDistanceNm(p)))
+    .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0]||null;
   const current=selected&&list.find(p=>p.hex===selected.hex&&!p.signalLost);
-  const shown=current||nearest;
+  const shown=nearest&&ksuDistanceNm(nearest)<=25&&(!current||ksuDistanceNm(current)>25)
+    ?nearest:(current||nearest);
   if(shown){
     selected=shown;
-    const localCountNow=planes.filter(withinKsuAlertArea).length;
+    const localCountNow=planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length;
     const activePrefix=shown.ksuFlight?'KSU ':observablePasserby(shown)?'lokalt ':'';
     $('status').textContent=`${localCountNow} fly innen 50 NM · følger ${activePrefix}${shown.flight||shown.reg||shown.hex} · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
+    const selectedNm=ksuDistanceNm(shown);
+    const selectedKsuFlight=ksuFlightInfo(shown);
+    if($('aircraft-panel-title'))$('aircraft-panel-title').textContent=
+      selectedKsuFlight?'KSU-trafikk':selectedNm<=10?'Aktivt fly nær KSU':
+      selectedNm<=25?'Fly nær KSU':'Fly i området';
     const rp=routeCardParts(shown);
     const service=specialService(shown);
     const ksuInfo=ksuFlightInfo(shown);
@@ -2841,7 +2858,8 @@ function render(autoFit=false){
     updateTypeCard(shown);
   }else{
     selected=null;
-    $('status').textContent=`${planes.filter(withinKsuAlertArea).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    $('status').textContent=`${planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
+    if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
     $('status').className='ok';
     $('cards').innerHTML='';
     updateTypeCard(null);
