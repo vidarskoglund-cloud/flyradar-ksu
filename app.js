@@ -1059,7 +1059,7 @@ function updateRangeRings(s){
     L.marker(pos,{interactive:false,pane:'rangePane',icon:L.divIcon({
       className:'range-label-wrap',
       html:`<div class="range-label alert-zone">${label}</div>`,
-      iconSize:[126,22],iconAnchor:[63,11]
+      iconSize:[54,17],iconAnchor:[27,8]
     })}).addTo(rangeLayer);
   });
 }
