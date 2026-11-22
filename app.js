@@ -1333,17 +1333,26 @@ function smartMapCandidate(list){
     const heading=getTrackDeg(p);
     const bearing=bearingBetween(p.lat,p.lon,63.1118,7.8245);
     const towardKsu=heading!==null&&angleDiff(heading,bearing)<=75;
+    // Helikoptre og fly uten Avinor-kobling kan likevel ha bekreftet
+    // bevegelse mot KSU i ADS-B-sporet. Ikke krev registrert rutetreff.
+    // ksuMovementStatus bruker kurs og historisk avstandsendring.
+    const motion=ksuMovementStatus(p).label;
+    const inboundByMotion=(motion==='Nærmer seg KSU' ||
+      motion==='Ser ut til å være på innflyging') && towardKsu && d<=100;
     let rank=0;
     if(arrival&&d<=100&&(approach||d<=50))rank=5;
     else if(departure&&d<=25)rank=4;
+    else if(inboundByMotion&&d<=50)rank=3.5;
     else if(d<=25)rank=3;
-    else if(arrival&&d<=100&&towardKsu)rank=1;
+    else if(inboundByMotion)rank=2.5;
+    else if(arrival&&d<=100&&towardKsu)rank=2.5;
     if(!rank)continue;
     choices.push({
       key:smartPlaneIdentity(p),rank,d,
       points:[[63.1118,7.8245],[p.lat,p.lon]],
-      maxZoom:rank===5?(d<=8?12:d<=25?10:d<=50?9:7):
-        rank===4?(d<=8?12:10):rank===3?(d<=8?11:9):7
+      maxZoom:rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
+        rank>=3.5?(d<=8?12:d<=25?10:9):
+        rank===3?(d<=8?11:9):7
     });
   }
   // Fartøy styrer bare kartet når ingen mer relevante KSU-/lokalfly finnes.
