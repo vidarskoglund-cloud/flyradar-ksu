@@ -12,13 +12,13 @@ test('aircraft position source is first, routing and inactive positions separate
 });
 test('not-used aircraft sources are not confused with route service failures',()=>{
  assert.match(html,/Ikke brukt.*ikke nødvendigvis ute av drift/);
- assert.match(html,/denne statustelleren måler ikke ruteoppslag/);
+ assert.match(js,/denne statustelleren måler ikke ruteoppslag/);
  assert.match(js,/POSISJONSKILDE · IKKE AKTIV/);
  assert.match(js,/Historiske posisjonsmålinger/);
 });
 test('route pilot and budget displays remain separated and visible',()=>{
  for(const id of ['fa-usage','route25-stats','route25-attempts','route25-found','route25-cost','metrics','history'])assert.ok(html.includes('id="'+id+'"'),id);
- assert.match(html,/4,50 USD/);assert.match(html,/ikke betalt fallback/);
+ assert.match(html,/4,50 USD/);assert.match(html,/uten betalt fallback/);
 });
 test('no tracking, sources or telemetry logic changed in dashboard',()=>{
  assert.match(html,/id="diagnosis"/);
