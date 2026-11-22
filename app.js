@@ -6,6 +6,46 @@ const routeCache=new Map();
 const routeAttempts=new Map();
 const routeRequests=new Set();
 const aircraftRouteCache=new Map();
+const ROUTE_STORAGE_KEY='flyradar-ksu-confirmed-routes-v1';
+const ROUTE_TTL_MS=24*60*60*1000;
+const ROUTE_MAX_ENTRIES=250;
+function routeDay(now=Date.now()){return new Date(now).toISOString().slice(0,10);}
+function flightRouteKey(p,now=Date.now()){
+  const flight=String(p?.flight||'').trim().toUpperCase();
+  return flight?routeDay(now)+'|'+flight:'';
+}
+function loadSavedRoutes(){
+  try{
+    const stored=JSON.parse(localStorage.getItem(ROUTE_STORAGE_KEY)||'[]');
+    if(!Array.isArray(stored))return;
+    const now=Date.now();
+    for(const item of stored){
+      if(!item||typeof item.key!=='string'||!item.route||typeof item.route!=='object')continue;
+      if(!Number.isFinite(item.savedAt)||item.savedAt>now||now-item.savedAt>ROUTE_TTL_MS)continue;
+      if(!item.key.startsWith(routeDay(now)+'|'))continue;
+      routeCache.set(item.key,item.route);
+      aircraftRouteCache.set(item.key,item.route);
+    }
+  }catch(e){console.warn('Kunne ikke lese lagrede flyruter:',e);}
+}
+function saveConfirmedRoute(p,route){
+  if(!route||typeof route!=='object')return;
+  const key=flightRouteKey(p);
+  if(!key)return;
+  routeCache.set(key,route);
+  aircraftRouteCache.set(key,route);
+  try{
+    const now=Date.now();
+    const saved=JSON.parse(localStorage.getItem(ROUTE_STORAGE_KEY)||'[]');
+    const entries=Array.isArray(saved)?saved.filter(item=>
+      item&&item.key!==key&&item.route&&Number.isFinite(item.savedAt)&&
+      item.savedAt<=now&&now-item.savedAt<ROUTE_TTL_MS&&
+      item.key.startsWith(routeDay(now)+'|')):[];
+    entries.push({key,route,savedAt:now});
+    localStorage.setItem(ROUTE_STORAGE_KEY,JSON.stringify(entries.slice(-ROUTE_MAX_ENTRIES)));
+  }catch(e){console.warn('Kunne ikke lagre bekreftet flyrute:',e);}
+}
+loadSavedRoutes();
 const recentPlaneCache=new Map();
 const remoteKsuIdentityCache=new Map();
 const ksuLastKnownCache=new Map();
@@ -348,7 +388,7 @@ async function routeForCallsign(callsign,lat,lon,alt=null,faScope=''){
   if(!key)return null;
   try{
     const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
-    u.searchParams.set('callsign',key);
+    u.searchParams.set('callsign',callsign);
     if(Number.isFinite(Number(lat)))u.searchParams.set('lat',lat);
     if(Number.isFinite(Number(lon)))u.searchParams.set('lon',lon);
     if(Number.isFinite(Number(alt)))u.searchParams.set('alt',Number(alt));
@@ -692,17 +732,17 @@ function normalize(a,s){
 
   // Behold kjent rute gjennom nye ADS-B-posisjonsobjekter.
   // Uten dette veksler kortet mellom "Henter rute…" og den bekreftede ruten.
-  const cachedRoute=(flight&&routeCache.has(flight)?routeCache.get(flight):null) || cachedAircraftRoute({
-    hex:a.hex,reg:a.r,flight
-  });
-  const routeData=previous?.routeData||cachedRoute||null;
-  const route=routeData?routeText(routeData):(previous?.route||null);
+  const routeDayKey=flightRouteKey({flight});
+  const cachedRoute=cachedAircraftRoute({flight});
+  const previousRoute=previous?.routeDayKey===routeDayKey?previous.routeData:null;
+  const routeData=cachedRoute||previousRoute||null;
+  const route=routeData?routeText(routeData):null;
 
   return{
     hex:a.hex||'',flight,reg:a.r||'',type:a.t||'',
     operator:a.ownOp||a.operator||'',desc:a.desc||'',lat,lon,
     alt:Number.isFinite(Number(a.alt_baro??a.alt_geom))?Number(a.alt_baro??a.alt_geom):a.alt_baro??a.alt_geom,gs:Number.isFinite(Number(a.gs))?Number(a.gs):a.gs,track:Number.isFinite(Number(a.track??a.true_heading??a.mag_heading))?Number(a.track??a.true_heading??a.mag_heading):a.track??a.true_heading??a.mag_heading,
-    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route,routeData,source:a._source||'Kombinerte data (Worker)',
+    vr:a.baro_rate??a.geom_rate,d:dist(s.lat,s.lon,lat,lon),route,routeData,routeDayKey,source:a._source||'Kombinerte data (Worker)',
     positionAt:sameFix?previous.positionAt:Date.now()
   }
 }
@@ -739,22 +779,13 @@ function planeIcon(p){
   });
 }
 function planeKey(p){return String(p.hex||p.reg||p.flight||'').trim().toLowerCase()}
-function routeIdentityKeys(p){
-  return [
-    p?.hex?String(p.hex).trim().toLowerCase():'',
-    p?.reg?String(p.reg).trim().toLowerCase():'',
-    p?.flight?String(p.flight).trim().toLowerCase():''
-  ].filter(Boolean);
-}
 function cachedAircraftRoute(p){
-  for(const key of routeIdentityKeys(p)){
-    if(aircraftRouteCache.has(key))return aircraftRouteCache.get(key);
-  }
-  return null;
+  const key=flightRouteKey(p);
+  return key?(aircraftRouteCache.get(key)||routeCache.get(key)||null):null;
 }
 function rememberAircraftRoute(p,r){
   if(!r)return;
-  for(const key of routeIdentityKeys(p))aircraftRouteCache.set(key,r);
+  saveConfirmedRoute(p,r);
 }
 
 function ingestSharedTracks(shared){
@@ -1641,8 +1672,8 @@ function routeLookupScope(p){
   return '';
 }
 function canLookupRoute(p,now=Date.now()){
-  const key=p?.flight?.trim();
-  if(!key||routeRequests.has(key)||routeCache.get(key))return false;
+  const key=flightRouteKey(p);
+  if(!key||!routeLookupScope(p)||routeRequests.has(key)||cachedAircraftRoute(p))return false;
   const last=routeAttempts.get(key);
   if(!last)return true;
   // Entering paid-lookup eligibility must bypass an earlier free-only miss.
@@ -1651,11 +1682,12 @@ function canLookupRoute(p,now=Date.now()){
 }
 async function enrichRoute(p){
   if(!p||!p.flight)return;
-  const key=p.flight.trim();
-  if(routeCache.get(key)){
-    const r=routeCache.get(key);
-    if(r)rememberAircraftRoute(p,r);
-    p.routeData=r||null;
+  const callsign=p.flight.trim();
+  const key=flightRouteKey(p);
+  const cached=cachedAircraftRoute(p);
+  if(cached){
+    const r=cached;
+    p.routeData=r;
     p.route=routeText(r);
     if(selected&&selected.hex===p.hex)select(p,false);
     return;
@@ -1677,7 +1709,6 @@ async function enrichRoute(p){
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const j=await resp.json();
     const r=j?.route||null;
-    routeCache.set(key,r);
     if(r)rememberAircraftRoute(p,r);
     p.routeData=r;
     p.routeLookupSource=j?.source||'';
@@ -1686,7 +1717,6 @@ async function enrichRoute(p){
     p.route=routeText(r);
     if(selected&&selected.hex===p.hex)select(p,false);
   }catch(e){
-    routeCache.set(key,null);
     p.routeData=null;
     p.routeLookupState='error';
     p.routeLookupSource='';
