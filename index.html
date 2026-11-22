@@ -350,6 +350,90 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   #stats .muted{display:block;font-size:9px;line-height:1.1;margin-top:2px}
   #map{height:calc(100dvh - 155px)}
 }
+
+/* Ordinary desktop: make the primary radar view fit the available viewport.
+   The footer remains accessible; details beyond panel height scroll inside
+   the aircraft panel, not on the whole page. Mobile/fullscreen are unchanged. */
+@media (min-width:900px) and (min-height:640px) and (display-mode:browser){
+  html{height:100%;overflow:hidden}
+  body:not(.display-on){
+    height:100vh;
+    height:100dvh;
+    min-height:0;
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    overflow:hidden
+  }
+  body:not(.display-on) header{
+    position:relative;
+    top:auto;
+    min-height:0;
+    padding:10px 16px;
+  }
+  body:not(.display-on) header h1{font-size:19px;line-height:1.15}
+  body:not(.display-on) main{
+    width:100%;
+    max-width:none;
+    min-height:0;
+    height:100%;
+    overflow:hidden;
+    padding:6px 16px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 360px;
+    grid-template-rows:36px minmax(0,1fr) auto;
+    grid-template-areas:"rule stats" "map aircraft" "settings settings";
+    gap:7px 12px;
+    align-items:stretch;
+  }
+  body:not(.display-on) main > #hero{display:none!important}
+  body:not(.display-on) main > .schedule:not(.nearest-panel){display:none!important}
+  body:not(.display-on) #vessel-live-status{
+    grid-area:rule;align-self:center;margin:0;padding:2px 5px;
+  }
+  body:not(.display-on) #stats{
+    grid-area:stats;min-height:0;align-self:stretch;
+  }
+  body:not(.display-on) #map{
+    grid-area:map;
+    width:100%;
+    height:100%!important;
+    min-height:0!important;
+    max-height:none!important;
+  }
+  body:not(.display-on) .nearest-panel{
+    grid-area:aircraft;
+    min-height:0;
+    max-height:100%;
+    height:100%;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+    padding:10px 12px;
+  }
+  body:not(.display-on) .nearest-panel .fs-schedule{
+    flex-shrink:0;
+  }
+  body:not(.display-on) main > .settings-panel{
+    grid-area:settings;
+    margin:0!important;
+    padding:6px 10px;
+    min-height:0;
+    align-self:start;
+  }
+  body:not(.display-on) main > .settings-panel[open]{
+    max-height:125px;
+    overflow-y:auto;
+  }
+  body:not(.display-on) footer{
+    width:100%;
+    max-width:none;
+    padding:5px 12px 6px;
+    margin:0;
+    font-size:9px;
+    line-height:1.25;
+    border-top:1px solid var(--line);
+  }
+}
 </style>
 </head>
 <body>
