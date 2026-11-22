@@ -12,12 +12,29 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px;bord
 .wrap{overflow-x:auto}button{background:#1a344b;border:1px solid #476a88;border-radius:9px;color:white;padding:10px 13px;cursor:pointer}
 .actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.note{line-height:1.5;color:#b5c8da}
 code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+</style><style>
+.fa-usage{margin:0;background:#101e30;border:1px solid #29415a;border-radius:12px;padding:14px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.fa-usage div{min-width:0}.fa-usage span{display:block;color:#9db2c7;font-size:10px}.fa-usage b{font-size:16px;white-space:nowrap}
+.fa-usage .fa-ok{color:#66e1a0}.fa-usage .fa-warn{color:#f5c975}
+.fa-bar{grid-column:1/-1;height:6px;background:#172840;border-radius:99px;overflow:hidden}
+.fa-bar i{display:block;height:100%;width:0;background:#66e1a0;border-radius:99px}
+.fa-note{grid-column:1/-1;color:#9db2c7;font-size:11px}
+@media(max-width:650px){.fa-usage{grid-template-columns:repeat(2,minmax(0,1fr))}.fa-note,.fa-bar{grid-column:1/-1}}
 </style></head>
 <body><header><div><h1>Flyradar KSU · Administrasjon</h1><small>Status, diagnostikk og lokal historikk</small></div><a href="./">Tilbake til flykartet</a></header>
 <main>
 <p class="note">Statusen er basert på oppslag som denne nettleseren har registrert. Den viser ikke alle besøkendes trafikk eller Cloudflare-serverlogger. Historikk lagres lokalt i nettleseren og kan eksporteres.</p>
 <div class="actions"><button id="refresh">Oppdater visning</button><button id="json">Eksporter JSON</button><button id="csv">Eksporter CSV</button><button id="clear">Slett lokal historikk</button><small id="stamp"></small></div>
 <section><h2>Datakilder · siste registrerte oppslag</h2><div class="grid" id="sources"></div></section>
+<section><h2>FlightAware – oppslag og forbruk</h2><section class="fa-usage" id="fa-usage">
+  <div><span>FLIGHTAWARE</span><b id="fa-state" class="fa-ok">Aktiv</b></div>
+  <div><span>OPPSLAG</span><b id="fa-calls">–</b></div>
+  <div><span>ESTIMERT</span><b id="fa-spent">–</b></div>
+  <div><span>FAKTISK</span><b id="fa-actual">–</b></div>
+  <div><span>GRENSE</span><b id="fa-budget">–</b></div>
+  <div class="fa-bar"><i id="fa-progress"></i></div>
+  <div class="fa-note" id="fa-note">Henter FlightAware-bruk…</div>
+</section></section>
 <section><h2>Nøkkeltall</h2><div class="grid" id="metrics"></div></section>
 <section class="card"><h2>Feilsøking av adsb.fi</h2><div id="diagnosis" class="note"></div><p class="note">Offisielt oppslag: <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener">adsb.fi v3 · KSU 75 NM</a>. Åpning av lenken er en manuell test og bruker et API-oppslag.</p></section>
 <section class="card"><h2>API-diagnose · manuell test</h2>
@@ -27,4 +44,4 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
 </section>
 <section class="card"><h2>Historikk</h2><div class="filters"><label>Hendelser <select id="filter"><option value="all">Alle</option><option value="changes">Bare endringer/feil</option></select></label><label>Vis <select id="limit"><option>50</option><option>100</option><option>250</option><option>1000</option></select></label></div><div class="wrap"><table><thead><tr><th>Tid</th><th>Worker</th><th>adsb.lol</th><th>adsb.fi</th><th>Airplanes.live</th><th>Fly</th><th>Merknad</th></tr></thead><tbody id="history"></tbody></table></div></section>
 <section class="card"><h2>Hva vi bør overvåke</h2><p class="note">Andel vellykkede oppslag per kilde, tid siden siste vellykkede oppslag, feilårsak, antall fly per oppslag, og om adsb.fi gir flere fly enn adsb.lol. Det siste krever separat telling per kilde i Worker for en sikker sammenligning.</p></section>
-</main><script src="admin.js?v=2"></script></body></html>
+</main><script src="admin.js?v=2"></script><script src="flightaware-status.js?v=1"></script></body></html>
