@@ -43,5 +43,5 @@ test('ship photo uses fallback until loaded and explains no reliable match',()=>
  assert.match(photo,/Fant ikke et sikkert skipsfoto/);
  assert.match(photo,/img\.onload=\(\)=>/);
  assert.match(photo,/fallback\.hidden=true/);
- assert.match(photo,/kristiansund-vessel-photos-v3/);
+ assert.match(photo,/kristiansund-vessel-photos-v4/);
 });

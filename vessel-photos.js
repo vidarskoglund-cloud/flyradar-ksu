@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v3', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v4', pending=new Map();
 function get(key){
  try{const item=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];return item&&item.until>Date.now()?{hit:true,photo:item.photo}:{hit:false};}catch(e){return {hit:false};}
 }
@@ -16,33 +16,48 @@ function plain(value){
  const d=document.createElement('div');d.innerHTML=String(value||'');
  return (d.textContent||'').trim().replace(/\s+/g,' ').slice(0,125);
 }
+function vesselWords(value){
+ return String(value||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
+   .replace(/[^a-z0-9]+/g,' ').trim().split(/\s+/).filter(Boolean);
+}
+function hasWords(haystack,words){
+ const all=vesselWords(haystack);
+ return Boolean(words.length)&&words.every(w=>all.includes(w));
+}
 function pick(v,pages){
- const words=String(v.name||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').trim().split(/\s+/).filter(w=>w.length>=3);
+ const words=vesselWords(v.name).filter(w=>w.length>=3);
  const imo=String(v.imo||'').replace(/\D/g,'');
  const mmsi=String(v.mmsi||'').replace(/\D/g,'');
  if(!words.length&&imo.length!==7&&mmsi.length!==9)return null;
  const options=[];
  for(const page of Object.values(pages||{})){
-  const f=String(page.title||'').replace(/^File:/i,'');
-  if(!/\.(jpe?g|webp)$/i.test(f))continue;
-  const fileWords=f.toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/);
-  const sameName=words.length>=2&&words.every(w=>fileWords.includes(w));
-  const sameImo=imo.length===7&&fileWords.includes(imo);
-  const sameMmsi=mmsi.length===9&&fileWords.includes(mmsi);
-  const singleName=words.length===1&&words[0].length>=5&&fileWords.includes(words[0])&&
-    fileWords.some(w=>['ship','vessel','ferry','tanker','cargo','boat','mv','ms'].includes(w));
-  // A name alone is not sufficient for ambiguous ships; the single-word case
-  // additionally requires clear vessel context in the file title.
-  if(!sameName&&!sameImo&&!sameMmsi&&!singleName||
-     fileWords.some(w=>['logo','model','drawing','illustration'].includes(w)))continue;
+  const filename=String(page.title||'').replace(/^File:/i,'');
+  if(!/\.(jpe?g|webp|png)$/i.test(filename))continue;
+  const fileWords=vesselWords(filename);
+  if(fileWords.some(w=>['logo','model','drawing','illustration','render','plan','diagram'].includes(w)))continue;
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
   if(!info||!meta)continue;
   const license=plain(meta.LicenseShortName?.value);
-  if(!/^(CC BY|CC0|Public domain|PD-)/i.test(license))continue;
+  if(!/^(CC BY|CC0|Public domain|PD-)/i.test(license)||/\b(?:NC|ND)\b/i.test(license))continue;
   const src=info.thumburl||info.url,source=info.descriptionurl;
   if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||!/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
+  const categories=(page.categories||[]).map(x=>String(x.title||'').replace(/^Category:/i,'')).join(' ');
+  const description=plain(meta.ImageDescription?.value||'');
+  const titleName=words.length&&hasWords(filename,words);
+  const categoryName=words.length&&hasWords(categories,words);
+  const descriptionName=words.length&&hasWords(description,words);
+  const sameImo=imo.length===7&&hasWords(filename+' '+categories+' '+description,[imo]);
+  const sameMmsi=mmsi.length===9&&hasWords(filename+' '+categories+' '+description,[mmsi]);
+  // A ship's name alone (e.g. a fjord name) may describe a landscape.
+  // Require a second maritime signal from filename, category or description.
+  const maritime=/\b(ship|ships|vessel|vessels|ferry|ferger|ferge|ferja|cargo|tanker|boat|boats|mv|ms|mf|skip|skipsfoto|supply|offshore)\b/i
+    .test(vesselWords(filename+' '+categories+' '+description).join(' '));
+  const nameMatch=titleName||categoryName||descriptionName;
+  const supportedName=nameMatch&&maritime;
+  if(!sameImo&&!sameMmsi&&!supportedName)continue;
   const lic=String(meta.LicenseUrl?.value||'');
-  options.push({score:(sameImo?20:0)+(sameMmsi?15:0)+(sameName?8:0)+(singleName?3:0),photo:{src,source,license,confirmedId:sameImo||sameMmsi,
+  options.push({score:(sameImo?100:0)+(sameMmsi?90:0)+(titleName?20:0)+(categoryName?16:0)+(descriptionName?8:0)+(maritime?5:0),photo:{
+   src,source,license,confirmedId:sameImo||sameMmsi,
    licenseUrl:/^https:\/\/(creativecommons\.org|commons\.wikimedia\.org)\//.test(lic)?lic:source,
    credit:plain(meta.Artist?.value||meta.Credit?.value||info.user||'Se bildekilde')}});
  }
@@ -56,15 +71,18 @@ async function search(v){
   try{
    const imo=String(v.imo||'').replace(/\D/g,'');
    const mmsi=String(v.mmsi||'').replace(/\D/g,'');
+   const cleanName=name.replace(/"/g,'').slice(0,60).trim();
    const terms=[imo.length===7?'"'+imo+'"':'',
      mmsi.length===9?'"'+mmsi+'"':'',
-     name.length>=5?'"'+name.replace(/"/g,'').slice(0,60)+'"':''].filter(Boolean);
+     cleanName.length>=5?'"'+cleanName+'" ship':'',
+     cleanName.length>=5?'"'+cleanName+'" vessel':'',
+     cleanName.length>=5?'"'+cleanName+'"':''].filter(Boolean);
    if(!terms.length)return null;
    let photo=null;
    for(const term of terms){
     const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
-     gsrsearch:term,gsrnamespace:'6',gsrlimit:'20',
-     prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'720'});
+     gsrsearch:term,gsrnamespace:'6',gsrlimit:'35',
+     prop:'imageinfo|categories',cllimit:'max',iiprop:'url|extmetadata',iiurlwidth:'720'});
     const r=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{credentials:'omit',signal:AbortSignal.timeout(8000)});
     if(!r.ok)throw Error('HTTP '+r.status);
     const j=await r.json();

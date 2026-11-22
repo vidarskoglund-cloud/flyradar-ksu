@@ -13,7 +13,7 @@ function candidate(source,begin,end,funcName){
  return context.result;
 }
 const exact=candidate(planeSource,'function chooseExactRegistration(', 'async function lookup(', 'chooseExactRegistration');
-const ship=candidate(shipSource,'function pick(', 'async function search(', 'pick');
+const ship=candidate(shipSource,'function vesselWords(', 'async function search(', 'pick');
 const metadata={
  LicenseShortName:{value:'CC BY-SA 4.0'},LicenseUrl:{value:'https://creativecommons.org/licenses/by-sa/4.0/'},
  Artist:{value:'Sample photographer'}
@@ -59,4 +59,29 @@ test('existing app triggers photo lookup for selected plane and vessel',()=>{
  const page=src('index.html');
  assert.match(page,/aircraft-photos\.js/);
  assert.match(page,/vessel-photos\.js/);
+});
+
+test('ship image with plain vessel name is accepted when Commons category confirms ship context',()=>{
+ const h=photo('Hillefjord_2019.jpg');
+ h.categories=[{title:'Category:Hillefjord (ship, 2019)'},{title:'Category:Ships in Norway'}];
+ const chosen=ship({name:'HILLEFJORD',imo:'9850719'},{one:h});
+ assert.ok(chosen);
+ assert.equal(chosen.confirmedId,false);
+});
+test('name-only landscape and wrong vessel identity are rejected',()=>{
+ const landscape=photo('Hillefjord_landscape.jpg');
+ assert.equal(ship({name:'HILLEFJORD'},{one:landscape}),null);
+ const vessel=photo('MV_Hillefjord.jpg');
+ assert.equal(ship({name:'HIOSFJORD'},{one:vessel}),null);
+});
+test('IMO in Commons category can verify a vessel even when image title lacks IMO',()=>{
+ const h=photo('Ship_underway_2019.jpg');
+ h.categories=[{title:'Category:IMO 9850719'},{title:'Category:Hillefjord (ship, 2019)'}];
+ const chosen=ship({name:'HILLEFJORD',imo:'9850719'},{one:h});
+ assert.equal(chosen?.confirmedId,true);
+});
+test('search uses name plus ship and vessel synonyms and reads Commons categories',()=>{
+ assert.match(shipSource,/cleanName\+'" ship'/);
+ assert.match(shipSource,/cleanName\+'" vessel'/);
+ assert.match(shipSource,/prop:'imageinfo\|categories'/);
 });
