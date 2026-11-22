@@ -9,6 +9,7 @@ on:
       - 'aircraft-photos.js'
       - 'vessel-photos.js'
       - 'vessel-wikidata.js'
+      - 'speedboat-schedule.js'
       - 'worker/src/index.js'
       - 'tests/**'
       - '.github/workflows/map-focus-tests.yml'
@@ -29,6 +30,7 @@ jobs:
           node --check aircraft-photos.js
           node --check vessel-photos.js
           node --check vessel-wikidata.js
+          node --check speedboat-schedule.js
           node --check worker/src/index.js
       - name: New map focus regression tests
         run: node --test tests/map-focus.test.cjs
@@ -58,6 +60,8 @@ jobs:
         run: node --test tests/header-map-focus.test.cjs
       - name: Aircraft route card copy tests
         run: node --test tests/aircraft-route-card-copy.test.cjs
+      - name: Kristiansund speedboat departures and arrivals tests
+        run: node --test tests/speedboat-schedule.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
