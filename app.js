@@ -1778,7 +1778,7 @@ function canLookupRoute(p,now=Date.now()){
   const last=routeAttempts.get(key);
   if(!last)return true;
   // Entering paid-lookup eligibility must bypass an earlier free-only miss.
-  const rank={ '':0,local:1,zone25:1,active50:2,ksu:3 };
+  const rank={ '':0,pilot25:0,local:1,zone25:1,active50:2,ksu:3 };
   return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
 }
 async function enrichRoute(p){
@@ -1826,6 +1826,91 @@ async function enrichRoute(p){
   }finally{
     routeRequests.delete(key);
   }
+}
+// Pilot: one free-only route lookup per distinct flight/date within 25 NM.
+// Scope "pilot25-free" is deliberately not whitelisted for FlightAware in Worker.
+// These counters are local to the browser; paid API accounting lives server-side.
+const ROUTE25_PILOT_KEY='trafikkradar-route25-free-pilot-v1';
+const ROUTE25_PILOT_LIMIT_PER_DAY=120;
+const ROUTE25_PILOT_GAP_MS=15000;
+let route25PilotBusy=false,route25PilotLastAt=0;
+function route25PilotStats(now=Date.now()){
+ const day=routeDay(now);
+ let saved=null;
+ try{saved=JSON.parse(localStorage.getItem(ROUTE25_PILOT_KEY)||'null')}catch(e){}
+ if(!saved||saved.day!==day||!Array.isArray(saved.keys)){
+   return {day,keys:[],attempts:0,found:0,noRoute:0,errors:0,paidCalls:0,estimatedUsd:0};
+ }
+ return saved;
+}
+function persistRoute25Pilot(stats){
+ try{localStorage.setItem(ROUTE25_PILOT_KEY,JSON.stringify(stats))}catch(e){}
+}
+function pilot25Candidate(p,stats){
+ const key=flightRouteKey(p);
+ return Boolean(key && !p.signalLost && Number.isFinite(ksuDistanceNm(p)) &&
+   ksuDistanceNm(p)<=25 && !stats.keys.includes(key) &&
+   !routeRequests.has(key) && !cachedAircraftRoute(p));
+}
+async function runFreeRoutePilot25(list,now=Date.now()){
+ if(route25PilotBusy||now-route25PilotLastAt<ROUTE25_PILOT_GAP_MS)return;
+ const stats=route25PilotStats(now);
+ if(stats.attempts>=ROUTE25_PILOT_LIMIT_PER_DAY)return;
+ const p=(list||[]).filter(p=>pilot25Candidate(p,stats))
+   .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0];
+ if(!p)return;
+ const key=flightRouteKey(p);
+ const callsign=String(p.flight||'').trim().toUpperCase();
+ stats.keys.push(key);
+ stats.attempts++;
+ persistRoute25Pilot(stats); // reserve before request to avoid repeated tests on failure
+ route25PilotBusy=true;
+ route25PilotLastAt=now;
+ routeRequests.add(key);
+ routeAttempts.set(key,{scope:'pilot25',at:now});
+ try{
+   const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
+   u.searchParams.set('callsign',callsign); // no date prefix in callsign sent to provider
+   u.searchParams.set('lat',String(p.lat));
+   u.searchParams.set('lon',String(p.lon));
+   if(Number.isFinite(Number(p.alt)))u.searchParams.set('alt',String(p.alt));
+   u.searchParams.set('fa_scope','pilot25-free'); // Worker cannot charge FlightAware for this scope
+   const resp=await fetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
+   if(!resp.ok)throw new Error('HTTP '+resp.status);
+   const data=await resp.json();
+   // Do not silently accept a future Worker deployment that permits paid pilot traffic.
+   if(data?.diagnostics?.flightaware_attempted===true)throw new Error('Pilot paid fallback unexpectedly attempted');
+   const route=data?.route||null;
+   p.routeLookupState=route?'found':'not-found';
+   p.routeLookupSource=data?.source||'';
+   p.routeLookupDiagnostics=data?.diagnostics||null;
+   if(route){
+     rememberAircraftRoute(p,route);
+     p.routeData=route;
+     p.route=routeText(route);
+     stats.found++;
+   }else{
+     stats.noRoute++;
+   }
+   if(selected&&planeKey(selected)===planeKey(p)){
+     // Keep the selection; update visible details without changing map focus.
+     selected.routeData=p.routeData||null;
+     selected.routeLookupState=p.routeLookupState;
+     selected.routeLookupSource=p.routeLookupSource;
+     selected.routeLookupDiagnostics=p.routeLookupDiagnostics;
+     selected.route=p.route||'Rute ikke tilgjengelig';
+     render(false);
+   }
+ }catch(e){
+   stats.errors++;
+   p.routeLookupState='error';
+   console.warn('Gratis 25 NM rutetest feilet:',e);
+ }finally{
+   // Pilot never increments paidCalls or estimatedUsd; server owns real paid accounting.
+   persistRoute25Pilot(stats);
+   routeRequests.delete(key);
+   route25PilotBusy=false;
+ }
 }
 function mergeAircraft(primary,secondary,primaryName='adsb.fi',secondaryName='adsb.lol'){
   const byKey=new Map();
@@ -2775,7 +2860,8 @@ async function refresh(){
     $('status').className='ok';
     document.body.dataset.liveSource='direct';
     render(true);
-    // Diagnostic mode: skip selected-aircraft route lookup.
+    // The explicit 25 NM pilot runs one FREE lookup per flight/day, no paid fallback.
+    void runFreeRoutePilot25(planes);
   }catch(e){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
     sourceState.fi='feil';

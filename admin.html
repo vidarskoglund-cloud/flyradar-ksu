@@ -35,6 +35,16 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
   <div class="fa-bar"><i id="fa-progress"></i></div>
   <div class="fa-note" id="fa-note">Henter FlightAware-bruk…</div>
 </section></section>
+<section><h2>Rutetest 25 NM – gratisoppslag</h2>
+<div class="grid" id="route25-stats">
+  <div class="card"><small>FORSØK I DAG (DENNE NETTLESEREN)</small><strong id="route25-attempts">–</strong></div>
+  <div class="card"><small>RUTER FUNNET</small><strong id="route25-found">–</strong></div>
+  <div class="card"><small>INGEN RUTE / FEIL</small><strong id="route25-unresolved">–</strong></div>
+  <div class="card"><small>BETALTE OPPSLAG I TESTEN</small><strong id="route25-paid">0</strong></div>
+  <div class="card"><small>TESTENS ESTIMERTE API-KOSTNAD</small><strong id="route25-cost">USD 0,00</strong></div>
+</div>
+<p class="muted">Piloten gjør bare gratis rutekall til adsb.lol via Worker, ett nytt flynummer per dato innen 25 NM, maksimalt 120 forsøk per dag og ett nytt oppslag hvert 15. sekund. Telleren gjelder kun denne nettleseren. Betalt FlightAware-forbruk fra alle andre oppslag vises i seksjonen over og begrenses på Worker-siden til USD 4,50/måned som sikkerhetsmargin under målet på USD 5. Faktiske leverandørkostnader kan avvike fra estimater.</p>
+</section>
 <section><h2>Nøkkeltall</h2><div class="grid" id="metrics"></div></section>
 <section class="card"><h2>Feilsøking av adsb.fi</h2><div id="diagnosis" class="note"></div><p class="note">Offisielt oppslag: <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener">adsb.fi v3 · KSU 75 NM</a>. Åpning av lenken er en manuell test og bruker et API-oppslag.</p></section>
 <section class="card"><h2>API-diagnose · manuell test</h2>
@@ -44,4 +54,4 @@ code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-
 </section>
 <section class="card"><h2>Historikk</h2><div class="filters"><label>Hendelser <select id="filter"><option value="all">Alle</option><option value="changes">Bare endringer/feil</option></select></label><label>Vis <select id="limit"><option>50</option><option>100</option><option>250</option><option>1000</option></select></label></div><div class="wrap"><table><thead><tr><th>Tid</th><th>Worker</th><th>adsb.lol</th><th>adsb.fi</th><th>Airplanes.live</th><th>Fly</th><th>Merknad</th></tr></thead><tbody id="history"></tbody></table></div></section>
 <section class="card"><h2>Hva vi bør overvåke</h2><p class="note">Andel vellykkede oppslag per kilde, tid siden siste vellykkede oppslag, feilårsak, antall fly per oppslag, og om adsb.fi gir flere fly enn adsb.lol. Det siste krever separat telling per kilde i Worker for en sikker sammenligning.</p></section>
-</main><script src="admin.js?v=2"></script><script src="flightaware-status.js?v=1"></script></body></html>
+</main><script src="admin.js?v=3"></script><script src="flightaware-status.js?v=1"></script></body></html>

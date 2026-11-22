@@ -72,3 +72,20 @@ $('test-api').onclick=async()=>{
    $('test-state').textContent='Testet '+fmtDate(results[0].at);
  }finally{button.disabled=false}
 };
+
+function renderRoutePilot25Stats(){
+ let row={};
+ try{row=JSON.parse(localStorage.getItem('trafikkradar-route25-free-pilot-v1')||'{}')||{}}catch(e){}
+ const today=new Date().toISOString().slice(0,10);
+ if(row.day!==today)row={attempts:0,found:0,noRoute:0,errors:0,paidCalls:0,estimatedUsd:0};
+ const set=(id,value)=>{const el=$(id);if(el)el.textContent=String(value)};
+ set('route25-attempts',row.attempts||0);
+ set('route25-found',row.found||0);
+ set('route25-unresolved',`${row.noRoute||0} / ${row.errors||0}`);
+ set('route25-paid',row.paidCalls||0);
+ set('route25-cost','USD '+Number(row.estimatedUsd||0).toFixed(2).replace('.',','));
+}
+renderRoutePilot25Stats();
+window.addEventListener('storage',event=>{
+ if(event.key==='trafikkradar-route25-free-pilot-v1')renderRoutePilot25Stats();
+});
