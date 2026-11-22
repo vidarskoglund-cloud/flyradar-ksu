@@ -1778,7 +1778,7 @@ function canLookupRoute(p,now=Date.now()){
   const last=routeAttempts.get(key);
   if(!last)return true;
   // Entering paid-lookup eligibility must bypass an earlier free-only miss.
-  const rank={ '':0,local:1,zone25:1,active50:2,ksu:3 };
+  const rank={ '':0,pilot25:0,local:1,zone25:1,active50:2,ksu:3 };
   return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
 }
 async function enrichRoute(p){
