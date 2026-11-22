@@ -15,7 +15,7 @@ const sched=initialize();
 const time='2026-11-22T18:00:00+01:00';
 const when=Date.parse(time);
 function call(options={}){
- return {line:{publicCode:'800',transportMode:'water'},
+ return {serviceJourney:{line:{publicCode:'800',transportMode:'water'}},
   forBoarding:true,forAlighting:false,realtime:false,cancellation:false,predictionInaccurate:false,
   aimedDepartureTime:'2026-11-22T19:30:00+01:00',
   expectedDepartureTime:'2026-11-22T19:30:00+01:00',
@@ -26,11 +26,11 @@ test('field appears directly beneath flights in desktop and mobile',()=>{
  assert.match(html,/<section class="schedule speedboat-regular">/);
  assert.match(html,/id="speedboat-list"/);
  assert.match(html,/id="speedboat-list-side"/);
- assert.match(html,/speedboat-schedule\.js\?v=1/);
+ assert.match(html,/speedboat-schedule\.js\?v=2/);
 });
 test('only AtB speedboat route 800 is shown, not bus or another line',()=>{
- const rows=sched.toRows([call(),call({line:{publicCode:'801',transportMode:'water'}}),
-  call({line:{publicCode:'800',transportMode:'bus'}})],when);
+ const rows=sched.toRows([call(),call({serviceJourney:{line:{publicCode:'801',transportMode:'water'}}}),
+  call({serviceJourney:{line:{publicCode:'800',transportMode:'bus'}}})],when);
  assert.equal(rows.length,1);
  assert.equal(rows[0].code,'800');
  assert.equal(rows[0].direction,'AVG');
@@ -62,4 +62,11 @@ test('only exact named Kristiansund speedboat stop is accepted',()=>{
  assert.equal(sched.pickKristiansundQuay([valid]),'NSR:StopPlace:999');
  assert.equal(sched.pickKristiansundQuay([{...valid,geometry:{coordinates:[10,59]}}]),null);
  assert.equal(sched.pickKristiansundQuay([valid,valid]),null);
+});
+
+test('Entur GraphQL query uses documented serviceJourney line and asks for both arrivals and departures',()=>{
+ assert.match(file,/estimatedCalls\(timeRange:86400,numberOfDepartures:80,arrivalDeparture:both\)/);
+ assert.match(file,/serviceJourney\{line\{publicCode transportMode\}\}/);
+ assert.match(file,/call\?\.serviceJourney\?\.line/);
+ assert.doesNotMatch(file,/^\s*line\{publicCode transportMode\}/m);
 });
