@@ -38,7 +38,7 @@ function pick(v,pages){
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
   if(!info||!meta)continue;
   const license=plain(meta.LicenseShortName?.value);
-  if(!/^(CC BY|CC0|Public domain|PD-)/i.test(license))continue;
+  if(!/^(CC BY|CC0|Public domain|PD-)/i.test(license)||/\b(?:NC|ND)\b/i.test(license))continue;
   const src=info.thumburl||info.url,source=info.descriptionurl;
   if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||!/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
   const categories=(page.categories||[]).map(x=>String(x.title||'').replace(/^Category:/i,'')).join(' ');
