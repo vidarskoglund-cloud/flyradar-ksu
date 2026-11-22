@@ -1971,9 +1971,9 @@ function vesselTypeCard(v){
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
  const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m']];
  return '<details class="type-info" open><summary>Om valgt fartøy</summary><div class="type-info-inner">'+
- typeIllustration('vessel')+'<strong>'+escapeVesselText(title)+'</strong>'+
+ '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div><strong>'+escapeVesselText(title)+'</strong>'+
  fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span>'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+
- '<small>Generell illustrasjon · AIS fra Kystverket</small></div></details>';
+ '<small id="vessel-photo-note">Generell illustrasjon · AIS fra Kystverket</small></div></details>';
 }
 let lastTypeCardIdentity='';
 function updateTypeCard(p){
@@ -1984,6 +1984,8 @@ function updateTypeCard(p){
  if(identity===lastTypeCardIdentity)return;
  lastTypeCardIdentity=identity;
  el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
+ el.dataset.photoIdentity=identity;
+ if(vessel&&window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
 }
 
 function renderVessels(){
