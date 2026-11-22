@@ -2,6 +2,35 @@ const $=x=>document.getElementById(x);
 let planes=[], localPlanes=[], remoteKsuPlanes=[], vessels=[], display=false, selected=null, avinorFlights=[], lastGoodPlanes=[], sourceState={adsb:'ukjent',apl:'ukjent',fi:'ukjent'};
 let idleFocusIndex=0;
 const trackHistory=new Map();
+const TRACK_STORE_KEY='flyradar-ksu-trails-v1';
+const TRACK_KEEP_MS=30*60*1000;
+const TRACK_MAX_POINTS=140;
+function validTrackPoint(p,cutoff,now){
+ const lat=Number(p?.lat),lon=Number(p?.lon),t=Number(p?.t);
+ return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180&&Number.isFinite(t)&&t>=cutoff&&t<=now+10000;
+}
+function restoreTrackHistory(){
+ try{
+  const now=Date.now(),cutoff=now-TRACK_KEEP_MS;
+  const saved=JSON.parse(localStorage.getItem(TRACK_STORE_KEY)||'[]');
+  if(!Array.isArray(saved))return;
+  for(const x of saved.slice(0,70)){
+   if(!x||!/^[a-z0-9-]{1,35}$/.test(x.key)||!Array.isArray(x.points))continue;
+   const points=x.points.filter(p=>validTrackPoint(p,cutoff,now)).slice(-TRACK_MAX_POINTS);
+   if(points.length)trackHistory.set(x.key,points);
+  }
+ }catch(e){console.warn('Kunne ikke lese flyspor',e);}
+}
+function persistTrackHistory(){
+ try{
+  const now=Date.now(),cutoff=now-TRACK_KEEP_MS;
+  const saved=[...trackHistory].map(([key,points])=>({key,points:points.filter(p=>validTrackPoint(p,cutoff,now)).slice(-TRACK_MAX_POINTS)}))
+   .filter(x=>x.points.length&&/^[a-z0-9-]{1,35}$/.test(x.key))
+   .sort((x,y)=>y.points.at(-1).t-x.points.at(-1).t).slice(0,70);
+  localStorage.setItem(TRACK_STORE_KEY,JSON.stringify(saved));
+ }catch(e){console.warn('Kunne ikke lagre flyspor',e);}
+}
+restoreTrackHistory();
 const routeCache=new Map();
 const routeAttempts=new Map();
 const routeRequests=new Set();
@@ -789,7 +818,7 @@ function rememberAircraftRoute(p,r){
 
 function ingestSharedTracks(shared){
   if(!shared||typeof shared!=='object')return false;
-  const cutoff=Date.now()-5*60*1000;
+  const cutoff=Date.now()-TRACK_KEEP_MS;
   let used=false;
   for(const [key,points] of Object.entries(shared)){
     if(!Array.isArray(points))continue;
@@ -797,19 +826,23 @@ function ingestSharedTracks(shared){
       .map(x=>({lat:Number(x.lat),lon:Number(x.lon),t:Number(x.t)}))
       .filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon)&&Number.isFinite(x.t)&&x.t>=cutoff);
     if(fresh.length){
-      trackHistory.set(String(key).toLowerCase(),fresh);
+      const k=String(key).toLowerCase();
+      const existing=trackHistory.get(k)||[];
+      const combined=[...existing,...fresh].sort((a,b)=>a.t-b.t);
+      trackHistory.set(k,combined.filter((x,i)=>i===0||x.t!==combined[i-1].t).slice(-TRACK_MAX_POINTS));
       used=true;
     }
   }
+  if(used)persistTrackHistory();
   return used;
 }
 function updateTrackHistory(list){
   const now=Date.now();
-  const keepMs=5*60*1000;
+  const keepMs=TRACK_KEEP_MS;
   const active=new Set();
   list.forEach(p=>{
     const key=planeKey(p);
-    if(!key||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;
+    if(!key||p.signalLost||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return;
     active.add(key);
     const arr=trackHistory.get(key)||[];
     const last=arr[arr.length-1];
@@ -817,12 +850,13 @@ function updateTrackHistory(list){
       arr.push({lat:p.lat,lon:p.lon,t:now});
     }
     const fresh=arr.filter(x=>now-x.t<=keepMs);
-    trackHistory.set(key,fresh);
+    trackHistory.set(key,fresh.slice(-TRACK_MAX_POINTS));
   });
   for(const [key,arr] of trackHistory){
     const fresh=arr.filter(x=>now-x.t<=keepMs);
-    if(fresh.length)trackHistory.set(key,fresh); else trackHistory.delete(key);
+    if(fresh.length)trackHistory.set(key,fresh.slice(-TRACK_MAX_POINTS)); else trackHistory.delete(key);
   }
+  persistTrackHistory();
 }
 function courseLabel(track){
   if(!Number.isFinite(Number(track)))return'ukjent retning';
@@ -844,12 +878,13 @@ function drawTrackAndPrediction(p){
   trackLayer.clearLayers();
   if(!p)return;
   const key=planeKey(p);
-  const hist=trackHistory.get(key)||[];
+  const now=Date.now();
+  const hist=(trackHistory.get(key)||[]).filter(x=>now-x.t<=TRACK_KEEP_MS);
   if(hist.length>=2){
     L.polyline(hist.map(x=>[x.lat,x.lon]),{
       weight:4,
       opacity:.85
-    }).bindTooltip('Faktisk spor · siste 5 min',{sticky:true}).addTo(trackLayer);
+    }).bindTooltip('Faktisk flyspor · siste 30 min',{sticky:true}).addTo(trackLayer);
   }
 
   const info=ksuFlightInfo(p);
