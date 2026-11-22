@@ -9,11 +9,11 @@ const photo=fs.readFileSync(path.join(__dirname,'../vessel-photos.js'),'utf8');
 test('the vessel becomes the exclusive main panel, even in grid/fullscreen CSS',()=>{
  assert.match(html,/#cards\[hidden\]\{display:none!important\}/);
  assert.match(app,/\$\('cards'\)\)\$\('cards'\)\.hidden=true/);
- assert.match(app,/Fartøy ved Kristiansund havn/);
+ assert.match(app,/function vesselMovementContext\(v\)/);
 });
 test('vessel detail displays a primary name and compact speed and course',()=>{
  const a=app.indexOf('function vesselTypeCard('),b=app.indexOf('let lastTypeCardIdentity',a);
- const c={escapeVesselText:String,vesselKind:()=> 'Skip',typeIllustration:()=>'<svg></svg>'};
+ const c={escapeVesselText:String,vesselKind:()=> 'Skip',typeIllustration:()=>'<svg></svg>',vesselMovementContext:()=>({detail:'AIS bevegelse ikke bekreftet'})};
  vm.runInNewContext(app.slice(a,b)+';globalThis.make=vesselTypeCard;',c);
  const card=c.make({name:'WATERLORD',mmsi:'257827000',imo:'7522150',speed:8.7,course:70,length:35,width:10,destination:'NOAES'});
  assert.match(card,/id="vessel-detail-name">WATERLORD/);
