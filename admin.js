@@ -34,7 +34,7 @@ function render(){
  const success=rows.filter(r=>r.worker==='OK').length;
  $('metrics').innerHTML=[
    card('Registrerte oppslag',rows.length,'Siden '+fmtDate(first?.at)),
-   card('Worker-tilgjengelighet',rows.length?Math.round(success/rows.length*100)+' %':'–','Basert på denne nettleseren'),
+   card('Worker brukt til flyposisjoner',rows.some(r=>r.worker==='OK'||r.worker==='feil')?Math.round(success/rows.filter(r=>r.worker==='OK'||r.worker==='feil').length*100)+' %':'Ikke brukt','Historiske posisjonsmålinger – ikke status for Workerens rute- eller AIS-tjenester'),
    card('Siste antall fly',last?.aircraft??'–','Antall før filtrering i kartet'),
    card('Statusendringer',changes.length,'Registrerte overganger i datakildene')
  ].join('');
