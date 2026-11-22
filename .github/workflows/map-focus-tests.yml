@@ -40,6 +40,8 @@ jobs:
         run: node --test tests/route25-pilot.test.cjs
       - name: Admin data sources and priority flow tests
         run: node --test tests/admin-source-flow.test.cjs
+      - name: Vessel movement and budget copy tests
+        run: node --test tests/vessel-context-budget-copy.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
