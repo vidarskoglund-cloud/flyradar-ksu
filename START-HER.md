@@ -77,3 +77,10 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Skipsbildet beholdes som illustrasjon til et verifisert Commons-foto faktisk har lastet. Ved manglende sikkert treff vises forklaringen «Fant ikke et sikkert skipsfoto i Wikimedia Commons». Negativ bildecache er fornyet (v3).
 - GitHub Actions syntakskontroll, kart-, bilde- og nye fartøypaneltester besto. Gamle feil i `motion.test.cjs` er fremdeles separat/ikke bekreftet løst. **Gjenstår:** live nettlesertest av GitHub Pages, AIS og foto. Et foto av WATERLORD er funnet på annen nettside, men kan ikke automatisk brukes som fritt lisensiert bilde uten rettighetsavklaring.
 - ADS-B, AIS-kilder, Worker, varsler og kartzoom er ikke endret.
+
+## 22.11.2026 – Flystatus og kartknapp
+- [PR #32](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/32) slått sammen i `main` (commit `f0bf8bd513c9299b09ccc9575fdb319b70d44152`).
+- «Vis fly på kart» vises bare når valgt fly er utenfor gjeldende kartutsnitt. Synligheten oppdateres ved kartbevegelse, flyvalg og interpolert posisjon; manuell kartpause og markering av valgt fly beholdes.
+- Status «Nærmer seg KSU» vises ikke lenger kun på bakgrunn av kurs/avstand for et høytflygende passerende fly, som WIF2U (40 025 ft / 43 NM). Ubekreftet fjerntrafikk vises som «Passerer regionen». Bekreftet KSU-destinasjon vises som «På vei til KSU» og mulig innflyging som «Mulig innflyging mot KSU» bare ved flere relevante bevegelsestegn.
+- GitHub Actions med syntaks-, kart-, bilde-, skips- og nye flystatus-/knappetester besto. Tidligere feil i `motion.test.cjs` fortsatt separat. **Liveverifisering:** hovedgrenen er kontrollert; publisert Pages og praktisk test med live fly gjenstår.
+- Fly-/AIS-kilder, oppdateringsintervaller, båtsporing og varsling er ikke endret.
