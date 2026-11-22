@@ -73,6 +73,9 @@ function chooseTypePhoto(type,pages){
   const filename=String(page.title||'').replace(/^File:/i,'');
   if(!/\.(?:jpe?g|webp)$/i.test(filename)||
     /\b(?:logo|drawing|illustration|render|model|diagram|cockpit|interior|seat|simulator)\b/i.test(filename))continue;
+  // A broad Commons category may contain other Gulfstream variants.
+  // Do not let a category override a conflicting model in the image filename.
+  if(String(type).toUpperCase()==='GLF5'&&/gulfstream[ _-]+(?:g[ _-]?)?(?:iv|vi|550|650)\b/i.test(filename))continue;
   const categories=(page.categories||[]).map(c=>String(c.title||'').replace(/^Category:/i,'')).join(' ');
   const matchTitle=spec.patterns.some(rx=>rx.test(filename.replace(/_/g,' ')));
   const matchCategory=spec.patterns.some(rx=>rx.test(categories));
