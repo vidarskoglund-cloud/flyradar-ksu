@@ -51,3 +51,11 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - 30 sekunders fokusbyttelås, to minutters manuell pause, KSU/AIS-prioritet, ADS-B-kilde, ruter og varsler er beholdt.
 - GitHub Actions syntakskontroll og nye karttester besto. Eldre `motion.test.cjs` har tidligere kjente feil som fortsatt kjøres separat uten å blokkere ny kart-CI.
 - **Gjenstår:** Kontrollere GitHub Pages-utrulling og observere faktisk kartbevegelse over en full 90-sekunders syklus med og uten lokal trafikk. PR #25 (skipsdetaljer) er fortsatt utenfor.
+
+## 22.11.2026 – Automatisk valg av skip i havneområdet
+- [PR #29](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/29) er slått sammen i `main` (commit `31d91c85022f5c96d9f14ffd26692200e355e53e`).
+- Når AIS-basert kartprioritering velger et fartøy som faktisk beveger seg nær Kristiansund havn, velges samme fartøy automatisk i høyrepanelet; flykortet skjules mens fartøykortet vises.
+- Krever observert AIS-posisjonsendring, minst 1,5 knop og fersk posisjon. Automatisk skifte mellom fartøy skjer tidligst etter 30 sekunder; manuelle skipsvalg beholder kontroll i to minutter.
+- Når prioritert KSU-fly overtar, returnerer høyrepanelet til flyvisning. Fly-/AIS-kilder, oppdateringsfrekvens, varsler og gjeldende kartzoomlogikk er ikke endret.
+- GitHub Actions-testene for kartfokus besto. **Gjenstår:** verifisere faktisk automatisk skipsvalg i publisert GitHub Pages med levende AIS-oppdateringer; skip trenger minst to ulike posisjoner før automatisk valg.
+- Urelatert [PR #25](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/25) om ytterligere skipsopplysninger og bildeoppslag er fortsatt separat og ikke innført i denne endringen.
