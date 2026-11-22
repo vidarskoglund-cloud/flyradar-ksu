@@ -2936,6 +2936,7 @@ async function refresh(){
       const localCount=planes.filter(withinKsuAlertArea).length;
       $('status').textContent=`${localCount} fly innen 50 NM · viser sist kjente data`;
       $('status').className='muted';
+      document.body.dataset.liveSource='stale';
       render(false);
       return;
     }
