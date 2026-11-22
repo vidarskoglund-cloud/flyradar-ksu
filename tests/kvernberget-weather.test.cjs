@@ -57,3 +57,11 @@ test('UI shows unavailable rather than silently using forecast as Kvernberget me
  assert.match(page,/weather-regular/);
  assert.match(page,/weather\.js\?v=1/);
 });
+
+test('pressure reported in hPa is not multiplied and nonsense is rejected',()=>{
+ const now=1763845800000;
+ const row={icaoId:'ENKB',obsTime:1763845200,temp:2,wspd:10,altim:1024};
+ assert.equal(weatherObservation([row],now).pressure_hpa,1024);
+ assert.equal(weatherObservation([{...row,altim:30.12}],now).pressure_hpa,1020);
+ assert.equal(weatherObservation([{...row,altim:34677}],now).pressure_hpa,null);
+});
