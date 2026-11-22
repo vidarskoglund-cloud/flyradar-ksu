@@ -1749,25 +1749,15 @@ function inferredRouteLabel(p){
     label:`Sannsynlig ${best.airport.code}`
   };
 }
+// Public flight card: show useful route state, never API eligibility/cost policy.
+// Detailed source diagnostics belong on the administration page.
 function routeLookupLabel(p){
-  if(!p)return'';
-  const d=p.routeLookupDiagnostics;
-  const diag=d
-    ? [
-        d.adsb_lol_attempted ? ('adsb.lol: '+(d.adsb_lol_result==='found'?'treff':d.adsb_lol_result==='no-route'?'ingen treff':d.adsb_lol_result)) : null,
-        d.flightaware_attempted ? ('FlightAware: '+(d.flightaware_result==='found'?'treff':d.flightaware_result==='no-route'?'ingen treff':d.flightaware_result)) : null
-      ].filter(Boolean).join(' · ')
-    : '';
-  if(p.routeData){
-    const base=p.routeLookupSource?('Rute funnet via '+p.routeLookupSource):'Rute funnet';
-    return diag?base+' · '+diag:base;
-  }
-  if(p.routeLookupState==='trying')return'Ruteoppslag pågår…';
-  if(p.routeLookupState==='not-found')return diag?('Oppslag utført · '+diag):'Oppslag utført · ingen rute funnet';
-  if(p.routeLookupState==='error')return'Ruteoppslag feilet';
-  const scope=routeLookupScope(p);
-  if(scope)return'Ruteoppslag ikke forsøkt ennå';
-  return'Ikke kvalifisert for ekstra ruteoppslag';
+  if(!p)return '';
+  if(p.routeData)return '';
+  if(p.routeLookupState==='trying')return 'Søker etter flyrute…';
+  if(p.routeLookupState==='not-found')return 'Ingen bekreftet rute funnet';
+  if(p.routeLookupState==='error')return 'Ruteinformasjon midlertidig utilgjengelig';
+  return '';
 }
 function displayRoute(p){
   const service=specialService(p);
@@ -3115,7 +3105,7 @@ function render(autoFit=false){
           </div>`
         : inferred
           ? `<div class="flight-route fallback inferred"><div class="route-loading">${inferred.label} · ${inferred.name}</div></div>`
-          : `<div class="flight-route fallback"><div class="route-loading">${displayRoute(shown)}</div><div class="route-state">${routeLookupLabel(shown)}</div></div>`;
+          : `<div class="flight-route fallback"><div class="route-loading">${routeLookupLabel(shown)||'Avgang og destinasjon ikke bekreftet'}</div></div>`;
     $('cards').innerHTML=`<div class="card aircraft-card ${localRelevant(shown)?'local-card':''}">
       <div class="aircraft-head">
         <div>
