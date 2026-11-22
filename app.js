@@ -2049,8 +2049,8 @@ let fiRescueRetryAfter=0,fiRescueError='',fiRescueDirectOk=false;
 async function rescueAdsbFi(s){
   const now=Date.now();
   // Share one recent successful snapshot; never label an old snapshot as live.
-  if(now<fiRescueRetryAfter || now-fiRescueLastAttempt<15000){
-    return now-fiRescueLastSuccess<15000?fiRescueAircraft:null;
+  if(now<fiRescueRetryAfter || now-fiRescueLastAttempt<5000){
+    return now-fiRescueLastSuccess<5000?fiRescueAircraft:null;
   }
   fiRescueLastAttempt=now;
   fiRescueDirectOk=false;
@@ -3450,7 +3450,7 @@ function animateAircraftMotion(frameAt){
     if($('fs-closest'))$('fs-closest').textContent=closestText;
   }
 }
-function nextRefreshMs(){ return 15000; } // Aircraft snapshot every 15 seconds; vessel polling unchanged.
+function nextRefreshMs(){ return 5000; } // Aircraft snapshot every 5 seconds; vessel polling unchanged.
 async function adaptiveRefresh(){
   if(refreshTimer)clearTimeout(refreshTimer);
   await refresh();
