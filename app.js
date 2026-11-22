@@ -1530,13 +1530,24 @@ function fitMap(list,s){
     :areaBounds(mapAreas.city.lat,mapAreas.city.lon,22);
   const maxZoom=target?target.maxZoom:10;
   const padding=target?[65,65]:[28,28];
+  // Keep the aircraft shown in the detail panel visible too. If it is outside
+  // the current focus bounds, zoom OUT to include both it and the local view.
+  // Never override the two-minute pause after manual map interactions.
+  const focused=selectedVesselTypeKey?'':selected&&list.find(p=>
+    planeKey(p)===planeKey(selected)&&!p.signalLost&&
+    Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
+  const focusedPoint=focused?[Number(focused.lat),Number(focused.lon)]:null;
+  if(focusedPoint&&!bounds.contains(focusedPoint))bounds.extend(focusedPoint);
   const wantedZoom=Math.min(maxZoom,map.getBoundsZoom(bounds,false,L.point(padding[0]*2,padding[1]*2)));
   const inside=map.getBounds().pad(-0.08);
+  const focusedOutside=Boolean(focusedPoint&&!inside.contains(focusedPoint));
   const pointsVisible=target?target.points.every(pos=>inside.contains(pos)):
     inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
-  if(pointsVisible&&Math.abs(map.getZoom()-wantedZoom)<=1)return;
-  // Samme mål får korte perioder uten rezoom; viktig innflyging (<5 NM) kan oppdateres raskt.
-  if(target&&!targetChanged&&now-smartMapLastMoveAt<SMART_MAP_MOVE_COOLDOWN_MS&&target.d>5)return;
+  if(pointsVisible&&!focusedOutside&&Math.abs(map.getZoom()-wantedZoom)<=1)return;
+  // An off-screen focused aircraft should not wait for the normal cooldown;
+  // other automatic framing still honors the normal focus hold.
+  if(target&&!targetChanged&&!focusedOutside&&
+    now-smartMapLastMoveAt<SMART_MAP_MOVE_COOLDOWN_MS&&target.d>5)return;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   autoMapTransition=true;
   const opts={padding,maxZoom,animate:!reduced,duration:2.2};
@@ -1549,31 +1560,6 @@ function fitMap(list,s){
 map.on('zoomstart',()=>{
   if(!autoMapTransition)manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
 });
-function selectedAircraftVisibleOnMap(p,position){
-  if(!p||p.signalLost)return false;
-  const pos=position||(planeKey(p)&&motionMarkers.get(planeKey(p))?.marker.getLatLng());
-  const lat=Number(pos?.lat??pos?.[0]??p.lat),lon=Number(pos?.lng??pos?.[1]??p.lon);
-  return Number.isFinite(lat)&&Number.isFinite(lon)&&
-    map.getBounds().pad(-0.06).contains([lat,lon]);
-}
-function updateShowAircraftOnMapButton(){
-  const button=$('show-aircraft-on-map');
-  if(!button)return;
-  button.hidden=!selected||selectedVesselTypeKey!==''||selectedAircraftVisibleOnMap(selected);
-}
-map.on('moveend zoomend',updateShowAircraftOnMapButton);
-function showSelectedAircraftOnMap(){
-  const p=selected&&planes.find(item=>planeKey(item)===planeKey(selected)&&!item.signalLost);
-  if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return;
-  // Explicit selection pauses automatic zoom for two minutes.
-  manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;
-  const bounds=L.latLngBounds([[mapAreas.city.lat,mapAreas.city.lon],[p.lat,p.lon]]);
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  autoMapTransition=true;
-  map.once('moveend',()=>{autoMapTransition=false;});
-  map.flyToBounds(bounds,{padding:[70,70],maxZoom:12,animate:!reduced,duration:2});
-  updateShowAircraftOnMapButton();
-}
 function airportLabel(a){
   if(!a)return'';
   const code=a.iata||a.icao||a.code||'';
@@ -2989,7 +2975,6 @@ function select(p,lookupRoute=true){
   }
   selected=p;
   highlightSelectedAircraft();
-  updateShowAircraftOnMapButton();
   if(lookupRoute && p.flight && !p.routeData && canLookupRoute(p) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   drawTrackAndPrediction(p);
@@ -3118,7 +3103,6 @@ function render(autoFit=false){
       </div>
       ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
-      <button type="button" class="show-aircraft-on-map" id="show-aircraft-on-map" ${selectedAircraftVisibleOnMap(shown)?'hidden':''}>Vis fly på kart</button>
       <div class="aircraft-metrics">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
         <div><span>FART</span><b>${f(shown.gs,' kt')}</b></div>
@@ -3135,10 +3119,8 @@ function render(autoFit=false){
     </div>`;
     select(shown,false);
     updateTypeCard(shown);
-    updateShowAircraftOnMapButton();
   }else{
     selected=null;
-    updateShowAircraftOnMapButton();
     $('status').textContent=`${planes.filter(p=>!p.signalLost&&ksuDistanceNm(p)<=50).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
     $('status').className='ok';
@@ -3150,9 +3132,6 @@ function render(autoFit=false){
   autoSelectHarborVessel();
   if(autoFit) fitMap(list,s);
 }
-if($('cards'))$('cards').addEventListener('click',event=>{
-  if(event.target.closest('#show-aircraft-on-map'))showSelectedAircraftOnMap();
-});
 function toggleDisplay(){
   display=!display;
   document.body.classList.toggle('display-on',display);
@@ -3271,7 +3250,6 @@ function animateAircraftMotion(frameAt){
     const closestText=Number.isFinite(closest)?closest.toFixed(1)+' NM':'–';
     if($('closest'))$('closest').textContent=closestText;
     if($('fs-closest'))$('fs-closest').textContent=closestText;
-    updateShowAircraftOnMapButton();
   }
 }
 function nextRefreshMs(){ return 15000; } // Aircraft snapshot every 15 seconds; vessel polling unchanged.
