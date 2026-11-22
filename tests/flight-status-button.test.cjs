@@ -25,19 +25,20 @@ test('confirmed KSU approach gets supported status',()=>{
  vm.runInContext(section('function ksuMovementStatus','function movementText'),c);
  assert.equal(c.ksuMovementStatus({d:42,alt:12000,track:208,vr:-100,lat:63,lon:8}).label,'På vei til KSU');
 });
-test('map button is hidden when selected aircraft is inside visible bounds',()=>{
- const c=vm.createContext({
-  map:{getBounds:()=>({pad:()=>({contains:point=>point[0]===63&&point[1]===8})}),on:()=>{}},
-  planeKey:p=>p.hex,motionMarkers:new Map(),selectedVesselTypeKey:'',
-  selected:{hex:'a',lat:63,lon:8},Number,
-  $:()=>({hidden:false})
- });
- vm.runInContext(section('function selectedAircraftVisibleOnMap','function showSelectedAircraftOnMap'),c);
- assert.equal(c.selectedAircraftVisibleOnMap(c.selected),true);
- assert.equal(c.selectedAircraftVisibleOnMap({lat:61,lon:9,hex:'b'}),false);
+test('focused aircraft outside automatic target bounds is included without a button',()=>{
+ assert.match(app,/const focused=selectedVesselTypeKey\?'':selected&&list\.find/);
+ assert.match(app,/if\(focusedPoint&&!bounds\.contains\(focusedPoint\)\)bounds\.extend\(focusedPoint\)/);
+ assert.match(app,/const focusedOutside=Boolean\(focusedPoint&&!inside\.contains\(focusedPoint\)\)/);
+ assert.match(app,/now<manualMapUntil\)return/);
 });
-test('button is refreshed after map moves and airplane animation',()=>{
- assert.match(app,/map\.on\('moveend zoomend',updateShowAircraftOnMapButton\)/);
- assert.match(app,/function animateAircraftMotion[\s\S]*?updateShowAircraftOnMapButton\(\)/);
- assert.match(app,/id="show-aircraft-on-map" \$\{selectedAircraftVisibleOnMap\(shown\)/);
+test('manual map button and its listener are removed',()=>{
+ assert.doesNotMatch(app,/show-aircraft-on-map/);
+ assert.doesNotMatch(app,/showSelectedAircraftOnMap/);
+ assert.doesNotMatch(app,/updateShowAircraftOnMapButton/);
+});
+test('aircraft motion animation and existing smart-map targets remain intact',()=>{
+ assert.match(app,/function animateAircraftMotion/);
+ assert.match(app,/function smartMapCandidate/);
+ assert.match(app,/function fitMap\(list,s\)/);
+ assert.match(app,/if\(autoFit\) fitMap\(list,s\)/);
 });
