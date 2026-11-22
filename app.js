@@ -1873,6 +1873,20 @@ function route25PilotStats(now=Date.now()){
  }
  return saved;
 }
+function pilot25LookupStatus(p){
+ const key=flightRouteKey(p);
+ if(!key)return '';
+ const stats=route25PilotStats();
+ const outcome=stats.results?.[key];
+ if(outcome==='found')return 'Gratis rutekontroll: rute funnet';
+ if(outcome==='not-found')return 'Gratis rutekontroll utført · ingen bekreftet rute';
+ if(outcome==='error')return 'Gratis rutekontroll mislyktes';
+ if(stats.keys.includes(key))return 'Gratis rutekontroll forsøkt';
+ if(!Number.isFinite(ksuDistanceNm(p))||ksuDistanceNm(p)>25)return '';
+ if(stats.attempts>=ROUTE25_PILOT_LIMIT_PER_DAY)return 'Gratis rutekontroll: dagsgrense nådd';
+ if(p.flight&&!p.signalLost&&!cachedAircraftRoute(p))return 'Gratis rutekontroll: venter på oppslag';
+ return '';
+}
 function persistRoute25Pilot(stats){
  try{localStorage.setItem(ROUTE25_PILOT_KEY,JSON.stringify(stats))}catch(e){}
 }
@@ -1914,6 +1928,8 @@ async function runFreeRoutePilot25(list,now=Date.now()){
    p.routeLookupState=route?'found':'not-found';
    p.routeLookupSource=data?.source||'';
    p.routeLookupDiagnostics=data?.diagnostics||null;
+   stats.results=stats.results||{};
+   stats.results[key]=route?'found':'not-found';
    if(route){
      rememberAircraftRoute(p,route);
      p.routeData=route;
@@ -1933,6 +1949,8 @@ async function runFreeRoutePilot25(list,now=Date.now()){
    }
  }catch(e){
    stats.errors++;
+   stats.results=stats.results||{};
+   stats.results[key]='error';
    p.routeLookupState='error';
    console.warn('Gratis 25 NM rutetest feilet:',e);
  }finally{
@@ -3209,6 +3227,7 @@ function render(autoFit=false){
       </div>
       ${ksuInfo?`<div class="ksu-flight"><b>${ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}</span></div>`:''}
       ${routeBlock}
+      ${pilot25LookupStatus(shown)?`<div class="route-pilot-note">${pilot25LookupStatus(shown)}</div>`:''}
       <div class="aircraft-metrics">
         <div><span>HØYDE</span><b>${f(shown.alt,' ft')}</b></div>
         <div><span>FART</span><b>${f(shown.gs,' kt')}</b></div>
