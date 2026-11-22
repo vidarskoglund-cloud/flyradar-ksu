@@ -2121,14 +2121,40 @@ function aircraftTypeCard(p){
  '<span>'+escapeVesselText(label)+(code?' · '+escapeVesselText(code):'')+'</span>'+
  '<small id="aircraft-photo-note">'+(AIRCRAFT_REG_PHOTOS[String(p.reg||'').trim().toUpperCase()]?'Foto av registreringen '+escapeVesselText(p.reg):'Typebilde eller illustrasjon – ikke nødvendigvis samme fly')+'</small></div></details>';
 }
+function vesselMovementContext(v){
+ const lat=Number(v?.lat),lon=Number(v?.lon);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))
+   return {title:'Fartøy i området ved Kristiansund',detail:'Bevegelse mot havnen er ikke bekreftet'};
+ const distance=nm(dist(lat,lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]));
+ const record=vesselMotionHistory.get(vesselKey(v));
+ const speed=Number(v.speed);
+ if(distance<=VESSEL_HARBOR_CORE_NM)
+   return {title:'Fartøy i havneområdet',detail:'Innenfor ca. 2,2 NM fra havneområdets referansepunkt · havneanløp ikke bekreftet'};
+ if(record?.observed>=1 && Date.now()-record.at<=100000 &&
+    Number.isFinite(speed)&&speed>=1.5){
+   if(record.trend==='inn')
+     return {title:'Fartøy nærmer seg havneområdet',detail:'AIS-posisjonene viser kortere avstand til havneområdet · havneanløp ikke bekreftet'};
+   if(record.trend==='ut')
+     return {title:'Fartøy beveger seg bort fra havneområdet',detail:'AIS-posisjonene viser økende avstand til havneområdet'};
+ }
+ return {title:'Fartøy i farvannet ved Kristiansund',detail:'Passasje eller havneanløp er ikke bekreftet'};
+}
+function updateVesselContext(v){
+ const context=vesselMovementContext(v);
+ const heading=$('aircraft-panel-title');
+ if(heading)heading.textContent=context.title;
+ const detail=$('vessel-motion-note');
+ if(detail)detail.textContent=context.detail;
+}
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
- const fields=[['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['AIS-tid',v.msgtime]];
+ const fields=[['MMSI',v.mmsi],['IMO',v.imo],['Oppgitt AIS-destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['AIS-tid',v.msgtime]];
  const speed=v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':'–';
  const course=v.course!=null&&v.course!==''&&Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':'–';
  return '<section class="vessel-detail" aria-label="Valgt skip">'+
- '<div class="vessel-detail-head"><strong id="vessel-detail-name">'+escapeVesselText(title)+'</strong><span>'+escapeVesselText(category)+'</span></div>'+
+ '<div class="vessel-detail-head"><strong id="vessel-detail-name">'+escapeVesselText(title)+'</strong><span>'+escapeVesselText(category)+'</span></div>'+ 
+ '<small id="vessel-motion-note">'+escapeVesselText(vesselMovementContext(v).detail)+'</small>'+
  '<div class="vessel-detail-metrics"><div><small>FART</small><b data-vessel-speed>'+escapeVesselText(speed)+'</b></div><div><small>KURS</small><b data-vessel-course>'+escapeVesselText(course)+'</b></div></div>'+
  '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div>'+
  '<small id="vessel-photo-note" role="status">Søker etter skipsfoto · AIS fra Kystverket</small>'+
@@ -2147,11 +2173,12 @@ function updateTypeCard(p){
    if(speed)speed.textContent=vessel.speed!=null&&vessel.speed!==''&&Number.isFinite(Number(vessel.speed))?Number(vessel.speed).toFixed(1)+' knop':'–';
    if(course)course.textContent=vessel.course!=null&&vessel.course!==''&&Number.isFinite(Number(vessel.course))?Math.round(Number(vessel.course))+'°':'–';
    const name=el.querySelector('#vessel-detail-name');if(name)name.textContent=vessel.name||('MMSI '+(vessel.mmsi||'ukjent'));
-   const fields={MMSI:vessel.mmsi,IMO:vessel.imo,Destinasjon:vessel.destination,Lengde:vessel.length&&vessel.length+' m',Bredde:vessel.width&&vessel.width+' m','AIS-tid':vessel.msgtime};
+   const fields={MMSI:vessel.mmsi,IMO:vessel.imo,'Oppgitt AIS-destinasjon':vessel.destination,Lengde:vessel.length&&vessel.length+' m',Bredde:vessel.width&&vessel.width+' m','AIS-tid':vessel.msgtime};
    for(const field of el.querySelectorAll('[data-vessel-field]')){
      const key=field.dataset.vesselField,value=fields[key];
      field.textContent=key+': '+(value??'–');
    }
+   updateVesselContext(vessel);
    lastTypeCardSignature=signature;
    return;
  }
@@ -2160,7 +2187,10 @@ function updateTypeCard(p){
  lastTypeCardSignature=signature;
  el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
  el.dataset.photoIdentity=identity;
- if(vessel&&window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
+ if(vessel){
+   updateVesselContext(vessel);
+   if(window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
+ }
  if(!vessel&&p&&window.loadSelectedAircraftPhoto)void window.loadSelectedAircraftPhoto(p,identity);
 }
 
@@ -2187,7 +2217,7 @@ function autoSelectHarborVessel(now=Date.now()){
    vesselFocusChangedAt=now;
    syncVesselSelectionMarkers();
  }
- if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fartøy ved Kristiansund havn';
+ updateVesselContext(vessel);
  if($('cards'))$('cards').hidden=true;
  updateTypeCard(selected);
 }
@@ -2211,7 +2241,7 @@ function renderVessels(){
     selectedVesselTypeKey=vesselKey(v);
     syncVesselSelectionMarkers();
     manualVesselSelectionUntil=Date.now()+SMART_MAP_MANUAL_MS;
-    if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Valgt fartøy';
+    updateVesselContext(v);
     if($('cards'))$('cards').hidden=true;
     updateTypeCard(selected);
   });
