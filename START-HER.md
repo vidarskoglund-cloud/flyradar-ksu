@@ -133,3 +133,10 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Resultater lagres lokalt i nettleseren i 7 døgn, negative treff i 1 døgn, og parallelle oppslag for samme identifikator dedupliseres. Oppslag skjer ved valg av fartøy, ikke for alle AIS-objekter i hver oppdatering.
 - Dynamisk AIS fra Kystverket (posisjon, kurs, fart, AIS-destinasjon, lengde/bredde) er uendret og atskilt fra potensielt ufullstendige/utdaterte Wikidata-opplysninger. Ingen MarineTraffic-data brukes, ingen betalte API-er eller Worker-endringer.
 - **Kontrollstatus:** JavaScript-syntaks og regresjonstester for identitet, flertydighet og tilleggsvisning besto. Åpent: faktisk oppslag/visning via Wikidata API og GitHub Pages etter utrulling; offentlig Wikidata-tjeneste kan ha tilgjengelighetsbegrensninger og endringer.
+
+## 22.11.2026 – Kompakt statuslinje i desktopvisningen
+- [PR #39](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/39) er slått sammen i `main` (commit `0a92f529b387c6a96ea0141fcb76cfcbee042fdd`).
+- Desktop (vanlig nettlesermodus >= 900 px): `#vessel-live-status` vises i venstre del av første rad over kartet, mens `#stats` med antall fly innen 50 NM, nærmeste med signal og siste oppdatering vises kompakt i høyre kolonne. Tre store kort over hele siden er fjernet fra desktop-oppsettet, slik at mer høyde frigjøres til kartet.
+- Fullscreen og mobil får uendret layout. Eksisterende id-er og automatiske statistikkoppdateringer, AIS-felt, kart, skip/fly-kort og funksjoner er beholdt. Ingen endringer i datakilder eller oppdateringsintervaller.
+- Nye tester og hele GitHub Actions-kjøringen besto på PR #39.
+- **Åpent:** Visuell kontroll på publisert GitHub Pages ved brukerens PC-oppløsning. Dette er første trinn i å minimere rulling; hele desktop-sidens høydedisponering og behovet for scrollbar er ennå ikke verifisert/fjernet på alle skjermstørrelser. Ikke skjul viktig informasjon eller snarveier for å fjerne scrollbar.
