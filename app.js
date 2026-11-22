@@ -1481,6 +1481,10 @@ function smartMapCandidate(list){
     else if(d<=25&&!stationary)rank=d<=10?3.2:3;
     else if(inboundByMotion)rank=2.5;
     else if(arrival&&d<=100&&towardKsu)rank=2.5;
+    // Give explicitly classified special flights a modest local focus boost.
+    // Confirmed KSU operations (rank 5–6) continue to take precedence.
+    const role=specialFlightCategory(p);
+    if(role&&d<=50)rank=Math.max(rank,role.rank);
     if(!rank)continue;
     // Nar luftfartoyet er pa bakken skal kartet folge posisjonen,
     // ikke presse hele flyplassomradet inn i samme bilde.
@@ -1654,7 +1658,7 @@ function militaryAircraftLabel(p){
   const op=((p?.operator||'')+' '+(p?.desc||'')).toLowerCase();
 
   const militaryCall=/^(RANGR|RCH|RRR|GAF|IAM|BAF|NAF|NATO|CNV|DUKE|REACH)/.test(f);
-  const militaryType=/^(C30J|C130|A400|C17|KC46|K35R|F16|F35|EUFI|HAWK|P3|P8|E3CF|GLF5|GLF6)$/.test(type);
+  const militaryType=/^(C30J|C130|A400|C17|KC46|K35R|F16|F35|EUFI|HAWK|P3|P8|E3CF)$/.test(type);
   const militaryText=/military|air force|forsvaret|army|navy|marine corps/.test(op);
   if(!(militaryCall||militaryType||militaryText))return '';
 
@@ -1674,19 +1678,35 @@ function militaryAircraftLabel(p){
   };
   return names[type]?'Militærfly · '+names[type]:'Militærfly';
 }
+function specialFlightCategory(p){
+ if(!p)return null;
+ const f=String(p.flight||'').toUpperCase().trim();
+ const op=(String(p.operator||'')+' '+String(p.desc||'')).toLowerCase();
+ // Explicit operational evidence is needed. An aircraft model such as GLF5
+ // is not automatically military: the same type is used by civilian operators.
+ if(f==='BNOV'||/\b(?:luftambulanse|air ambulance|air medical|air ambulance service)\b/.test(op))
+   return {id:'ambulance',label:'Luftambulanse',rank:4.4};
+ if(/^SAR(?:\d|$)|^RESCUE\b/.test(f)||/\b(?:search and rescue|redningshelikopter|redningstjeneste|rescue helicopter|sar mission)\b/.test(op))
+   return {id:'rescue',label:'Redning / SAR',rank:4.8};
+ if(/^POL(?:\d|$)/.test(f)||/\b(?:police|politi|politiets helikoptertjeneste)\b/.test(op))
+   return {id:'police',label:'Politi',rank:4.5};
+ if(/\b(?:coast guard|kystvakt|kystvakten)\b/.test(op))
+   return {id:'coastguard',label:'Kystvakt',rank:4.3};
+ if(militaryAircraftLabel(p))
+   return {id:'military',label:'Militærfly',rank:4.2};
+ if(/\b(?:civil defence|sivilforsvar|beredskapsfly)\b/.test(op))
+   return {id:'preparedness',label:'Beredskap',rank:4.1};
+ return null;
+}
 function specialService(p){
-  const f=(p.flight||'').toUpperCase();
-  const op=(p.operator||'').toLowerCase();
-  const desc=(p.desc||'').toLowerCase();
-  const type=(p.type||'').toUpperCase();
-
-  if(f==='BNOV' || /babcock|luftambulanse|air ambulance|ambulance/.test(op+' '+desc)) return 'Ambulansefly';
-  if(/politi|police/.test(op+' '+desc) || /^POL/.test(f)) return 'Politi';
-  if(/redning|rescue|sar/.test(op+' '+desc) || /^SAR/.test(f)) return 'Redning';
-  const military=militaryAircraftLabel(p);
-  if(military)return military;
-  if(/helicopter|helikopter|chc/.test(op+' '+desc) || /^HK[SM]/.test(f) || type.startsWith('S92')) return 'Offshorehelikopter';
-  return '';
+ const role=specialFlightCategory(p);
+ if(role)return role.label;
+ const op=(String(p?.operator||'')+' '+String(p?.desc||'')).toLowerCase();
+ const f=String(p?.flight||'').toUpperCase();
+ const type=String(p?.type||'').toUpperCase();
+ if(/\b(?:offshore|chc helicopter)\b/.test(op)||/^HK[SM]/.test(f)||type==='S92')
+   return 'Offshorehelikopter';
+ return '';
 }
 function inferredAirportCandidate(p){
   if(!p||p.ksuFlight||p.signalLost)return null;
@@ -2076,6 +2096,12 @@ const AIRCRAFT_TYPE_INFO={
  DH8C:['De Havilland Dash 8-300','Turboprop regionalfly','prop'],
  DH8A:['De Havilland Dash 8-100','Turboprop regionalfly','prop'],
  S92:['Sikorsky S-92','Transport- og offshorehelikopter','heli'],
+ GLF5:['Gulfstream V','Forretningsfly / langdistansejet','jet'],
+ GLF6:['Gulfstream G650','Forretningsfly / langdistansejet','jet'],
+ C130:['Lockheed C-130 Hercules','Transportfly','prop'],
+ C30J:['Lockheed KC-130J Hercules','Militært transport- og tankfly','prop'],
+ P8:['Boeing P-8 Poseidon','Maritimt patruljefly','jet'],
+ AW10:['AgustaWestland AW101','Helikopter for redning og transport','heli'],
  E190:['Embraer E190','Regionalt jetfly','jet'],
  E195:['Embraer ERJ-190-200 (E195)','Regionalt jetfly','jet'],
  E290:['Embraer E190-E2 / ERJ-190-300','Regionalt jetfly','jet']
@@ -3114,6 +3140,7 @@ function render(autoFit=false){
             ${shown.type?`<span class="type-pill">${shown.type}</span>`:''}
           </div>
           <div class="operator">${shown.operator||service||shown.desc||''}</div>
+          ${specialFlightCategory(shown)?`<div class="special-flight-tag" data-special-role="${specialFlightCategory(shown).id}">${specialFlightCategory(shown).label}</div>`:''}
         </div>
         <div class="dist">${shown.signalLost?'Siste kjente avstand · ':''}${liveDistanceText(shown)}</div>
       </div>
