@@ -93,3 +93,9 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Eksisterende FlightAware-status på administrasjonssiden viser betalt forbruk fra Worker/leverandør. Worker-koden håndhever en separat 4,50 USD per måned intern reservasjon, faktisk forbrukskontroll og avvisning ved manglende leverandørstatus. Dette er en sikkerhetsmargin mot målet under 5 USD, **ikke garanti om samlet plattformfaktura**.
 - GitHub Actions syntakskontroll, kostnadssikkerhets- og kartregresjonstester besto. Eldre kjente motion-testfeil kjøres separat. **Gjenstår:** kontrollere live Worker-versjon og faktisk gratis 25 NM-ruteoppslag, teller og rutetreff i nettleser etter Pages-utrulling. Før betalte pilotkall eventuelt vurderes, må globalt og faktisk USD-forbruk kontrolleres og ny endring godkjennes.
 - ADS-B-kilde, AIS, kartprioritering og varsler er uendret.
+
+## 22.11.2026 – Prosjektstatus synlig på administrasjonssiden
+- [PR #34](https://github.com/vidarskoglund-cloud/flyradar-ksu/pull/34) ble slått sammen i `main` (commit `83566d783e86a3cedf0ebe8b0835995da809e0e6`).
+- `admin.html` har en egen datert seksjon «Prosjektstatus» med siste implementerte endring (#33), automatisk teststatus, åpne livekontroller og lenker til PR-er/denne overleveringen. Driftsdiagnostikk og nettlesertellere er fortsatt adskilt fra prosjektstatus.
+- Seksjonen er en manuelt oppdatert oppsummering ved kode-/dokumentasjonsendringer, ikke automatisk synkronisering fra chattens innhold. Denne START-HER.md er den detaljerte autoritative overleveringen.
+- Prosjektseksjonens innhold er kontrollert i GitHub `main`. Publisering på GitHub Pages er ikke nettleserverifisert.
