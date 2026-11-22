@@ -1719,8 +1719,8 @@ let fiRescueRetryAfter=0,fiRescueError='',fiRescueDirectOk=false;
 async function rescueAdsbFi(s){
   const now=Date.now();
   // Share one recent successful snapshot; never label an old snapshot as live.
-  if(now<fiRescueRetryAfter || now-fiRescueLastAttempt<30000){
-    return now-fiRescueLastSuccess<30000?fiRescueAircraft:null;
+  if(now<fiRescueRetryAfter || now-fiRescueLastAttempt<15000){
+    return now-fiRescueLastSuccess<15000?fiRescueAircraft:null;
   }
   fiRescueLastAttempt=now;
   fiRescueDirectOk=false;
@@ -2641,8 +2641,8 @@ function interpolatedPlanePosition(p,now=Date.now()){
   if(p.signalLost)return [p.lat,p.lon];
   const ageSec=Math.max(0,(now-Number(p.positionAt||now))/1000);
   const ground=isGroundOrTaxi(p);
-  const horizon=ground?3:20;
-  const tail=ground?2:10;
+  const horizon=ground?2:10;
+  const tail=ground?1:4;
   // Smoothly approach a bounded prediction distance, without an abrupt stop.
   const effectiveSec=ageSec<=horizon?ageSec:
     horizon+tail*(1-Math.exp(-(ageSec-horizon)/tail));
@@ -2732,7 +2732,7 @@ function animateAircraftMotion(frameAt){
     if($('fs-closest'))$('fs-closest').textContent=closestText;
   }
 }
-function nextRefreshMs(){ return 60000; } // One aircraft refresh per minute, regardless of proximity.
+function nextRefreshMs(){ return 15000; } // Aircraft snapshot every 15 seconds; vessel polling unchanged.
 async function adaptiveRefresh(){
   if(refreshTimer)clearTimeout(refreshTimer);
   await refresh();
