@@ -1825,6 +1825,57 @@ function vesselDetail(v){
   fields.filter(([,value])=>value!==''&&value!=null).map(([key,value])=>'<div><strong>'+escapeVesselText(key)+':</strong> '+escapeVesselText(value)+'</div>').join('')+
   '<small>AIS · Kystverket</small></div>';
 }
+
+const AIRCRAFT_TYPE_INFO={
+ A20N:['Airbus A320neo','Tomotors passasjerfly','jet'],
+ A320:['Airbus A320','Tomotors passasjerfly','jet'],
+ B738:['Boeing 737-800','Tomotors passasjerfly','jet'],
+ B38M:['Boeing 737 MAX 8','Tomotors passasjerfly','jet'],
+ DH8D:['De Havilland Dash 8 Q400','Turboprop regionalfly','prop'],
+ DH8C:['De Havilland Dash 8-300','Turboprop regionalfly','prop'],
+ DH8A:['De Havilland Dash 8-100','Turboprop regionalfly','prop'],
+ S92:['Sikorsky S-92','Transport- og offshorehelikopter','heli'],
+ E190:['Embraer E190','Regionalt jetfly','jet']
+};
+let selectedVesselTypeKey='';
+function typeIllustration(kind){
+ const paths={
+ jet:'M160 22 L171 31 192 107 285 144 285 154 190 146 176 203 213 221 213 230 160 217 107 230 107 221 144 203 130 146 35 154 35 144 128 107 149 31 Z',
+ prop:'M160 27 L171 35 190 117 285 142 285 151 192 151 174 203 211 219 211 230 160 216 109 230 109 219 146 203 128 151 35 151 35 142 130 117 149 35 Z',
+ heli:'M46 56 H276 V62 H46 Z M157 64 H164 V100 H157 Z M114 120 Q115 95 160 92 Q206 95 207 120 Q208 143 177 147 H143 Q112 147 114 120 Z M208 120 L270 129 V136 L207 139 Z M132 149 L126 178 H193 L188 149 Z M117 178 H204 V184 H117 Z',
+ vessel:'M36 146 H284 L247 195 H73 Z M102 112 H223 V146 H102 Z M131 82 H193 V112 H131 Z'
+ };
+ const waves=kind==='vessel'?'<path d="M34 214 Q55 202 77 214 T120 214 T163 214 T206 214 T249 214 T292 214" stroke="#4a99b2" stroke-width="5" fill="none"/>':'';
+ const props=kind==='prop'?'<circle cx="90" cy="145" r="11" fill="#245769"/><circle cx="230" cy="145" r="11" fill="#245769"/>':'';
+ return '<svg viewBox="0 0 320 240" class="type-illustration" role="img" aria-label="Forenklet fartøyillustrasjon" xmlns="http://www.w3.org/2000/svg"><rect width="320" height="240" fill="#0d2839"/><circle cx="270" cy="47" r="30" fill="#184454"/><path d="'+(paths[kind]||paths.jet)+'" fill="#79d2e6" stroke="#8cdeee" stroke-width="2"/>'+props+waves+'</svg>';
+}
+function aircraftTypeCard(p){
+ const code=String(p.type||'').trim().toUpperCase();
+ const info=AIRCRAFT_TYPE_INFO[code];
+ const heli=isHelicopter(p);
+ const name=info?.[0]||p.desc||(heli?'Helikopter':'Flytype ukjent');
+ const label=info?.[1]||(heli?'Helikopter':'Fly');
+ return '<details class="type-info" open><summary>Om flytypen</summary><div class="type-info-inner">'+
+ typeIllustration(info?.[2]||(heli?'heli':'jet'))+'<strong>'+escapeVesselText(name)+'</strong>'+
+ '<span>'+escapeVesselText(label)+(code?' · '+escapeVesselText(code):'')+'</span>'+
+ '<small>Typeillustrasjon – ikke bilde av det konkrete flyet</small></div></details>';
+}
+function vesselTypeCard(v){
+ const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
+ const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
+ const fields=[['Type',category],['MMSI',v.mmsi],['IMO',v.imo],['Destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m']];
+ return '<details class="type-info" open><summary>Om valgt fartøy</summary><div class="type-info-inner">'+
+ typeIllustration('vessel')+'<strong>'+escapeVesselText(title)+'</strong>'+
+ fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span>'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+
+ '<small>Generell illustrasjon · AIS fra Kystverket</small></div></details>';
+}
+function updateTypeCard(p){
+ const el=$('type-info');
+ if(!el)return;
+ const vessel=selectedVesselTypeKey?vessels.find(v=>vesselKey(v)===selectedVesselTypeKey):null;
+ el.innerHTML=vessel?vesselTypeCard(vessel):p?aircraftTypeCard(p):'';
+}
+
 function renderVessels(){
  vesselLayer.clearLayers();
  vesselMarkers.clear();
@@ -1835,6 +1886,7 @@ function renderVessels(){
    .bindTooltip('Fartøy: '+escapeVesselText(name),{direction:'top',offset:[0,-12]})
    .bindPopup(vesselDetail(v),{autoPan:false})
    .addTo(vesselLayer);
+  marker.on('click',()=>{selectedVesselTypeKey=vesselKey(v);updateTypeCard(selected);});
   vesselMarkers.set(vesselKey(v),marker);
  }
 
@@ -1846,6 +1898,7 @@ async function loadVessels(){
     const j=await r.json();
     vessels=Array.isArray(j?.vessels)?j.vessels:[];
     renderVessels();
+    if(selectedVesselTypeKey)updateTypeCard(selected);
     fitMap(planes,settings());
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent=vessels.length
@@ -2501,6 +2554,7 @@ function highlightSelectedAircraft(){
 }
 function select(p,lookupRoute=true){
   if(!p)return;
+  if(lookupRoute)selectedVesselTypeKey='';
   selected=p;
   highlightSelectedAircraft();
   if(lookupRoute && p.flight && !p.routeData && canLookupRoute(p) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
@@ -2636,11 +2690,13 @@ function render(autoFit=false){
       <div class="source">${shown.source||''}</div>
     </div>`;
     select(shown,false);
+    updateTypeCard(shown);
   }else{
     selected=null;
     $('status').textContent=`${planes.filter(withinKsuAlertArea).length} fly innen 50 NM · ${new Date().toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit'})}`;
     $('status').className='ok';
     $('cards').innerHTML='';
+    updateTypeCard(null);
     routeLayer.clearLayers();
   }
   if(autoFit) fitMap(list,s);
