@@ -146,6 +146,22 @@ export class TrackStore extends DurableObject {
     super(ctx, env);
     this.aircraftFetchPromise = null;
     this.norwayFetchPromise = null;
+    this.adsbSlotGate = Promise.resolve();
+    this.adsbNextSlotAt = 0;
+  }
+
+  // One request start per 1.5 s for this Durable Object, including the
+  // optional original 150 NM Worker feed. The local standalone KSU
+  // receiver is separate and must be budgeted independently.
+  async reserveAdsbSlot(){
+    const previous=this.adsbSlotGate;
+    let release;
+    this.adsbSlotGate=new Promise(resolve=>{release=resolve;});
+    await previous;
+    const pause=Math.max(0,this.adsbNextSlotAt-Date.now());
+    if(pause)await new Promise(resolve=>setTimeout(resolve,pause));
+    this.adsbNextSlotAt=Date.now()+1500;
+    release();
   }
 
   async fetch(request, env) {
@@ -170,6 +186,7 @@ export class TrackStore extends DurableObject {
             const url='https://opendata.adsb.fi/api/v3/lat/'+area.lat+'/lon/'+area.lon+'/dist/'+area.r;
             quota.count++;await this.ctx.storage.put('norwayQuota',quota);
             let response;
+            await this.reserveAdsbSlot();
             try{response=await fetch(url,{headers:{Accept:'application/json'},
               signal:AbortSignal.timeout(12000)});}
             catch(e){error='Nettverksfeil fra adsb.fi';break;}
@@ -231,6 +248,7 @@ export class TrackStore extends DurableObject {
               results[name] = { name, ok: false, status: previous?.status ?? null, ac: [], last_attempt_at: previous?.last_attempt_at ?? null, retry_at: blockedUntil, waiting: true };
               continue;
             }
+            await this.reserveAdsbSlot();
             const result = await getSource(name, sourceUrl);
             results[name] = result;
             if (!result.ok) {
