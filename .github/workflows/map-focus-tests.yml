@@ -30,6 +30,8 @@ jobs:
         run: node --test tests/photos.test.cjs
       - name: Vessel panel rendering and selection tests
         run: node --test tests/vessel-panel.test.cjs
+      - name: Flight status and conditional map button tests
+        run: node --test tests/flight-status-button.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
