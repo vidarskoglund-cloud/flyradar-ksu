@@ -95,6 +95,42 @@ async function search(v){
  })();
  pending.set(key,task);return task;
 }
+// Reuse the same ID/name-checked, license-filtered Commons lookup in
+// Leaflet popups. Do not substitute generic ship pictures for a named vessel.
+window.loadVesselPopupPhoto=async function(v,popupElement){
+ const host=popupElement?.querySelector('.vessel-popup-photo-slot');
+ if(!host)return;
+ const key=String(v.mmsi||v.name||'').trim();
+ if(host.dataset.vesselPhotoKey!==key)return;
+ const photo=await search(v);
+ if(!host.isConnected||host.dataset.vesselPhotoKey!==key)return;
+ host.replaceChildren();
+ if(!photo){
+  const link=document.createElement('a');
+  link.href='https://commons.wikimedia.org/w/index.php?search='+encodeURIComponent(String(v.name||'')+' ship')+'&title=Special:MediaSearch&type=image';
+  link.target='_blank';link.rel='noopener noreferrer';
+  link.textContent='Se etter fartøybilder på Wikimedia Commons';
+  host.append(link);
+  return;
+ }
+ const link=document.createElement('a');
+ link.href=photo.source;link.target='_blank';link.rel='noopener noreferrer';
+ link.className='vessel-popup-photo-link';
+ const img=document.createElement('img');
+ img.src=photo.src;
+ img.alt=(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
+ img.loading='lazy';img.decoding='async';
+ img.className='vessel-popup-photo';
+ img.onerror=()=>{
+  if(host.isConnected){host.replaceChildren();host.textContent='Bilde kunne ikke lastes';}
+ };
+ link.append(img);
+ const credit=document.createElement('small');
+ credit.className='vessel-popup-photo-credit';
+ credit.textContent=(photo.confirmedId?'Identifisert med IMO/MMSI':'Bilde funnet via skipsnavn')+
+   ' · '+(photo.credit||'Fotograf')+' · '+photo.license+' · Wikimedia Commons';
+ host.append(link,credit);
+};
 window.loadSelectedVesselPhoto=async function(v,identity){
  const photo=await search(v);
  if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
