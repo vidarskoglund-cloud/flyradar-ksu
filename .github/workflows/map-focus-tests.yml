@@ -8,6 +8,7 @@ on:
       - 'admin.js'
       - 'aircraft-photos.js'
       - 'vessel-photos.js'
+      - 'vessel-wikidata.js'
       - 'worker/src/index.js'
       - 'tests/**'
       - '.github/workflows/map-focus-tests.yml'
@@ -27,6 +28,7 @@ jobs:
           node --check flightaware-status.js
           node --check aircraft-photos.js
           node --check vessel-photos.js
+          node --check vessel-wikidata.js
           node --check worker/src/index.js
       - name: New map focus regression tests
         run: node --test tests/map-focus.test.cjs
@@ -42,6 +44,8 @@ jobs:
         run: node --test tests/admin-source-flow.test.cjs
       - name: Vessel movement and budget copy tests
         run: node --test tests/vessel-context-budget-copy.test.cjs
+      - name: Wikidata vessel facts and identity tests
+        run: node --test tests/vessel-wikidata.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
