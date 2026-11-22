@@ -473,6 +473,16 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .road-status-credit a{color:var(--a)}
 .route-pilot-note{margin-top:4px;color:#8da6bb;font-size:10px}
 @media(min-width:900px){.nearest-panel .road-status-side{display:block;margin-top:13px;padding-top:12px;border-top:1px solid #1b2d43}.nearest-panel .road-status-side h3{color:var(--m);font-size:11px;margin:0 0 7px}main>.road-status-regular{display:none!important}}
+.weather-side{display:none}
+.weather-widget{font-size:11px;color:var(--m);line-height:1.45}
+.weather-block{padding:7px 0;border-top:1px solid #1b2d43}
+.weather-block:first-child{border-top:0}
+.weather-block strong{color:var(--t);font-size:11px}
+.weather-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px 10px;margin-top:4px}
+.weather-metrics b{color:var(--t);font-weight:700}
+.weather-note{font-size:9px;color:var(--m);margin-top:3px}
+.weather-note a{color:var(--a)}
+@media(min-width:900px){.nearest-panel .weather-side{display:block;margin-top:13px;padding-top:12px;border-top:1px solid #1b2d43}.nearest-panel .weather-side h3{color:var(--m);font-size:11px;margin:0 0 7px}main>.weather-regular{display:none!important}}
 </style>
 </head>
 <body>
@@ -499,13 +509,15 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <h3>Veitrafikk · Kristiansund</h3>
 <div class="road-status-list" id="road-status-side"></div>
 <small class="road-status-credit">Ingen direkte DATEX-tilgang ennå · <a href="https://www.vegvesen.no/trafikk/" target="_blank" rel="noopener noreferrer">Kontroller hos Vegvesenet</a></small>
-</div></section>
+</div>
+<div class="weather-side"><h3>Vær · Kristiansund</h3><div id="weather-side" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></div></section>
 <section class="schedule"><h2>Flyavganger og ankomster · KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 <section class="schedule speedboat-regular"><h2>Hurtigbåt · Kristiansund</h2><div id="speedboat-list"><div class="schedule-empty">Henter rutetider fra Entur…</div></div><small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></section>
 <section class="schedule road-status-regular"><h2>Veitrafikk · Kristiansund</h2>
 <div class="road-status-list" id="road-status"></div>
 <small class="road-status-credit">Ingen direkte DATEX-tilgang ennå · <a href="https://www.vegvesen.no/trafikk/" target="_blank" rel="noopener noreferrer">Kontroller hos Vegvesenet</a></small>
 </section>
+<section class="schedule weather-regular"><h2>Vær · Kristiansund</h2><div id="weather-regular" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></section>
 
 <details class="settings-panel" style="margin-top:12px"><summary>Varsler og lyd</summary>
 
@@ -523,6 +535,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="vessel-wikidata.js?v=1"></script>
 <script src="speedboat-schedule.js?v=2"></script>
 <script src="road-status.js?v=1"></script>
+<script src="weather.js?v=1"></script>
 <script src="app.js?v=192"></script>
 
 </body></html>
