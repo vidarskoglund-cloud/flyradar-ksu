@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v2', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v3', pending=new Map();
 function get(key){
  try{const item=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];return item&&item.until>Date.now()?{hit:true,photo:item.photo}:{hit:false};}catch(e){return {hit:false};}
 }
@@ -49,7 +49,7 @@ function pick(v,pages){
  return options.sort((a,b)=>b.score-a.score)[0]?.photo||null;
 }
 async function search(v){
- const name=String(v.name||'').trim(),key=String(v.mmsi||v.imo||name)+':'+name.toUpperCase();
+ const name=String(v.name||'').trim(),key=[String(v.mmsi||''),String(v.imo||''),name.toUpperCase()].join(':');
  const cached=get(key);if(cached.hit)return cached.photo;
  if(pending.has(key))return pending.get(key);
  const task=(async()=>{
@@ -79,7 +79,12 @@ async function search(v){
 }
 window.loadSelectedVesselPhoto=async function(v,identity){
  const photo=await search(v);
- if(!photo||document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
+ if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
+ if(!photo){
+   const note=document.getElementById('vessel-photo-note');
+   if(note)note.textContent='Fant ikke et sikkert skipsfoto i Wikimedia Commons · viser illustrasjon';
+   return;
+ }
  const slot=document.getElementById('vessel-photo-slot'),fallback=document.getElementById('vessel-photo-fallback');
  const note=document.getElementById('vessel-photo-note');
  if(!slot||!fallback)return;
@@ -90,8 +95,11 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  const by=document.createElement('a');by.href=photo.source;by.target='_blank';by.rel='noopener noreferrer';by.textContent=photo.credit||'Fotograf';
  const licence=document.createElement('a');licence.href=photo.licenseUrl;licence.target='_blank';licence.rel='noopener noreferrer';licence.textContent=photo.license;
  credit.append('Foto: ',by,' · ',licence,' · Wikimedia Commons');
- slot.replaceChildren(wrap,credit);fallback.hidden=true;
- if(note)note.textContent=(photo.confirmedId?'Foto knyttet til IMO/MMSI':'Mulig bilde funnet via skipsnavn')+' · Wikimedia Commons · AIS fra Kystverket';
+ img.onload=()=>{
+   if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
+   slot.replaceChildren(wrap,credit);fallback.hidden=true;
+   if(note)note.textContent=(photo.confirmedId?'Foto knyttet til IMO/MMSI':'Mulig bilde funnet via skipsnavn')+' · Wikimedia Commons · AIS fra Kystverket';
+ };
  img.src=photo.src;
 };
 })();
