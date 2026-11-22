@@ -18,6 +18,8 @@ function setup({target=null,manual=false,plane=null,vessel=null,source='direct'}
   planes:plane?[plane]:[],
   vessels:vessel?[vessel]:[],
   smartPlaneIdentity:p=>'fly:'+(p.hex||p.flight||p.reg),
+  IDLE_NEARBY_AIRPORTS:[{code:'MOL',label:'Molde Årø',lat:62.7447,lon:7.2625}],
+  idleAirportDistanceNm:()=>100,
   vesselKey:v=>String(v.mmsi),
   document:{body},
   $:id=>id==='status'?header:id==='fs-status'?fullscreen:null
@@ -61,4 +63,11 @@ test('real source code updates status after the map picks a focus, not from arbi
  assert.doesNotMatch(src,/\$\('status'\)\.textContent=`\$\{localCountNow\} fly innen 50 NM/);
  assert.doesNotMatch(src,/const followText=followed\?/);
  assert.match(src,/map\.on\('dragstart',[^\n]*updateMapFocusStatus\(\)/);
+});
+
+test('verified remote Oslo or Bergen KSU flight is labeled as an arrival during a quiet glance',()=>{
+ const p={hex:'a1',flight:'WIF576',signalLost:false,
+   ksuFlight:{arr_dep:'A',airport:'BGO',flight_id:'WF576'}};
+ const t=setup({target:{key:'glimt:fly:a1'},plane:p});
+ assert.equal(t.ctx.mapFocusStatusText(t.now),'Viser KSU-ankomst fra BGO: WIF576');
 });

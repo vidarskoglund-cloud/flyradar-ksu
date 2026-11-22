@@ -112,3 +112,49 @@ test('vessel detail hold and aircraft priority remain intact',()=>{
  assert.match(source,/function vesselMovementContext\(v\)/);
  assert.match(source,/updateVesselContext\(vessel\)/);
 });
+
+test('quiet regional glimpses favor flights directly near Molde airport',()=>{
+ const c=ctx();
+ const mol=plane(35,{hex:'mol',lat:62.748,lon:7.265});
+ assert.equal(c.idleAircraftGlimpse([mol],1000),null);
+ const glimpse=c.idleAircraftGlimpse([mol],61000);
+ assert.equal(glimpse.secondary,'near-airport');
+ assert.equal(glimpse.airportLabel,'Molde Årø');
+ assert.deepEqual(Array.from(glimpse.points[0]),[62.7447,7.2625]);
+ assert.equal(glimpse.maxZoom,11);
+});
+test('confirmed airborne KSU service from Bergen takes initial quiet-glimpse priority',()=>{
+ const c=ctx();
+ const flight=plane(130,{
+  hex:'wif123',lat:61.0,lon:6.3,gs:230,alt:18000,
+  remoteTracked:true,ksuFlight:{arr_dep:'A',airport:'BGO',flight_id:'WF576',status_code:''}
+ });
+ const mol=plane(35,{hex:'mol',lat:62.745,lon:7.26});
+ assert.equal(c.idleAircraftGlimpse([flight,mol],1000),null);
+ const first=c.idleAircraftGlimpse([flight,mol],61000);
+ assert.equal(first.secondary,'ksu-inbound');
+ assert.equal(first.key,'glimt:fly:wif123');
+ const second=c.idleAircraftGlimpse([flight,mol],151000);
+ assert.equal(second.secondary,'near-airport');
+ assert.equal(second.airportLabel,'Molde Årø');
+});
+test('no unconfirmed Oslo/Bergen flights or taxiing aircraft promoted as KSU arrivals',()=>{
+ const c=ctx(),flight=plane(130,{
+  hex:'passerby',lat:60.5,lon:9.0,gs:250,alt:21000,
+  ksuFlight:{arr_dep:'A',airport:'OSL',flight_id:'SK2309'}
+ });
+ c.idleAircraftGlimpse([flight],1000);
+ const unverified=c.idleAircraftGlimpse([flight],61000);
+ assert.notEqual(unverified?.secondary,'ksu-inbound');
+ const taxi={...flight,hex:'taxi',remoteTracked:true,lat:60.195,lon:11.1,gs:20,alt:300};
+ assert.equal(c.idleInboundKsu(taxi),false);
+ assert.equal(c.idleInboundKsu({...flight,remoteTracked:true,ksuFlight:{...flight.ksuFlight,status_code:'C'}}),false);
+});
+test('regional focus is bounded, returns to KSU, and does not override selected aircraft',()=>{
+ assert.match(source,/IDLE_NEARBY_AIRPORTS=\[/);
+ assert.match(source,/const glimpse=!best\?idleAircraftGlimpse\(list,now\):null/);
+ assert.match(source,/const glimpseTarget=Boolean\(target\?\.key\?\.startsWith\('glimt:'\)\)/);
+ assert.match(source,/smartPlaneIdentity\(focused\)===target\.key\.slice\(6\)/);
+ assert.match(source,/maxZoom:8,secondary:'ksu-inbound'/);
+ assert.match(source,/if\(phase<IDLE_GLIMPSE_FROM_MS\|\|phase>=IDLE_GLIMPSE_TO_MS\)return null/);
+});

@@ -235,3 +235,12 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Foto, fotograf, lisens og originalkilde gjengis i popupen. Hvis sikkert treff mangler vises en Commons-søkelenke. Foto hentes først når brukeren åpner popupen; den eksisterende bilde-cachen gjenbrukes. Åpen popup beholdes ved normal AIS-oppfriskning.
 - Endring #54 er slått sammen i `main`, merge-commit `0010132d64df54cf061481b275d7684edd3d54a4`. GitHub-regresjonstestene besto. Ingen Worker-deploy nødvendig; dette er en GitHub Pages-frontend-endring.
 - Gjenstår: praktisk kontroll i nettleser at et korrekt bilde faktisk lastes for Kong Harald og andre skip, inkludert kreditering og popupens størrelse.
+
+## 22.11.2026 – Rolig trafikk: fokus på nabo-flyplasser og KSU-fly fra Oslo/Bergen (PR #55)
+- Beholder først og fremst lokale KSU-fly (spesielt bekreftet innflyging), spesialfly og aktive havnefartøy.
+- Når det **ikke finnes en aktuell lokal fly-/AIS-kandidat**, bruker eksisterende kartautomatikken et kort sekundærfokus: 15 sekunder i løpet av 90 sekunder, etter første stille minutt. Kartet går tilbake til vanlig Kristiansund-visning mellom glimtene; brukerens egen kartnavigasjon stanser autofokus i to minutter som før.
+- Sekundærfokus bruker bare fly som allerede finnes i den samme ADS-B-dataflyten. Prioriterer fly i nærheten av **Molde Årø (MOL)**, deretter **Ålesund Vigra (AES)** og **Trondheim Værnes (TRD)**, høyst 12 NM fra respektive flyplass. Viser flyplassen og flyet, ikke et stort utsnitt fra KSU til Trondheim.
+- KSU-ankomster fra **Oslo (OSL)** og **Bergen (BGO)** kan også vises under rolig trafikk *etter faktisk avgang* dersom flyet har en konkret Avinor-ankomst koblet til eksisterende ADS-B-identitet (eksempelvis `remoteTracked`), ikke er innstilt/landet, har luftbåren fart over 95 knop, er mer enn 3 NM fra opprinnelig flyplass og maksimalt 350 NM fra KSU. Bekreftet rute til annen flyplass utelukker KSU-kobling. Veksler mellom fjernankomst og regional flyplass når begge er aktuelle.
+- Toppteksten skiller «Viser KSU-ankomst fra BGO/OSL» fra «Viser fly ved Molde/Ålesund/Trondheim». Avstandsteller og 50 NM-varsler er **alltid** knyttet til KSU. Ingen nye flykilder, ekstra oppslag eller betalte tjenester.
+- Regresjonstester for korrekt prioritering, unngåelse av uverifiserte fly, automatisk retur og uforandret manuell overstyring.
+- Test i faktisk nettleser etter merge for å se at kartutsnittet beveger seg rolig og returnerer til Kristiansund.

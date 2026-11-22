@@ -1411,7 +1411,15 @@ function mapFocusStatusText(now=Date.now()){
     const p=planes.find(p=>smartPlaneIdentity(p).slice(4)===flightKey&&!p.signalLost);
     if(p){
       const label=p.flight||p.reg||p.hex||'ukjent';
-      return key.startsWith('glimt:')?'Viser fly '+label:'Følger fly '+label;
+      if(key.startsWith('glimt:')&&p.ksuFlight?.arr_dep==='A'&&
+         ['OSL','BGO'].includes(String(p.ksuFlight.airport||'').toUpperCase()))
+        return 'Viser KSU-ankomst fra '+p.ksuFlight.airport+': '+label;
+      if(key.startsWith('glimt:')){
+        const nearby=IDLE_NEARBY_AIRPORTS.map(a=>({a,d:idleAirportDistanceNm(a.lat,a.lon,Number(p.lat),Number(p.lon))}))
+          .find(x=>x.d<=12);
+        return nearby?'Viser fly ved '+nearby.a.label+': '+label:'Viser fly '+label;
+      }
+      return 'Følger fly '+label;
     }
   }
   return 'Oversikt Kristiansund';
@@ -1515,20 +1523,76 @@ function smartMapCandidate(list){
   choices.sort((a,b)=>b.rank-a.rank||a.d-b.d);
   return choices;
 }
+// Limited secondary interest near the three closest regional airports.
+const IDLE_NEARBY_AIRPORTS=[
+ {code:'MOL',label:'Molde Årø',lat:62.7447,lon:7.2625},
+ {code:'AES',label:'Ålesund Vigra',lat:62.5625,lon:6.1197},
+ {code:'TRD',label:'Trondheim Værnes',lat:63.4578,lon:10.9240}
+];
+function idleAirportDistanceNm(lat1,lon1,lat2,lon2){
+ const radian=n=>n*Math.PI/180;
+ const dlat=radian(lat2-lat1),dlon=radian(lon2-lon1);
+ const a=Math.sin(dlat/2)**2+Math.cos(radian(lat1))*Math.cos(radian(lat2))*Math.sin(dlon/2)**2;
+ return 3440.065*2*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+function idleInboundKsu(p){
+ const f=p.ksuFlight;
+ if(!f||f.arr_dep!=='A'||!['OSL','BGO'].includes(String(f.airport||'').toUpperCase()))return false;
+ if(['C','A'].includes(String(f.status_code||'').toUpperCase()))return false;
+ // Never infer that a nearby passing aircraft is an Oslo/Bergen service.
+ // Require existing remote KSU tracking or an exact Avinor callsign alias.
+ const exact=typeof flightAliases==='function'&&
+   [...flightAliases(p.flight)].some(x=>flightAliases(f.flight_id).has(x));
+ if(!p.remoteTracked&&!exact)return false;
+ const dest=typeof confirmedRouteDestination==='function'?confirmedRouteDestination(p):null;
+ if(dest&&dest.code&&dest.code!=='KSU')return false;
+ if(!(Number(p.gs)>95)||String(p.alt||'').toLowerCase()==='ground')return false;
+ const airport=String(f.airport).toUpperCase()==='OSL'
+   ?[60.1939,11.1004]:[60.2934,5.2181];
+ const fromOrigin=idleAirportDistanceNm(airport[0],airport[1],Number(p.lat),Number(p.lon));
+ const ksu=ksuDistanceNm(p);
+ return fromOrigin>3&&Number.isFinite(ksu)&&ksu>25&&ksu<=350;
+}
 function idleAircraftGlimpse(list,now){
-  const distant=(list||[]).filter(p=>!p.signalLost&&
-    Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&
-    Number.isFinite(ksuDistanceNm(p))&&ksuDistanceNm(p)>25&&ksuDistanceNm(p)<=120);
-  if(!distant.length){idleGlimpseSince=null;return null;}
-  if(idleGlimpseSince===null)idleGlimpseSince=now;
-  const phase=(now-idleGlimpseSince)%IDLE_GLIMPSE_CYCLE_MS;
-  if(phase<IDLE_GLIMPSE_FROM_MS||phase>=IDLE_GLIMPSE_TO_MS)return null;
-  const p=distant.sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0];
-  return {
-    key:'glimt:'+smartPlaneIdentity(p),rank:0.5,d:ksuDistanceNm(p),
-    points:[[mapAreas.city.lat,mapAreas.city.lon],[p.lat,p.lon]],
-    maxZoom:9
-  };
+ const active=(list||[]).filter(p=>!p.signalLost&&
+   Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon))&&
+   Number.isFinite(ksuDistanceNm(p))&&ksuDistanceNm(p)>25);
+ const remote=active.filter(idleInboundKsu)
+   .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
+ const neighboring=[];
+ for(const airport of IDLE_NEARBY_AIRPORTS){
+  const nearby=active.filter(p=>ksuDistanceNm(p)<=125)
+    .map(p=>({p,d:idleAirportDistanceNm(airport.lat,airport.lon,Number(p.lat),Number(p.lon))}))
+    .filter(row=>row.d<=12)
+    .sort((a,b)=>a.d-b.d)[0];
+  if(nearby)neighboring.push({...nearby,airport});
+ }
+ const general=active.filter(p=>ksuDistanceNm(p)<=120)
+   .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
+ if(!remote.length&&!neighboring.length&&!general.length){
+   idleGlimpseSince=null;return null;
+ }
+ if(idleGlimpseSince===null)idleGlimpseSince=now;
+ const elapsed=now-idleGlimpseSince,phase=elapsed%IDLE_GLIMPSE_CYCLE_MS;
+ if(phase<IDLE_GLIMPSE_FROM_MS||phase>=IDLE_GLIMPSE_TO_MS)return null;
+ // Alternate between confirmed KSU arrivals from OSL/BGO and nearby
+ // regional airport activity. Never let secondary views displace KSU/AIS.
+ const cycle=Math.floor(elapsed/IDLE_GLIMPSE_CYCLE_MS);
+ const remoteFirst=cycle%2===0;
+ const near=neighboring[0]||null,flight=remote[0]||null;
+ if(remoteFirst&&flight || !near&&flight){
+  return {key:'glimt:'+smartPlaneIdentity(flight),rank:0.7,d:ksuDistanceNm(flight),
+    points:[[63.1118,7.8245],[flight.lat,flight.lon]],
+    maxZoom:8,secondary:'ksu-inbound'};
+ }
+ if(near){
+  return {key:'glimt:'+smartPlaneIdentity(near.p),rank:0.6,d:ksuDistanceNm(near.p),
+    points:[[near.airport.lat,near.airport.lon],[near.p.lat,near.p.lon]],
+    maxZoom:11,secondary:'near-airport',airportLabel:near.airport.label};
+ }
+ const p=flight||general[0];
+ return {key:'glimt:'+smartPlaneIdentity(p),rank:0.5,d:ksuDistanceNm(p),
+   points:[[mapAreas.city.lat,mapAreas.city.lon],[p.lat,p.lon]],maxZoom:9};
 }
 function fitMap(list,s){
   const now=Date.now();
@@ -1574,7 +1638,9 @@ function fitMap(list,s){
   const focused=selectedVesselTypeKey?'':selected&&list.find(p=>
     planeKey(p)===planeKey(selected)&&!p.signalLost&&
     Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
-  const focusedPoint=focused?[Number(focused.lat),Number(focused.lon)]:null;
+  const glimpseTarget=Boolean(target?.key?.startsWith('glimt:'));
+  const focusedPoint=focused&&(!glimpseTarget||smartPlaneIdentity(focused)===target.key.slice(6))
+    ?[Number(focused.lat),Number(focused.lon)]:null;
   if(focusedPoint&&!bounds.contains(focusedPoint))bounds.extend(focusedPoint);
   const wantedZoom=Math.min(maxZoom,map.getBoundsZoom(bounds,false,L.point(padding[0]*2,padding[1]*2)));
   const inside=map.getBounds().pad(-0.08);
