@@ -26,7 +26,7 @@ test('field appears directly beneath flights in desktop and mobile',()=>{
  assert.match(html,/<section class="schedule speedboat-regular">/);
  assert.match(html,/id="speedboat-list"/);
  assert.match(html,/id="speedboat-list-side"/);
- assert.match(html,/speedboat-schedule\.js\?v=1/);
+ assert.match(html,/speedboat-schedule\.js\?v=2/);
 });
 test('only AtB speedboat route 800 is shown, not bus or another line',()=>{
  const rows=sched.toRows([call(),call({serviceJourney:{line:{publicCode:'801',transportMode:'water'}}}),
