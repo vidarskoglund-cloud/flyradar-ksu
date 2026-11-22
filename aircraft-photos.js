@@ -2,7 +2,7 @@
 'use strict';
 // Extra image lookups only for the aircraft shown in the detail panel.
 // Do not infer that a type photo depicts the specific registered aircraft.
-const CACHE='kristiansund-aircraft-photos-v1',pending=new Map();
+const CACHE='kristiansund-aircraft-photos-v2',pending=new Map();
 function cacheRead(key){
  try{
   const x=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];
@@ -49,6 +49,82 @@ function chooseExactRegistration(reg,pages){
  }
  return candidates[0]||null;
 }
+// Representative type photos: strictly verify the aircraft model from the
+// Commons title/categories, even where no exact registration photo exists.
+const TYPE_SEARCH={
+ GLF5:{terms:['"Gulfstream V" aircraft','"Gulfstream G-V"','"C-37A" aircraft'],patterns:[/\bgulfstream\s+(?:g[ -]?)?v\b/i,/\bglf5\b/i,/\bc[ -]?37a\b/i]},
+ GLF6:{terms:['"Gulfstream G650" aircraft','"Gulfstream VI"'],patterns:[/\bgulfstream\s+(?:g[ -]?)?(?:vi|650)\b/i]},
+ C130:{terms:['"Lockheed C-130 Hercules"'],patterns:[/\bc[ -]?130\b/i,/\bhercules\b/i]},
+ C30J:{terms:['"KC-130J Hercules"'],patterns:[/\bkc[ -]?130j\b/i]},
+ P8:{terms:['"Boeing P-8 Poseidon"'],patterns:[/\bp[ -]?8(?:a)?\b/i]},
+ A400:{terms:['"Airbus A400M"'],patterns:[/\ba400m\b/i]},
+ C17:{terms:['"Boeing C-17 Globemaster"'],patterns:[/\bc[ -]?17\b/i]},
+ F35:{terms:['"F-35 Lightning II"'],patterns:[/\bf[ -]?35\b/i]},
+ AW10:{terms:['"AgustaWestland AW101 helicopter"'],patterns:[/\b(?:aw[ -]?101|eh[ -]?101)\b/i]},
+ S92:{terms:['"Sikorsky S-92 helicopter"'],patterns:[/\bs[ -]?92\b/i]},
+ B738:{terms:['"Boeing 737-800"'],patterns:[/\b737[ -]?800\b/i]},
+ DH8D:{terms:['"Dash 8 Q400"'],patterns:[/\b(?:q400|dash 8[ -]?400)\b/i]}
+};
+function chooseTypePhoto(type,pages){
+ const spec=TYPE_SEARCH[String(type||'').toUpperCase()];
+ if(!spec)return null;
+ const matches=[];
+ for(const page of Object.values(pages||{})){
+  const filename=String(page.title||'').replace(/^File:/i,'');
+  if(!/\.(?:jpe?g|webp)$/i.test(filename)||
+    /\b(?:logo|drawing|illustration|render|model|diagram|cockpit|interior|seat|simulator)\b/i.test(filename))continue;
+  const categories=(page.categories||[]).map(c=>String(c.title||'').replace(/^Category:/i,'')).join(' ');
+  const matchTitle=spec.patterns.some(rx=>rx.test(filename));
+  const matchCategory=spec.patterns.some(rx=>rx.test(categories));
+  if(!matchTitle&&!matchCategory)continue;
+  const info=page.imageinfo?.[0],meta=info?.extmetadata;
+  if(!info||!meta)continue;
+  const license=plain(meta.LicenseShortName?.value);
+  if(!/^(?:CC BY|CC0|PUBLIC DOMAIN|PD-)/i.test(license)||
+      /\b(?:NC|ND)\b/i.test(license))continue;
+  const src=info.thumburl||info.url,source=info.descriptionurl;
+  if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||
+    !/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
+  // Wikimedia photographs may depict another registration, never describe
+  // these as photographs of the tracked aircraft.
+  const licenseUrl=String(meta.LicenseUrl?.value||'');
+  matches.push({score:(matchTitle?10:0)+(matchCategory?4:0),photo:{
+    src,source,license,
+    licenseUrl:/^https:\/\/(?:creativecommons\.org|commons\.wikimedia\.org)\//.test(licenseUrl)?licenseUrl:source,
+    credit:plain(meta.Artist?.value||meta.Credit?.value||info.user||'Se bildekilde'),
+    exact:false
+  }});
+ }
+ return matches.sort((a,b)=>b.score-a.score)[0]?.photo||null;
+}
+async function lookupType(type){
+ const key='type:'+String(type||'').toUpperCase();
+ const spec=TYPE_SEARCH[String(type||'').toUpperCase()];
+ if(!spec)return null;
+ const saved=cacheRead(key);if(saved.hit)return saved.photo;
+ if(pending.has(key))return pending.get(key);
+ const task=(async()=>{
+  let hadResponse=false;
+  try{
+   for(const term of spec.terms){
+    const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
+      gsrsearch:term,gsrnamespace:'6',gsrlimit:'35',
+      prop:'imageinfo|categories',cllimit:'max',iiprop:'url|extmetadata',iiurlwidth:'720'});
+    const response=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{
+      credentials:'omit',signal:AbortSignal.timeout(10000)});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    hadResponse=true;
+    const data=await response.json();
+    const photo=chooseTypePhoto(type,data.query?.pages);
+    if(photo){cacheWrite(key,photo);return photo;}
+   }
+   if(hadResponse)cacheWrite(key,null);
+   return null;
+  }catch(e){console.warn('Typefoto kunne ikke hentes',e);return null;}
+  finally{pending.delete(key);}
+ })();
+ pending.set(key,task);return task;
+}
 async function lookup(reg){
  const saved=cacheRead(reg);if(saved.hit)return saved.photo;
  if(pending.has(reg))return pending.get(reg);
@@ -68,25 +144,28 @@ async function lookup(reg){
 }
 window.loadSelectedAircraftPhoto=async function(plane,identity){
  const reg=String(plane?.reg||'').trim().toUpperCase();
- if(!/^[A-Z0-9]{1,3}-[A-Z0-9]{2,5}$/.test(reg))return;
- const photo=await lookup(reg);
+ const code=String(plane?.type||'').trim().toUpperCase();
+ const hasReg=/^[A-Z0-9]{1,3}-[A-Z0-9]{2,5}$/.test(reg);
+ // Existing exact registration photos take precedence over representative
+ // aircraft type photos. No name-only image is presented as an exact match.
+ const photo=(hasReg?await lookup(reg):null)||(await lookupType(code));
  if(!photo||document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
  const slot=document.getElementById('aircraft-photo-slot');
  if(!slot)return;
  const img=document.createElement('img');
- img.className='type-photo';img.loading='lazy';img.decoding='async';img.alt='Fotografi av fly '+reg;
+ img.className='type-photo';img.loading='lazy';img.decoding='async';
+ img.alt=photo.exact?'Foto av fly '+reg:'Eksempelbilde av flytypen '+code;
  const wrap=document.createElement('div');wrap.className='type-photo-wrap';wrap.append(img);
  const credit=document.createElement('small');credit.className='type-credit';
  const by=document.createElement('a');by.href=photo.source;by.target='_blank';by.rel='noopener noreferrer';by.textContent=photo.credit||'Fotograf';
  const licence=document.createElement('a');licence.href=photo.licenseUrl;licence.target='_blank';licence.rel='noopener noreferrer';licence.textContent=photo.license;
  credit.append('Foto: ',by,' · ',licence,' · Wikimedia Commons');
  img.onerror=()=>{};
- // Retain the known type photograph or illustration until exact-match photo loads.
  img.onload=()=>{
   if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
   slot.replaceChildren(wrap,credit);
   const note=document.getElementById('aircraft-photo-note');
-  if(note)note.textContent='Foto av registrering '+reg;
+  if(note)note.textContent=photo.exact?'Foto av registrering '+reg:'Eksempelbilde av flytypen '+code+' – ikke nødvendigvis samme fly';
  };
  img.src=photo.src;
 };
