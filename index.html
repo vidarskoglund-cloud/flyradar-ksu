@@ -127,7 +127,15 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .fa-usage span{font-size:9px}
   .fa-usage b{font-size:13px}
   .fa-note{font-size:10px}
-  .settings-panel{grid-area:settings;max-width:none;width:100%;margin:0!important}
+ .type-info{margin-top:12px;border:1px solid #27445c;background:#0b192a;border-radius:11px;overflow:hidden}
+ .type-info summary{padding:10px;cursor:pointer;font-size:11px;font-weight:700;color:#b9d5e2}
+ .type-info-inner{padding:0 10px 12px;display:flex;flex-direction:column;gap:4px}
+ .type-illustration{height:124px;width:100%;display:block;border-radius:8px}
+ .type-info-inner strong{font-size:13px}
+ .type-info-inner span{color:#a0bfd0;font-size:11px}
+ .type-info-inner small{color:#688da4;font-size:9px;margin-top:3px}
+ @media(max-width:700px){.type-info{margin-top:6px}.type-illustration{height:95px}}
+ .settings-panel{grid-area:settings;max-width:none;width:100%;margin:0!important}
 }
 @media(min-width:900px) and (display-mode:fullscreen){
   html,body{width:100%;height:100%;overflow:hidden}
@@ -318,7 +326,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div><b id="fs-updated">–</b><span>oppdatert</span></div>
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
-<section class="schedule nearest-panel"><h2>Nærmeste aktive fly</h2><div id="cards" class="cards"></div><div class="fs-schedule"><h3>Neste på KSU</h3><div id="avinor-list-side"></div></div></section>
+<section class="schedule nearest-panel"><h2>Nærmeste aktive fly</h2><div id="cards" class="cards"></div><div id="type-info"></div><div class="fs-schedule"><h3>Neste på KSU</h3><div id="avinor-list-side"></div></div></section>
 <section class="schedule"><h2>Neste på KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
 
 <details class="settings-panel" style="margin-top:12px"><summary>Innstillinger</summary>
@@ -340,6 +348,6 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer><a href="admin.html" title="Status, historikk og feilsøking">Administrasjon / status</a> · Flydata: <a href="https://www.adsb.lol/" target="_blank" rel="noopener noreferrer">adsb.lol</a>. Ruteoppslag: adsb.lol. Offshore-installasjoner: Sokkeldirektoratet. Kart © OpenStreetMap-bidragsytere. <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="app.js?v=165"></script>
+<script src="app.js?v=166"></script>
 <script src="flightaware-status.js?v=1"></script>
 </body></html>
