@@ -56,6 +56,8 @@ jobs:
         run: node --test tests/focused-aircraft-auto-map.test.cjs
       - name: Header actual map focus tests
         run: node --test tests/header-map-focus.test.cjs
+      - name: Aircraft route card copy tests
+        run: node --test tests/aircraft-route-card-copy.test.cjs
       - name: Existing motion regression tests (known baseline failures)
         continue-on-error: true
         run: node --test tests/motion.test.cjs
