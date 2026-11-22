@@ -105,6 +105,6 @@ test('manually selected vessel stays selected for two minutes',()=>{
 test('vessel detail hold and aircraft priority remain intact',()=>{
  assert.match(source,/VESSEL_DETAIL_HOLD_MS=30000/);
  assert.match(source,/if\(selectedVesselTypeKey!==key && now-vesselFocusChangedAt<VESSEL_DETAIL_HOLD_MS\)return/);
- assert.match(source,/if\(selectedVesselTypeKey&&first&&!first\.key\.startsWith\('bat:'\)\)/);
+ assert.match(source,/if\(selectedVesselTypeKey&&\(\(first&&!first\.key\.startsWith\('bat:'\)\)\|\|!vessels\.some/);
  assert.match(source,/Fartøy ved Kristiansund havn/);
 });
