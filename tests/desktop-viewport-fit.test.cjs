@@ -39,3 +39,15 @@ test('at 100 percent zoom laptop view compacts every sidebar section but keeps t
  assert.doesNotMatch(css,/display:none/);
  assert.match(html,/\.nearest-panel\{[^}]*overflow-y:auto/);
 });
+
+test('desktop road traffic details start closed and retain all five names when expanded',()=>{
+ const details=html.match(/<details class="road-status-side">([\s\S]*?)<\/details>/);
+ assert.ok(details,'collapsible roads exist');
+ assert.doesNotMatch(details[0],/<details[^>]*\sopen\b/);
+ assert.match(details[0],/<summary>/);
+ assert.match(details[0],/5 forbindelser/);
+ assert.match(details[0],/id="road-status-side"/);
+ assert.match(details[0],/Kontroller hos Vegvesenet/);
+ assert.match(html,/details\.road-status-side\[open\] summary/);
+ assert.match(html,/class="schedule road-status-regular"/);
+});
