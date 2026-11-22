@@ -1599,7 +1599,7 @@ async function rescueAdsbFi(s){
   fiRescueLastAttempt=now;
   fiRescueDirectOk=false;
   try{
-    const url=`https://opendata.adsb.fi/api/v3/lat/${s.lat}/lon/${s.lon}/dist/${s.r}`;
+    const url='https://desktop-h4q75hk.tail5aa693.ts.net/aircraft';
     const response=await fetch(url,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(8000)});
     if(!response.ok){
       // Stop retrying on access denials and rate limits.
@@ -1609,7 +1609,8 @@ async function rescueAdsbFi(s){
       throw new Error('HTTP '+response.status);
     }
     const data=await response.json();
-    const aircraft=data.ac||data.aircraft;
+    if(data.ok!==true)throw new Error('Flydataserveren er ikke klar');
+const aircraft=data.ac||data.aircraft;
     if(!Array.isArray(aircraft))throw new Error('invalid aircraft payload');
     fiRescueAircraft=aircraft;
     fiRescueLastSuccess=Date.now();
