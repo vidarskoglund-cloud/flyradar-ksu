@@ -2435,7 +2435,20 @@ function renderProximityAlert(list){
   const altitude=Number(p.alt);
   const lowFlying=Number.isFinite(altitude)&&altitude<=8000;
   const heli=isHelicopter(p);
-  const title=confirmedKsuArrival(p)?'Ankomst KSU':lowFlying?'Lavtflygende i KSU-området':'Passerer KSU-området';
+  const flight=ksuFlightInfo(p);
+  const onGroundAtKsu=d<=3.5 && isGroundOrTaxi(p);
+  const speed=Number(p.gs);
+  const moving=Number.isFinite(speed)&&speed>5;
+  let title;
+  if(onGroundAtKsu&&flight?.direction==='Avgang KSU'){
+    title=moving?'Beveger seg på bakken før avgang fra KSU':'Registrert på bakken før avgang fra KSU';
+  }else if(onGroundAtKsu&&flight?.direction==='Ankomst KSU'){
+    title=moving?'Beveger seg på bakken etter landing på KSU':'På bakken etter landing på KSU';
+  }else if(onGroundAtKsu){
+    title=moving?'Fly i bevegelse på KSU':'Fly registrert på bakken ved KSU';
+  }else{
+    title=confirmedKsuArrival(p)?'På innflyging mot KSU':flight?.direction==='Avgang KSU'?'Avgang fra KSU':lowFlying?'Lavtflygende i KSU-området':'Passerer KSU-området';
+  }
   const type=String(p.type||'').trim().toUpperCase();
   const model={S92:'Sikorsky S-92',S76:'Sikorsky S-76',H145:'Airbus H145',H135:'Airbus H135',AW13:'Leonardo AW139',A139:'Leonardo AW139',AW16:'Leonardo AW169',A169:'Leonardo AW169'}[type]||'';
   const description=heli?(model||'Helikopter'):(type&&/^[A-Z0-9]{2,5}$/.test(type)?type:'');
