@@ -7,19 +7,34 @@ function fmtDate(s){if(!s)return '–';const d=new Date(s);return Number.isNaN(d
 function render(){
  const all=records(),rows=all.filter(r=>r.event==='flydata'),last=rows.at(-1);
  $('stamp').textContent='Vist '+new Date().toLocaleTimeString('no-NO');
- const sources=[['Worker','worker'],['adsb.lol','adsbLol'],['adsb.fi','adsbFi'],['Airplanes.live','airplanesLive']];
- $('sources').innerHTML=sources.map(([name,key])=>{
+ const sources=[['adsb.fi','adsbFi'],['Worker','worker'],['adsb.lol','adsbLol'],['Airplanes.live','airplanesLive']];
+ const sourceStats=(name,key)=>{
    const v=last?.[key]||'Ukjent';
    const good=rows.filter(r=>r[key]==='OK').length;
    const seen=rows.filter(r=>r[key]==='OK'||r[key]==='feil').length;
    const lastOk=[...rows].reverse().find(r=>r[key]==='OK');
-   return card(name,v,'Vellykket '+good+'/'+seen+' registrerte oppslag · Sist OK: '+fmtDate(lastOk?.at),v==='OK'?'ok':v==='feil'?'bad':'warn');
+   return {name,key,v,good,seen,lastOk:fmtDate(lastOk?.at)};
+ };
+ const pos=sourceStats('adsb.fi','adsbFi');
+ $('sources').innerHTML=card('adsb.fi · flyposisjoner',pos.v,
+   (pos.seen?'Vellykket '+pos.good+'/'+pos.seen+' registrerte oppslag · Sist OK: '+pos.lastOk:'Ingen målte oppslag i denne nettleseren')+
+   ' · Direkte posisjonskilde via lokal Flyradar-server · oppdatering hvert 15. sekund',
+   pos.v==='OK'?'ok':pos.v==='feil'?'bad':'warn');
+ const inactive=[
+   ['Cloudflare Worker','worker','Ikke brukt til flyposisjoner nå. Brukes separat til gratis ruteoppslag og AIS.'],
+   ['adsb.lol','adsbLol','Ikke brukt til flyposisjoner. Gratis rutekilde via Worker; denne statustelleren måler ikke ruteoppslag.'],
+   ['Airplanes.live','airplanesLive','Ikke brukt til flyposisjoner i dagens oppsett.']
+ ];
+ $('inactive-sources').innerHTML=inactive.map(([name,key,desc])=>{
+   const info=sourceStats(name,key);
+   const measurements=info.seen?'Tidligere målinger: '+info.good+'/'+info.seen+' vellykkede · Sist OK: '+info.lastOk:'Ingen målte posisjonsoppslag';
+   return '<div class="card"><small>POSISJONSKILDE · IKKE AKTIV</small><strong>'+escapeHtml(name)+'</strong><p class="source-info">'+escapeHtml(desc)+'</p><small>'+escapeHtml(measurements)+'</small></div>';
  }).join('');
  const first=rows[0],changes=rows.filter((r,i)=>i===0||sources.some(([,k])=>r[k]!==rows[i-1]?.[k]));
  const success=rows.filter(r=>r.worker==='OK').length;
  $('metrics').innerHTML=[
    card('Registrerte oppslag',rows.length,'Siden '+fmtDate(first?.at)),
-   card('Worker-tilgjengelighet',rows.length?Math.round(success/rows.length*100)+' %':'–','Basert på denne nettleseren'),
+   card('Worker brukt til flyposisjoner',rows.some(r=>r.worker==='OK'||r.worker==='feil')?Math.round(success/rows.filter(r=>r.worker==='OK'||r.worker==='feil').length*100)+' %':'Ikke brukt','Historiske posisjonsmålinger – ikke status for Workerens rute- eller AIS-tjenester'),
    card('Siste antall fly',last?.aircraft??'–','Antall før filtrering i kartet'),
    card('Statusendringer',changes.length,'Registrerte overganger i datakildene')
  ].join('');
