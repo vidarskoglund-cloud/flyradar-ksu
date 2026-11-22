@@ -1006,14 +1006,13 @@ function destinationPoint(lat,lon,distanceNm,bearingDeg){
 function updateRangeRings(s){
   rangeLayer.clearLayers();
   const zoom=map.getZoom();
-  const rings=[25,50];
-
+  const rings=[25,50,100];
   rings.forEach(n=>{
     const isAlert=n===50;
     const isLookup=n===25;
     L.circle([s.lat,s.lon],{
       radius:n*1852,
-      color:isAlert?'#ff5c5c':isLookup?'#ffd166':'#6b8198',
+      color:'#ff5c5c',
       weight:isAlert?2.2:1.6,
       opacity:isAlert?0.82:0.72,
       fill:false,
@@ -1023,10 +1022,10 @@ function updateRangeRings(s){
     }).addTo(rangeLayer);
 
     const pos=destinationPoint(s.lat,s.lon,n,0);
-    const label=isAlert?'50 NM':'25 NM · MER INFO';
+    const label=n+' NM';
     L.marker(pos,{interactive:false,pane:'rangePane',icon:L.divIcon({
       className:'range-label-wrap',
-      html:`<div class="range-label ${isAlert?'alert-zone':'lookup-zone'}">${label}</div>`,
+      html:`<div class="range-label alert-zone">${label}</div>`,
       iconSize:[126,22],iconAnchor:[63,11]
     })}).addTo(rangeLayer);
   });
