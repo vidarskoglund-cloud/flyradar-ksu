@@ -245,7 +245,7 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - Regresjonstester for korrekt prioritering, unngåelse av uverifiserte fly, automatisk retur og uforandret manuell overstyring.
 - Test i faktisk nettleser etter merge for å se at kartutsnittet beveger seg rolig og returnerer til Kristiansund.
 
-## 22.11.2026 – Egen Norge-radar med kontrollert ADS-B-belastning (PR #56)
+## 22.11.2026 – Egen Norge-radar med kontrollert ADS-B-belastning (PR #56, AVVIKLET)
 - **Hovedradaren for Kristiansund er uendret**: lokal flyserver, lokal AIS, Avinor og fly-/båtvarslinger. Ny knapp «Fly i Norge» på hovedsiden åpner `norge.html` med separat kart og `norway.js`.
 - Norgesøket bruker **adsb.fi v3**, seks søkeområder med maks 240 NM radius: Sør-Norge (inkludert Bergen Flesland og Oslo Gardermoen), Vestlandet/Møre, Trøndelag/Helgeland, Nordland/Lofoten, Troms og Finnmark. Det er geografisk dekning fra sirkler, ikke et eksakt klipp mot norsk landegrense, så fly på/over naboområder kan også vises.
 - **En felles Durable Object** (`TRACK_STORE`, samme `ksu`-instans) samordner alle besøkende og holder en 10-minutters snapshot-cache. Workeren kjører maksimalt seks regionale forespørsler per snapshot med minst 1,5 sekunder mellom starttidspunktene, globalisert også mot eksisterende Worker-KSU-oppslag. Maks 900 Norge-oppslag/døgn lagret i DO; ved 429 blir nye forespørsler blokkert 30 minutter, ved tilgangsfeil 15 minutter. Cachen kan vises som gammel eller ufullstendig når leverandøren ikke svarer. **Lokalt separat ADS-B-proxyoppsett må fortsatt kontrolleres uavhengig**, da dette ikke deler DO-begrensningen.
@@ -253,3 +253,10 @@ Kristiansund Trafikkradar er videreutviklingen av Flyradar KSU for fly, helikopt
 - adsb.fi vilkår: personlig, ikke-kommersielt; kreditering/lenke kreves; offentlige endepunkter 1 forespørsel/sekund, maks 250 NM radius. Kilde: https://github.com/adsbfi/opendata
 - Deploy-jobben `.github/workflows/worker-deploy.yml` kjører **automatisk ved push til main når `worker/**` endres**. Etter merge kontroller CI og deploy-jobb, test `/norway-aircraft` og kontrollér visning av fly ved BGO og OSL. Manglende observerte fly ved en flyplass betyr ikke at geografien mangler; ADS-B dekning kan være varierende.
 - **Kostnads- og kilderisiko:** 6 x 144 = 864 forespørsler/døgn ved full drift. Daglig maks 900 for Norgesøket. KSU-Worker og lokal flyserver kan ha separate forespørsler til adsb.fi. Se logg og faktisk levering etter utrulling før ytterligere hyppighet eller områder vurderes.
+
+## 22.11.2026 – Norgesoversikt avviklet etter tilbakemelding (PR #57)
+- Brukeren ønsket å fjerne funksjonen «Fly i Norge» og fortsette med lokal Kristiansund-radar. Den landsdekkende visningen fra PR #56 er derfor **ikke lenger en aktiv funksjon**; avsnittet over bevares kun som historikk.
+- Fjernet `norge.html`, `norway.js`, `tests/norway-radar.test.cjs` og hovedsidens lenke til Norgesoversikten. Testworkflow er tilbakeført til før PR #56.
+- Cloudflare Worker `worker/src/index.js` er tilbakeført eksakt til tilstanden fra før PR #56. Den ekstra `GET /norway-aircraft`-ruten og planlagt landsdekkende polling er fjernet i kildekoden. Etter merge skal eksisterende automatisk Worker-deploy kjøre for å fjerne funksjonen fra produksjon.
+- Beholder uendret lokal KSU-radar, dagens AIS/Avinor/vær, og kort sekundærfokus på nærliggende flyplasser og bekreftede fly fra Oslo/Bergen som skal til KSU (PR #55). Ikke fjern denne eldre funksjonaliteten.
+- Kontroller GitHub Actions og Cloudflare-deploy. Når deploy er fullført, skal `/norway-aircraft` gi 404, mens `/health` og lokal sporing fortsatt fungerer. Nettstedets `norge.html` skal gi 404 etter GitHub Pages-publisering.
