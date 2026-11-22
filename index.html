@@ -459,6 +459,9 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .nearest-panel .speedboat-side h3{color:var(--m);font-size:11px;margin:0 0 7px}
   main>.speedboat-regular{display:none!important}
 }
+.special-flight-tag{display:inline-flex;width:max-content;max-width:100%;margin-top:5px;padding:3px 8px;border:1px solid #3e8192;border-radius:7px;color:#b9f3ff;background:#123345;font-size:10px;font-weight:700;letter-spacing:.02em}
+.special-flight-tag[data-special-role="rescue"],.special-flight-tag[data-special-role="ambulance"]{border-color:#85aa65;background:#1d342c;color:#dcffbc}
+.special-flight-tag[data-special-role="military"]{border-color:#9a8a5c;color:#f3dca6;background:#332c1b}
 </style>
 </head>
 <body>
@@ -495,10 +498,10 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <footer><a href="admin.html" title="Status, historikk og feilsøking">Administrasjon / status</a> · Flyposisjoner: <a href="https://opendata.adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (via lokal Flyradar-server) · Ruter: <a href="https://flyradar-ksu.vidar-skoglund.workers.dev/route" target="_blank" rel="noopener noreferrer">Cloudflare Worker</a> (adsb.lol / FlightAware ved tilgjengelighet) · Flytider: <a href="https://avinor.no/" target="_blank" rel="noopener noreferrer">Avinor</a> · Fartøy: <a href="https://www.kystverket.no/" target="_blank" rel="noopener noreferrer">Kystverket (AIS)</a> · Offshore: <a href="https://www.sodir.no/" target="_blank" rel="noopener noreferrer">Sokkeldirektoratet</a> · Kart: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsytere</a>, <a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> · Flyfotografier: kreditering og lisens under hvert bilde · <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="aircraft-photos.js?v=1"></script>
+<script src="aircraft-photos.js?v=2"></script>
 <script src="vessel-photos.js?v=4"></script>
 <script src="vessel-wikidata.js?v=1"></script>
 <script src="speedboat-schedule.js?v=2"></script>
-<script src="app.js?v=190"></script>
+<script src="app.js?v=191"></script>
 
 </body></html>
