@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v7', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v8', pending=new Map();
 const photoErrors=new Map();
 // Source-verified Commons file titles, bound to a specific AIS identity.
 // A title is only a lookup hint: each image still passes the license and identity checks.
@@ -32,6 +32,11 @@ function hasWords(haystack,words){
  const all=vesselWords(haystack);
  return Boolean(words.length)&&words.every(w=>all.includes(w));
 }
+function strictlyIdentifiedFerry(v){
+ return String(v?.mmsi||'').trim()==='257087420'||
+        String(v?.imo||'').trim()==='9855393'||
+        String(v?.name||'').trim().toUpperCase()==='TUSTNA';
+}
 function pick(v,pages){
  const words=vesselWords(v.name).filter(w=>w.length>=3);
  const imo=String(v.imo||'').replace(/\D/g,'');
@@ -62,6 +67,9 @@ function pick(v,pages){
     .test(vesselWords(filename+' '+categories+' '+description).join(' '));
   const nameMatch=titleName||categoryName||descriptionName;
   const supportedName=nameMatch&&maritime;
+  // "Tustna" is also a place name. A photo of a small local boat
+  // must not be presented as the TUSTNA ferry just because it mentions the place.
+  if(strictlyIdentifiedFerry(v)&&!sameImo&&!sameMmsi)continue;
   if(!sameImo&&!sameMmsi&&!supportedName)continue;
   const lic=String(meta.LicenseUrl?.value||'');
   options.push({score:(sameImo?100:0)+(sameMmsi?90:0)+(titleName?20:0)+(categoryName?16:0)+(descriptionName?8:0)+(maritime?5:0),photo:{
@@ -139,6 +147,9 @@ const TYPE_PHOTOS=[
   match:/\b(?:cargo[ -]?ship|freighter|bulk[ -]?carrier|general cargo)\b/i}
 ];
 async function lookupRepresentative(v){
+ // For a named routine ferry, show the neutral icon rather than a misleading
+ // generic boat photograph if no identity-verified image is available.
+ if(strictlyIdentifiedFerry(v))return null;
  const spec=TYPE_PHOTOS.find(x=>x.test(v));
  if(!spec)return null;
  const saved=get('type:'+spec.id);
