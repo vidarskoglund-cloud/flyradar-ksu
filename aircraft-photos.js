@@ -2,7 +2,7 @@
 'use strict';
 // Extra image lookups only for the aircraft shown in the detail panel.
 // Do not infer that a type photo depicts the specific registered aircraft.
-const CACHE='kristiansund-aircraft-photos-v3',pending=new Map();
+const CACHE='kristiansund-aircraft-photos-v4',pending=new Map();
 function cacheRead(key){
  try{
   const x=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];
@@ -14,7 +14,7 @@ function cacheWrite(key,photo){
   const records=JSON.parse(localStorage.getItem(CACHE)||'{}');
   const now=Date.now();
   for(const k of Object.keys(records))if(records[k].until<=now)delete records[k];
-  records[key]={photo,until:now+(photo?7:1)*86400000};
+  records[key]={photo,until:now+(photo?7*86400000:3*3600000)};
   localStorage.setItem(CACHE,JSON.stringify(Object.fromEntries(Object.entries(records).slice(-80))));
  }catch(e){}
 }
@@ -61,8 +61,24 @@ const TYPE_SEARCH={
  C17:{terms:['"Boeing C-17 Globemaster"'],patterns:[/\bc[ -]?17\b/i]},
  F35:{terms:['"F-35 Lightning II"'],patterns:[/\bf[ -]?35\b/i]},
  AW10:{terms:['"AgustaWestland AW101 helicopter"'],patterns:[/\b(?:aw[ -]?101|eh[ -]?101)\b/i]},
- S92:{terms:['"Sikorsky S-92" "CHC"','"Sikorsky S-92" "Bristow"','"Sikorsky S-92" offshore'],patterns:[/\bs[ -]?92\b/i]},
- B738:{terms:['"Boeing 737-800"'],patterns:[/\b737[ -]?800\b/i]},
+ S92:{terms:['Sikorsky S-92 CHC helicopter','Sikorsky S-92 Bristow','Sikorsky S-92 offshore','S-92 helicopter'],patterns:[/\bs[ -]?92\b/i]},
+ B738:{terms:['Boeing 737-800 aircraft'],patterns:[/\b737[ -]?800\b/i]},
+ A20N:{terms:['Airbus A320neo airliner'],patterns:[/\b(?:a320neo|a320-?251|a320-?271)\b/i]},
+ A320:{terms:['Airbus A320 airliner'],patterns:[/\ba320\b/i]},
+ A319:{terms:['Airbus A319 aircraft'],patterns:[/\ba319\b/i]},
+ A321:{terms:['Airbus A321 aircraft'],patterns:[/\ba321\b/i]},
+ B38M:{terms:['Boeing 737 MAX 8 aircraft'],patterns:[/\b(?:737 max 8|737-?8 max|b38m)\b/i]},
+ E195:{terms:['Embraer E195 aircraft'],patterns:[/\b(?:e195|erj ?195|embraer 195)\b/i]},
+ E190:{terms:['Embraer E190 aircraft'],patterns:[/\b(?:e190|erj ?190|embraer 190)\b/i]},
+ E290:{terms:['Embraer E190 E2 aircraft'],patterns:[/\b(?:e190 ?e2|e190-?e2|erj ?190-?300)\b/i]},
+ E295:{terms:['Embraer E195 E2 aircraft'],patterns:[/\b(?:e195 ?e2|e195-?e2|erj ?190-?400)\b/i]},
+ DH8A:{terms:['Dash 8-100 aircraft'],patterns:[/\b(?:dash ?8[ -]?100|dhc[ -]?8[ -]?100)\b/i]},
+ DH8C:{terms:['Dash 8-300 aircraft'],patterns:[/\b(?:dash ?8[ -]?300|dhc[ -]?8[ -]?300)\b/i]},
+ A139:{terms:['AgustaWestland AW139 helicopter'],patterns:[/\b(?:aw ?139|a ?139)\b/i]},
+ A189:{terms:['Leonardo AW189 helicopter'],patterns:[/\b(?:aw ?189|a ?189)\b/i]},
+ H175:{terms:['Airbus H175 helicopter'],patterns:[/\b(?:h175|ec175)\b/i]},
+ H145:{terms:['Airbus H145 helicopter'],patterns:[/\b(?:h145|ec145)\b/i]},
+ S76:{terms:['Sikorsky S-76 helicopter'],patterns:[/\bs[ -]?76\b/i]},
  DH8D:{terms:['"Dash 8 Q400"'],patterns:[/\b(?:q400|dash 8[ -]?400)\b/i]}
 };
 function chooseTypePhoto(type,pages){
@@ -80,6 +96,9 @@ function chooseTypePhoto(type,pages){
   const matchTitle=spec.patterns.some(rx=>rx.test(filename.replace(/_/g,' ')));
   const matchCategory=spec.patterns.some(rx=>rx.test(categories));
   if(!matchTitle&&!matchCategory)continue;
+  // Reject a conflicting model reference in filenames before trusting broad categories.
+  const identityCodes=(filename.match(/\b(?:a319|a320|a321|e190|e195|e190[ -]?e2|e195[ -]?e2|737[ -]?800|737[ -]?max|q400|dash ?8[ -]?(?:100|300|400))\b/ig)||[]);
+  if(identityCodes.length && !matchTitle && !['GLF5','GLF6','C130','C30J','P8','A400','C17','F35'].includes(String(type).toUpperCase()))continue;
   if(String(type).toUpperCase()==='S92'){
     // Offshore type examples must not default to military or tactical S-92s.
     const context=(filename+' '+categories).toLowerCase();
@@ -140,7 +159,7 @@ async function lookup(reg){
  const task=(async()=>{
   try{
    const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
-    gsrsearch:'"'+reg+'"',gsrnamespace:'6',gsrlimit:'20',
+    gsrsearch:'"'+reg+'"',gsrnamespace:'6',gsrlimit:'50',
     prop:'imageinfo',iiprop:'url|extmetadata',iiurlwidth:'720'});
    const r=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{credentials:'omit',signal:AbortSignal.timeout(8000)});
    if(!r.ok)throw new Error('HTTP '+r.status);
