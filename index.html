@@ -600,6 +600,36 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  .nearest-panel details.sidebar-fold[open]>:not(summary){margin-top:5px}
  .nearest-panel details.fs-schedule[open] #avinor-list-side{overflow:visible}
 }
+/* One-screen desktop dashboard: reserve the whole viewport for the map and
+   sidebar. Compress optional detail groups if two or more are expanded.
+   If a very small display cannot show everything legibly, only the sidebar
+   scrolls; the page and radar map stay stationary. */
+@media (min-width:900px) and (min-height:640px) and (display-mode:browser){
+ body:not(.display-on) main{grid-template-rows:32px minmax(0,1fr) auto;gap:5px 10px}
+ body:not(.display-on) .nearest-panel{overscroll-behavior:contain;padding:6px 9px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .type-info-inner .type-photo-wrap,
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .type-info-inner .type-illustration{height:66px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .flight-route{margin-top:4px;padding:5px 7px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .aircraft-metrics{margin-top:4px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .aircraft-metrics>div{padding:3px 5px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .ksu-flight{padding:4px 7px;margin-top:4px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .type-info{margin-top:4px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .type-info summary{padding:4px 7px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .type-info-inner{padding:0 7px 5px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .fs-schedule,
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .speedboat-side,
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .road-status-side,
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .weather-side{margin-top:4px;padding-top:3px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) details.sidebar-fold summary,
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) details.road-status-side>summary{min-height:22px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .schedule-row{padding:2px 0}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .road-status-row{padding:2px 0}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .road-event-body{font-size:9px;line-height:1.25;padding-bottom:4px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .road-local-heading{padding:4px 0 2px}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .weather-block{padding:3px 0}
+ body:not(.display-on) .nearest-panel:has(.sidebar-fold[open]) .weather-widget{font-size:10px;line-height:1.2}
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
