@@ -749,6 +749,50 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  body:not(.display-on) .traffic-headline-note{font-size:8px}
 }
 
+/* Give the headline prominence; keep AIS count and flight counters in
+   their existing second row, visually a little lower than the banner. */
+@media (min-width:900px) and (display-mode:browser){
+ body:not(.display-on) header{
+  height:78px;min-height:78px;max-height:78px;
+  grid-template-columns:minmax(230px,300px) minmax(0,1fr) minmax(170px,225px);
+  padding:8px 16px;
+ }
+ body:not(.display-on) header h1{
+  font-size:23px;line-height:27px;font-weight:800;
+ }
+ body:not(.display-on) header>div:first-child .muted{
+  font-size:12px;line-height:15px;
+ }
+ body:not(.display-on) .traffic-headline{
+  height:58px;padding:6px 14px;
+ }
+ body:not(.display-on) .traffic-headline-tag{font-size:11px;line-height:13px}
+ body:not(.display-on) .traffic-headline-title{font-size:17px;line-height:20px}
+ body:not(.display-on) .traffic-headline-note{font-size:11px;line-height:13px}
+ body:not(.display-on) #status{font-size:13px;line-height:17px}
+ body:not(.display-on) #adsb-source-label{font-size:10px!important;line-height:13px}
+ body:not(.display-on) main{grid-template-rows:38px minmax(0,1fr) auto}
+ body:not(.display-on) #vessel-live-status{
+  align-self:end;padding:0 5px 4px;font-size:12px;
+ }
+ body:not(.display-on) #stats{
+  align-self:end;min-height:34px;margin-top:4px;
+ }
+ body:not(.display-on) #stats b{font-size:17px}
+ body:not(.display-on) #stats .muted{font-size:10px}
+}
+@media (min-width:900px) and (max-width:1160px) and (display-mode:browser){
+ body:not(.display-on) header{
+  grid-template-columns:minmax(180px,225px) minmax(0,1fr) minmax(145px,180px);
+  column-gap:9px;padding:7px 10px;
+ }
+ body:not(.display-on) header h1{font-size:18px;line-height:23px}
+ body:not(.display-on) header>div:first-child .muted{font-size:10px}
+ body:not(.display-on) .traffic-headline-title{font-size:14px;line-height:18px}
+ body:not(.display-on) .traffic-headline-note{font-size:9px}
+ body:not(.display-on) #status{font-size:11px}
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
