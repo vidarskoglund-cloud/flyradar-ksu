@@ -2,7 +2,7 @@
 'use strict';
 // Extra image lookups only for the aircraft shown in the detail panel.
 // Do not infer that a type photo depicts the specific registered aircraft.
-const CACHE='kristiansund-aircraft-photos-v2',pending=new Map();
+const CACHE='kristiansund-aircraft-photos-v3',pending=new Map();
 function cacheRead(key){
  try{
   const x=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];
@@ -61,7 +61,7 @@ const TYPE_SEARCH={
  C17:{terms:['"Boeing C-17 Globemaster"'],patterns:[/\bc[ -]?17\b/i]},
  F35:{terms:['"F-35 Lightning II"'],patterns:[/\bf[ -]?35\b/i]},
  AW10:{terms:['"AgustaWestland AW101 helicopter"'],patterns:[/\b(?:aw[ -]?101|eh[ -]?101)\b/i]},
- S92:{terms:['"Sikorsky S-92 helicopter"'],patterns:[/\bs[ -]?92\b/i]},
+ S92:{terms:['"Sikorsky S-92" "CHC"','"Sikorsky S-92" "Bristow"','"Sikorsky S-92" offshore'],patterns:[/\bs[ -]?92\b/i]},
  B738:{terms:['"Boeing 737-800"'],patterns:[/\b737[ -]?800\b/i]},
  DH8D:{terms:['"Dash 8 Q400"'],patterns:[/\b(?:q400|dash 8[ -]?400)\b/i]}
 };
@@ -80,6 +80,12 @@ function chooseTypePhoto(type,pages){
   const matchTitle=spec.patterns.some(rx=>rx.test(filename.replace(/_/g,' ')));
   const matchCategory=spec.patterns.some(rx=>rx.test(categories));
   if(!matchTitle&&!matchCategory)continue;
+  if(String(type).toUpperCase()==='S92'){
+    // Offshore type examples must not default to military or tactical S-92s.
+    const context=(filename+' '+categories).toLowerCase();
+    if(/(?:military|army|navy|air force|presidential|marine one|vh-92|ch-148|cyclone|h-92|combat|tactical)/i.test(context))continue;
+    if(!/(?:chc|bristow|offshore|helicopter services|civilian|commercial|oil|gas|s-92a)/i.test(context))continue;
+  }
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
   if(!info||!meta)continue;
   const license=plain(meta.LicenseShortName?.value);
