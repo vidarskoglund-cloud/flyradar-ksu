@@ -10,7 +10,7 @@ const WAIT_MS=12000;
 let lastCalls=null,lastUpdated=0,stopId=null;
 function text(value){return String(value??'').trim();}
 function clock(value){
- const time=Date.parse(text(value));
+ const time=typeof value==='number'&&Number.isFinite(value)?value:Date.parse(text(value));
  return Number.isFinite(time)?new Date(time).toLocaleTimeString('no-NO',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Oslo'}):'–';
 }
 function escapeHtml(value){
