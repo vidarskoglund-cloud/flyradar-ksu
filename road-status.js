@@ -113,9 +113,15 @@ function paint(){
     const status=document.createElement('span');status.className='road-status-unknown';
     status.textContent=lastError?(snapshot?'Sist registrert · ikke oppdatert':'Data utilgjengelig'):
       snapshot?.complete?'Ingen stedfestet melding':
-      snapshot?'Ingen melding i undersøkte data':'Kontrollerer…';
+      snapshot?'Ingen treff · delvis kontroll':'Kontrollerer…';
     row.append(name,status);el.append(row);
    }
+  }
+  if(snapshot && !snapshot.complete){
+   const note=document.createElement('div');
+   note.className='road-local-heading';
+   note.textContent='Kun deler av Vegvesenets datasett er kontrollert. Manglende treff sier ikke om veien er åpen.';
+   el.append(note);
   }
   const local=uniqueEvents(snapshot?.local||[]);
   if(local.length){
@@ -167,9 +173,12 @@ async function refresh(){
   if(!response.ok)throw Error('DATEX unavailable');
   const payload=await response.json();
   if(!payload?.ok||!payload?.roads)throw Error('DATEX invalid response');
-  snapshot=payload;lastError=false;
-  try{localStorage.setItem(LAST_DATEX_KEY,JSON.stringify(payload));}catch(_error){}
-  if(window.KsuTrafficMap?.update)window.KsuTrafficMap.update(snapshot);
+  snapshot=payload;lastError=Boolean(payload.stale);
+  if(!payload.stale){
+   try{localStorage.setItem(LAST_DATEX_KEY,JSON.stringify(payload));}catch(_error){}
+  }
+  // Never draw old road events as fresh traffic markers.
+  if(window.KsuTrafficMap?.update)window.KsuTrafficMap.update(payload.stale?null:snapshot);
  }catch(_error){
   lastError=true;
   // Retain historical notices in the panel, but remove live map markers.
