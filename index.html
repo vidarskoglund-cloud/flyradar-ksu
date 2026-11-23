@@ -473,6 +473,12 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .traffic-notice-popup strong{font-size:14px}
 .traffic-notice-popup small{font-size:10px;color:#51687c}
 
+/* Keep aircraft type imagery secondary to live status data. */
+.aircraft-card .flight-route.fallback .route-loading{font-size:12px;line-height:1.35}
+.type-info-inner .type-photo-wrap{height:108px}
+.type-info-inner .type-illustration{height:108px}
+@media(max-width:700px){.type-info-inner .type-photo-wrap{height:92px}.type-info-inner .type-illustration{height:92px}}
+
 /* Compact DATEX road notices with accessible expandable descriptions. */
 .road-status-list .road-event{border-top:1px solid #1b2d43}
 .road-status-list .road-event:first-child{border-top:0}
@@ -662,12 +668,12 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="aircraft-photos.js?v=2"></script>
+<script src="aircraft-photos.js?v=3"></script>
 <script src="vessel-photos.js?v=7"></script>
 <script src="vessel-wikidata.js?v=1"></script>
 <script src="speedboat-schedule.js?v=2"></script>
 <script src="road-status.js?v=4"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=193"></script>
+<script src="app.js?v=194"></script>
 
 </body></html>
