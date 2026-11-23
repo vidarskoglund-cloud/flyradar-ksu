@@ -139,7 +139,8 @@ function formatDatexDate(value){
 function renderTrafficNotices(){
   trafficNoticeLayer.clearLayers();
   // Prevent road pins from cluttering national overview/aircraft tracking.
-  if(map.getZoom()<9)return;
+  // Roadwork icons need street-level zoom; wider views would overlap.
+  if(map.getZoom()<12)return;
   for(const event of currentTrafficNotices){
     const lat=Number(event.lat),lon=Number(event.lon);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||
