@@ -793,6 +793,49 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  body:not(.display-on) #status{font-size:11px}
 }
 
+/* Align status strip precisely to the map and right-hand detail panel.
+   A fixed row height prevents shifts during asynchronous AIS/ADS-B updates. */
+@media (min-width:900px) and (min-height:640px) and (display-mode:browser){
+ body:not(.display-on) main{
+  grid-template-rows:42px minmax(0,1fr) auto;
+  row-gap:6px;
+  padding:5px 12px;
+ }
+ body:not(.display-on) #vessel-live-status{
+  grid-area:rule;
+  display:flex;
+  align-items:center;
+  align-self:stretch;
+  width:100%;min-width:0;height:42px;
+  margin:0;padding:0 3px;
+  font-size:14px;line-height:18px;font-weight:500;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ }
+ body:not(.display-on) #stats{
+  grid-area:stats;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-self:stretch;
+  width:100%;height:42px;min-height:0;
+  margin:0;padding:4px 5px;
+  align-items:center;
+ }
+ body:not(.display-on) #stats>div{
+  min-width:0;min-height:0;
+  padding:0 5px;
+ }
+ body:not(.display-on) #stats b{
+  font-size:18px;line-height:20px;
+ }
+ body:not(.display-on) #stats .muted{
+  font-size:10px;line-height:12px;margin-top:0;
+ }
+ body:not(.display-on) #map,
+ body:not(.display-on) .nearest-panel{
+  align-self:stretch;min-height:0;
+ }
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
