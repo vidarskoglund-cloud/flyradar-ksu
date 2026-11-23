@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v5', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v6', pending=new Map();
 const photoErrors=new Map();
 // Source-verified Commons file titles, bound to a specific AIS identity.
 // A title is only a lookup hint: each image still passes the license and identity checks.
@@ -77,6 +77,7 @@ async function search(v){
  if(pending.has(key))return pending.get(key);
  const task=(async()=>{
   try{
+   photoErrors.delete(key);
    const imo=String(v.imo||'').replace(/\D/g,'');
    const mmsi=String(v.mmsi||'').replace(/\D/g,'');
    const cleanName=name.replace(/"/g,'').slice(0,60).trim();
@@ -102,7 +103,7 @@ async function search(v){
      cleanName.length>=5?'"'+cleanName+'"':''].filter(Boolean);
    if(!terms.length)return null;
    let photo=null;
-   for(const term of terms){
+   for(const term of terms.slice(0,3)){
     const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
      gsrsearch:term,gsrnamespace:'6',gsrlimit:'35',
      prop:'imageinfo|categories',cllimit:'max',iiprop:'url|extmetadata',iiurlwidth:'720'});
