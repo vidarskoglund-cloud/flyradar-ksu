@@ -187,6 +187,47 @@ window.KsuTrafficMap={
 };
 map.on('zoomend',renderTrafficNotices);
 
+// Politiloggen is an approximate area overlay, not a live emergency location.
+// Only vetted locality names are eligible; never geocode police message text.
+map.createPane('policeNoticePane');
+map.getPane('policeNoticePane').style.zIndex='595';
+const policeNoticeLayer=L.layerGroup().addTo(map);
+let policeAreaIncidents=[];
+const KNOWN_POLICE_AREAS=[
+ {name:'Kvernberget',lat:63.1118,lon:7.8245,radius:750,pattern:/^(?:kvernberget|flyplassen)$/i},
+ {name:'Sørsundbrua',lat:63.106087,lon:7.7249317,radius:450,pattern:/^sørsundbrua$/i},
+ {name:'Byskogen',lat:63.107143,lon:7.816355,radius:850,pattern:/^byskogen$/i},
+ {name:'Vedkaia',lat:63.116005,lon:7.731658,radius:450,pattern:/^vedkaia$/i},
+ {name:'Vågakaia',lat:63.112747,lon:7.7326984,radius:450,pattern:/^vågakaia$/i}
+];
+function renderPoliceAreaNotices(){
+ policeNoticeLayer.clearLayers();
+ if(map.getZoom()<11)return;
+ const colors={brann:'#f59e0b',trafikk:'#ef6767',redning:'#64b5f6'};
+ for(const item of policeAreaIncidents){
+  const area=KNOWN_POLICE_AREAS.find(x=>x.pattern.test(String(item.area||'').trim()));
+  if(!area)continue;
+  const color=colors[item.category]||'#64b5f6';
+  const label=item.category==='brann'?'Brannmelding':
+    item.category==='trafikk'?'Trafikkhendelse':'Redningsmelding';
+  const popup='<strong>'+safeTrafficText(label)+'</strong>'+
+   '<div>'+safeTrafficText(area.name)+' (omtrentlig område)</div>'+
+   '<small>Politiloggen oppgir ikke nøyaktig hendelsesposisjon.</small>'+
+   '<div><a href="https://www.politiet.no/politiloggen" target="_blank" rel="noopener noreferrer">Politiloggen – Politiet</a></div>';
+  L.circle([area.lat,area.lon],{pane:'policeNoticePane',radius:area.radius,
+   color,weight:2,dashArray:'5 5',fillColor:color,fillOpacity:0.08,
+   interactive:true}).bindPopup(popup).addTo(policeNoticeLayer);
+ }
+}
+window.KsuPoliceMap={
+ update(items){
+  policeAreaIncidents=Array.isArray(items)?items.slice(0,8):[];
+  renderPoliceAreaNotices();
+ }
+};
+map.on('zoomend',renderPoliceAreaNotices);
+
+
 
 const norwayAirports=[
   {code:'OSL',name:'Oslo Gardermoen',lat:60.1939,lon:11.1004,major:true},
