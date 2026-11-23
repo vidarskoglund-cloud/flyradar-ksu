@@ -701,7 +701,7 @@ export default {
         if (truncated) await reader.cancel();
         xml += decoder.decode();
         const tags = new Map();
-        for (const match of xml.matchAll(/<([A-Za-z_][\\w.-]*:)?([A-Za-z_][\\w.-]*)\\b/g)) {
+        for (const match of xml.matchAll(/<([A-Za-z_][\w.-]*:)?([A-Za-z_][\w.-]*)\b/g)) {
           const tag = match[2];
           tags.set(tag, (tags.get(tag) || 0) + 1);
         }
@@ -718,14 +718,14 @@ export default {
           while (positions.length < 3 && (at = lower.indexOf(needle, at)) !== -1) {
             const left = Math.max(0, at - 110), right = Math.min(xml.length, at + needle.length + 110);
             const context = xml.slice(left, right)
-              .replace(/<[^>]*>/g, " ").replace(/&(?:#\\d+|#x[\\da-f]+|\\w+);/gi, " ")
-              .replace(/\\s+/g, " ").trim().slice(0, 180);
+              .replace(/<[^>]*>/g, " ").replace(/&(?:#\d+|#x[\da-f]+|\w+);/gi, " ")
+              .replace(/\s+/g, " ").trim().slice(0, 180);
             positions.push(context);
             at += needle.length;
           }
           if (positions.length) matched.push({ term, examples: positions });
         }
-        const root = xml.match(/<(?!\\?|!)([A-Za-z_][\\w:.-]*)\\b/);
+        const root = xml.match(/<(?!\?|!)([A-Za-z_][\w:.-]*)\b/);
         const topTags = [...tags.entries()].sort((a,b) => b[1] - a[1]).slice(0, 35)
           .map(([name,count]) => ({ name, count }));
         return new Response(JSON.stringify({
