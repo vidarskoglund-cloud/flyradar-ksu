@@ -1720,6 +1720,11 @@ function fitMap(list,s){
     smartMapTarget={key:target.key,rank:target.rank};
     smartMapChangedAt=now;
   }
+  // Synchronize the right-hand information with automatic map focus.
+  // Do not override explicit map / vessel selections.
+  if(targetChanged&&now>=manualMapUntil&&now>=manualVesselSelectionUntil){
+    render(false);
+  }
   const bounds=target
     ?L.latLngBounds(target.points)
     :areaBounds(mapAreas.city.lat,mapAreas.city.lon,22);
@@ -2524,6 +2529,15 @@ function updateTypeCard(p){
 // Only promote a vessel when it is moving and no more important KSU aircraft needs focus.
 function autoSelectHarborVessel(now=Date.now()){
  if(now<manualVesselSelectionUntil)return;
+ // A brief automatically selected aircraft view must also show its details.
+ if(/^(?:glimt:fly:|fly:)/.test(String(smartMapTarget?.key||''))){
+  if(selectedVesselTypeKey){
+   selectedVesselTypeKey='';
+   syncVesselSelectionMarkers();
+  }
+  if($('cards'))$('cards').hidden=false;
+  return;
+ }
  const first=smartMapCandidate(planes)[0];
  const key=first?.key?.startsWith('bat:')?first.key.slice(4):'';
  const vessel=key?vessels.find(v=>vesselKey(v)===key):null;
@@ -3435,8 +3449,14 @@ function render(autoFit=false){
   const nearest=list.filter(p=>!p.signalLost&&Number.isFinite(ksuDistanceNm(p)))
     .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b))[0]||null;
   const current=selected&&list.find(p=>p.hex===selected.hex&&!p.signalLost);
+  // When the map zooms out to briefly follow a distant aircraft,
+  // show that same aircraft instead of leaving a previous ship on the right.
+  const focusKey=String(smartMapTarget?.key||'').replace(/^glimt:/,'');
+  const focusedAircraft=Date.now()>=manualVesselSelectionUntil&&
+    focusKey.startsWith('fly:')?
+      list.find(p=>!p.signalLost&&smartPlaneIdentity(p)===focusKey):null;
   const shown=nearest&&ksuDistanceNm(nearest)<=25&&(!current||ksuDistanceNm(current)>25)
-    ?nearest:(current||nearest);
+    ?nearest:(focusedAircraft||current||nearest);
   if(shown){
     selected=shown;
 
