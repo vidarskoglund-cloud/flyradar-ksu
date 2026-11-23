@@ -158,7 +158,7 @@ function paint(){
    }
   }
  }
- for(const summary of document.querySelectorAll('details.road-status-side > summary > small')){
+ for(const summary of document.querySelectorAll('#datex-panel-update')){
   summary.textContent=lastError?(snapshot?'DATEX · sist mottatt':'DATEX utilgjengelig'):
     snapshot?.checked_at?'DATEX · '+new Date(snapshot.checked_at).toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'}):
     'DATEX · kontrollerer';
