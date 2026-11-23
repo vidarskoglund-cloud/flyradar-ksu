@@ -46,7 +46,7 @@ button{font-weight:700}.stats{display:grid;grid-template-columns:repeat(3,1fr);g
 .leaflet-overlay-pane svg path{vector-effect:non-scaling-stroke}.overview-map .leaflet-tile-pane{filter:grayscale(.7) saturate(.45) brightness(.72) contrast(.82);opacity:.72}.overview-map .leaflet-overlay-pane{opacity:.9}.plane-marker.local{color:#32ff9a;font-size:31px;text-shadow:0 0 4px #002,0 0 12px #32ff9a88}.plane-marker.ksu-stale{opacity:.48;filter:saturate(.35);text-shadow:0 0 3px #001}.range-label-wrap{background:transparent;border:0}.range-label{font-size:9px;font-weight:650;line-height:13px;color:#aabfd0;background:#08111fba;border:1px solid #52677d99;border-radius:7px;padding:1px 4px;text-align:center;white-space:nowrap}.range-label.alert-zone{color:#ffd0d0;border-color:#ff5c5c}.range-label.lookup-zone{color:#ffe3a0;border-color:#ffd166}.plane-wrap{background:transparent;border:0}.plane-marker{width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:#00d7ff;font-size:27px;line-height:34px;text-shadow:0 0 3px #001,0 0 8px #001}
 .airport-wrap{background:transparent;border:0}.airport-marker{display:flex;align-items:center;gap:5px;min-width:0;padding:4px 7px 4px 5px;border:1px solid #5c7187;border-radius:8px;background:#08111fe8;box-shadow:0 2px 8px #0008;white-space:nowrap}.airport-marker .airport-symbol{display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#24384d;color:#dce8f4;font-size:12px}.airport-marker b{display:block;font-size:11px;line-height:1;color:#f5f8fb}.airport-marker small{display:block;max-width:72px;margin-top:2px;color:#9fb1c3;font-size:8px;overflow:hidden;text-overflow:ellipsis}.airport-marker.home{border-color:#6ee7ff;background:#0b2233}.airport-marker.home .airport-symbol{background:#16475a;color:#6ee7ff}.airport-marker.home.compact{padding:2px 4px;gap:3px;border-color:#6aadc4aa;background:#0b2233c9;box-shadow:0 1px 4px #0004}.airport-marker.home.compact .airport-symbol{width:14px;height:14px;font-size:9px}.airport-marker.home.compact b{font-size:9px;font-weight:700}.airport-marker.departure{border-color:#f0b35a}.airport-marker.departure .airport-symbol{background:#4a351d;color:#ffd18a}.airport-marker.arrival{border-color:#59d98e}.airport-marker.arrival .airport-symbol{background:#173d2c;color:#7ff0ae}.airport-marker.network{padding:3px 5px;border-color:#52677d;background:#08111fce;opacity:.88}.airport-marker.network .airport-symbol{width:18px;height:18px;font-size:10px;background:#1c2d3e;color:#a9bfd2}.airport-marker.network b{font-size:10px}
 .local-rule{max-width:1200px;margin:10px auto -2px;padding:0 4px;color:var(--m);font-size:11px;opacity:.75}.fa-usage{margin-top:10px;background:var(--p);border:1px solid var(--line);border-radius:12px;padding:9px 11px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.fa-usage div{min-width:0}.fa-usage span{display:block;color:var(--m);font-size:9px}.fa-usage b{display:block;font-size:12px;white-space:nowrap}.fa-usage .fa-ok{color:#59d98e}.fa-usage .fa-warn{color:#ffd27a}.fa-bar{grid-column:1/-1;height:5px;background:#132238;border-radius:999px;overflow:hidden}.fa-bar i{display:block;height:100%;width:0;background:#59d98e;border-radius:999px}.fa-note{grid-column:1/-1;color:var(--m);font-size:9px}
-footer{color:var(--m);font-size:11px;padding:14px;max-width:1200px;margin:auto}.atc-link{color:#64778c;text-decoration:none;margin-left:8px;font-size:10px;opacity:.55}.atc-link:hover{opacity:1;color:var(--a)}
+footer{color:var(--m);font-size:11px;padding:8px 12px;max-width:1200px;margin:auto;line-height:1.35}.footer-line{display:block}.footer-line+.footer-line{margin-top:2px}footer a{color:#9cd8ed;text-decoration:underline;text-underline-offset:2px}.atc-link{color:#9cd8ed;text-decoration:underline;margin-left:0;font-size:inherit;opacity:1}.atc-link:hover,footer a:hover{color:var(--a)}
 body.display-on{overflow:hidden}body.display-on header{position:fixed;left:0;right:0;top:0}body.display-on main{max-width:none;height:100vh;padding:90px 24px 24px}body.display-on .controls{position:fixed;right:18px;top:14px;z-index:1200;display:block}body.display-on .controls>*{display:none}body.display-on #mode{display:block}body.display-on .hero{height:calc(100vh - 114px);margin:0;display:flex;flex-direction:column;justify-content:center}
 body.display-on details,body.display-on footer{display:none}.fa-usage{grid-template-columns:repeat(5,1fr);padding:7px 9px;margin-top:7px}.fa-usage span{font-size:7px}.fa-usage b{font-size:10px}.fa-note{font-size:8px}
 @media(min-width:900px){
@@ -429,8 +429,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
     max-width:none;
     padding:5px 12px 6px;
     margin:0;
-    font-size:9px;
-    line-height:1.25;
+    font-size:10px;
+    line-height:1.3;
     border-top:1px solid var(--line);
   }
 }
@@ -617,7 +617,23 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <small id="sound-note" style="grid-column:1/-1;color:var(--m)">Lyd er på som standard. Nettleseren kan kreve ett trykk før lyd spilles.</small>
 </div></details>
 </main>
-<footer><a href="admin.html" title="Status, historikk og feilsøking">Administrasjon / status</a> · Flyposisjoner: <a href="https://opendata.adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> (via lokal Flyradar-server) · Ruter: <a href="https://flyradar-ksu.vidar-skoglund.workers.dev/route" target="_blank" rel="noopener noreferrer">Cloudflare Worker</a> (adsb.lol / FlightAware ved tilgjengelighet) · Flytider: <a href="https://avinor.no/" target="_blank" rel="noopener noreferrer">Avinor</a> · Fartøy: <a href="https://www.kystverket.no/" target="_blank" rel="noopener noreferrer">Kystverket (AIS)</a> · Offshore: <a href="https://www.sodir.no/" target="_blank" rel="noopener noreferrer">Sokkeldirektoratet</a> · Kart: © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap-bidragsytere</a>, <a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a> · Flyfotografier: kreditering og lisens under hvert bilde · <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a></footer>
+<footer aria-label="Datakilder og nyttige lenker">
+  <div class="footer-line">Datakilder:
+    <a href="https://opendata.adsb.fi/" target="_blank" rel="noopener noreferrer">adsb.fi</a> ·
+    <a href="https://avinor.no/" target="_blank" rel="noopener noreferrer">Avinor</a> ·
+    <a href="https://www.kystverket.no/" target="_blank" rel="noopener noreferrer">Kystverket AIS</a> ·
+    <a href="https://www.sodir.no/" target="_blank" rel="noopener noreferrer">Sokkeldirektoratet</a>
+  </div>
+  <div class="footer-line">Kart: ©
+    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> ·
+    <a href="https://leafletjs.com/" target="_blank" rel="noopener noreferrer">Leaflet</a>
+    <span class="footer-separator"> · </span>Fly- og fartøybilder: fotograf, lisens og kilde oppgis under hvert bilde
+  </div>
+  <div class="footer-line">
+    <a href="admin.html" title="Teknisk status, rutekilder og feilsøking">Administrasjon / status</a> ·
+    <a class="atc-link" href="https://www.liveatc.net/search/?icao=ENKB" target="_blank" rel="noopener noreferrer" title="Lytt til Kvernberget ATC">ATC</a>
+  </div>
+</footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
 <script src="aircraft-photos.js?v=2"></script>
