@@ -172,17 +172,25 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  const slot=document.getElementById('vessel-photo-slot'),fallback=document.getElementById('vessel-photo-fallback');
  const note=document.getElementById('vessel-photo-note');
  if(!slot||!fallback)return;
- const img=document.createElement('img');img.className='type-photo';img.loading='lazy';img.decoding='async';img.alt=(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
- img.onerror=()=>{slot.replaceChildren();fallback.hidden=false;if(note)note.textContent='Generell illustrasjon · foto kunne ikke lastes';};
+ const img=document.createElement('img');img.className='type-photo';img.loading='eager';img.decoding='async';img.alt=(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
  const wrap=document.createElement('div');wrap.className='type-photo-wrap';wrap.append(img);
+ // A lazy image detached from the DOM may never load, so attach it before src.
+ // Keep the illustration visible while the real image is loading.
+ wrap.hidden=true;
+ slot.replaceChildren(wrap);
  const credit=document.createElement('small');credit.className='type-credit';
  const by=document.createElement('a');by.href=photo.source;by.target='_blank';by.rel='noopener noreferrer';by.textContent=photo.credit||'Fotograf';
  const licence=document.createElement('a');licence.href=photo.licenseUrl;licence.target='_blank';licence.rel='noopener noreferrer';licence.textContent=photo.license;
  credit.append('Foto: ',by,' · ',licence,' · Wikimedia Commons');
  img.onload=()=>{
    if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
-   slot.replaceChildren(wrap,credit);fallback.hidden=true;
+   wrap.hidden=false;slot.append(credit);fallback.hidden=true;
    if(note)note.textContent=(photo.confirmedId?'Foto knyttet til IMO/MMSI':'Mulig bilde funnet via skipsnavn')+' · Wikimedia Commons · AIS fra Kystverket';
+ };
+ img.onerror=()=>{
+   if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
+   slot.replaceChildren();fallback.hidden=false;
+   if(note)note.textContent='Generell illustrasjon · foto kunne ikke lastes';
  };
  img.src=photo.src;
 };
