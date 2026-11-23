@@ -942,6 +942,28 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  }
 }
 
+/* Keep public police alerts compact and passive in the live sidebar. */
+@media(min-width:900px){
+ .nearest-panel .police-side.always-visible{
+  display:block;flex-shrink:0;margin-top:3px;padding-top:3px;
+  border-top:1px solid #203449;
+ }
+ .nearest-panel .police-side h3{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:5px;min-height:17px;margin:0 0 2px;
+  font-size:10px;font-weight:700;color:var(--m);
+ }
+ .nearest-panel .police-side h3 small{font-size:9px;font-weight:400}
+ .police-row{
+  display:flex;justify-content:space-between;gap:8px;
+  border-top:1px solid #1b2d43;padding:2px 0;font-size:10px;
+ }
+ .police-row-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .police-row-time{flex:0 0 auto;color:var(--m);font-size:9px}
+ .police-empty{font-size:10px;color:var(--m);padding:3px 0}
+ .police-note{display:block;font-size:8px;line-height:1.2;color:var(--m)}
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
@@ -973,6 +995,10 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <h3>Veitrafikk · Kristiansund <small id="datex-panel-update">DATEX · kontrollerer</small></h3>
 <div class="road-status-list" id="road-status-side"></div>
 <small class="road-status-credit">DATEX fra Statens vegvesen · <a href="https://www.vegvesen.no/trafikk/" target="_blank" rel="noopener noreferrer">Kontroller hos Vegvesenet</a></small>
+</section>
+<section class="police-side always-visible">
+<h3>Politi og brann · Kristiansund <small id="police-update">Politiloggen</small></h3>
+<div id="police-incidents" class="police-list" aria-live="polite"></div>
 </section>
 <section class="weather-side sidebar-fold always-visible"><h3>Vær · Kristiansund</h3><div id="weather-side" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></section></section>
 <section class="schedule"><h2>Flyavganger og ankomster · KSU</h2><div id="avinor-list"><div class="schedule-empty">Henter Avinor-data…</div></div></section>
@@ -1015,7 +1041,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="speedboat-schedule.js?v=5"></script>
 <script src="road-status.js?v=12"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=205"></script>
-<script src="traffic-headline.js?v=1"></script>
+<script src="app.js?v=206"></script>
+<script src="police-status.js?v=1"></script>
+<script src="traffic-headline.js?v=2"></script>
 
 </body></html>
