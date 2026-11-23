@@ -2456,7 +2456,7 @@ function vesselTypeCard(v){
  '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div>'+
  '<small id="vessel-photo-note" role="status">Søker etter skipsfoto · AIS fra Kystverket</small>'+
  '<div class="vessel-detail-fields">'+fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span data-vessel-field="'+escapeVesselText(name)+'">'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+'</div>'+ 
- '<div id="vessel-wikidata" class="vessel-wikidata" aria-live="polite"><small>Henter flere skipsopplysninger fra Wikidata …</small></div></section>';
+ '</section>';
 }
 let lastTypeCardIdentity='',lastTypeCardSignature='';
 function updateTypeCard(p){
@@ -2488,7 +2488,6 @@ function updateTypeCard(p){
  if(vessel){
    updateVesselContext(vessel);
    if(window.loadSelectedVesselPhoto)void window.loadSelectedVesselPhoto(vessel,identity);
-   if(window.loadSelectedVesselFacts)void window.loadSelectedVesselFacts(vessel,identity);
  }
  if(!vessel&&p&&window.loadSelectedAircraftPhoto)void window.loadSelectedAircraftPhoto(p,identity);
 }
