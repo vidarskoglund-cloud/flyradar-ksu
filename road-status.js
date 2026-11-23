@@ -38,6 +38,29 @@ function category(event){
  if(/diriger|regulering/.test(text))return 'Trafikkregulering';
  return 'Trafikkmelding';
 }
+// DATEX validity bounds describe the announced period, not continuous activity.
+function eventPhase(event,now=Date.now()){
+ const start=Date.parse(event?.start||'');
+ const end=Date.parse(event?.end||'');
+ if(Number.isFinite(start)&&now<start)return 'planned';
+ if(Number.isFinite(end)&&now>end)return 'ended';
+ if((Number.isFinite(start)&&now>=start)||
+    (Number.isFinite(end)&&now<=end))return 'period';
+ return 'unknown';
+}
+function eventStatus(event){
+ const label=category(event);
+ const phase=eventPhase(event);
+ if(phase==='planned')return 'Planlagt · '+label;
+ if(phase==='ended')return 'Avsluttet · '+label;
+ if(phase==='period')return label+' · i perioden';
+ return label+' · tidspunkt ukjent';
+}
+function orderedEvents(events){
+ const order={period:0,planned:1,unknown:2,ended:3};
+ return [...events].sort((a,b)=>order[eventPhase(a)]-order[eventPhase(b)]||
+   (Date.parse(a?.start||'')||0)-(Date.parse(b?.start||'')||0));
+}
 function uniqueEvents(events){
  const results=[],keys=new Set();
  for(const event of events||[]){
@@ -68,6 +91,7 @@ function detailsText(event){
  if(event.start)parts.push('Fra: '+formatDatexDate(event.start));
  if(event.end)parts.push('Til: '+formatDatexDate(event.end));
  if(event.validity)parts.push('Gyldighetsstatus: '+clean(event.validity));
+ parts.push('Periode: '+({planned:'Planlagt',period:'Innenfor oppgitt periode',ended:'Avsluttet periode',unknown:'Tidspunkt ikke oppgitt'})[eventPhase(event)]);
  parts.push('Registrert i DATEX. Aktiv status er ikke verifisert.');
  return parts.join('\n');
 }
@@ -83,7 +107,7 @@ function eventLine(event,key,placeLabel){
  name.textContent=placeLabel;
  const status=document.createElement('span');
  status.className='road-status-unknown';
- status.textContent=category(event);
+ status.textContent=eventStatus(event);
  summary.append(name,status);details.append(summary);
  const body=document.createElement('div');
  body.className='road-event-body';
@@ -97,11 +121,11 @@ function paint(){
   if(!el)continue;
   el.replaceChildren();
   for(const road of ROADS){
-   const entries=uniqueEvents(snapshot?.roads?.[road.name]||[]);
+   const entries=orderedEvents(uniqueEvents(snapshot?.roads?.[road.name]||[]));
    if(entries.length){
     const first=entries[0];
     const item=eventLine(first,id+'|road|'+road.name,road.name);
-    item.querySelector('.road-status-unknown').textContent=category(first)+' · detaljer';
+    item.querySelector('.road-status-unknown').textContent=eventStatus(first);
     if(entries.length>1){
      const body=item.querySelector('.road-event-body');
      body.textContent=entries.map(detailsText).join('\n\n---\n\n');
@@ -111,7 +135,7 @@ function paint(){
    // Main roads without an explicit DATEX notice stay hidden.
    // An empty result is not proof that a road is open.
   }
-  const local=uniqueEvents(snapshot?.local||[]);
+  const local=orderedEvents(uniqueEvents(snapshot?.local||[]));
   if(local.length){
    const heading=document.createElement('div');
    heading.className='road-local-heading';heading.textContent='Andre trafikkmeldinger · ikke bekreftet aktive';
