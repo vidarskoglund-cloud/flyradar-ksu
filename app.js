@@ -3632,6 +3632,32 @@ async function adaptiveRefresh(){
 setInterval(renderAvinor,30000);
 loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 
+// Read-only summary for the fixed-height information bar.
+// Do not infer a confirmed arrival, destination or harbour call from tracking alone.
+window.KsuHeadlineData=()=>{
+ const aircraft=planes.filter(p=>!p.signalLost&&Number.isFinite(ksuDistanceNm(p))&&ksuDistanceNm(p)<=18)
+  .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b)).slice(0,3)
+  .map(p=>{
+   const flight=ksuFlightInfo(p);
+   const label=String(p.flight||p.reg||p.hex||'Fly').trim().slice(0,24);
+   const movement=ksuMovementStatus(p).label;
+   if(flight?.direction==='Ankomst KSU' && /innflyging|mot KSU|til KSU/i.test(movement))
+    return {level:2,category:'FLYTRAFIKK',message:label+' nærmer seg Kvernberget',
+      detail:'AIS/ADS-B flyposisjon · '+ksuDistanceNm(p).toFixed(1)+' NM fra flyplassen'};
+   if(/innflyging/i.test(movement))
+    return {level:3,category:'FLYTRAFIKK',message:label+' · mulig innflyging ved Kvernberget',
+      detail:'Basert på observert posisjon og bevegelse · '+ksuDistanceNm(p).toFixed(1)+' NM'};
+   return null;
+  }).filter(Boolean);
+ const ship=vessels.filter(v=>Number.isFinite(Number(v.speed))&&Number(v.speed)>=1.5)
+  .slice(0,30).map(v=>{
+   const context=vesselMovementContext(v);
+   if(context.title!=='Fartøy nærmer seg havneområdet')return null;
+   return {level:4,category:'BÅTTRAFIKK',message:(v.name||'Fartøy')+' nærmer seg havneområdet',
+     detail:'Bevegelse registrert i AIS · havneanløp ikke bekreftet'};
+  }).filter(Boolean).slice(0,2);
+ return [...aircraft,...ship];
+};
 document.addEventListener('fullscreenchange',()=>{
   setTimeout(()=>{
     try{
