@@ -759,7 +759,7 @@ export default {
           status_note: "Registrerte DATEX-hendelser, ikke verifisert som aktive. Fravær av treff betyr ikke åpen vei."
         };
         const response = new Response(JSON.stringify(result), { headers });
-        if (complete) await cache.put(cacheKey, response.clone());
+        await cache.put(cacheKey, response.clone());
         return response;
       } catch (error) {
         return new Response(JSON.stringify({ ok: false, state: "processing_error",
