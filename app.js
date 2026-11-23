@@ -102,6 +102,83 @@ let airportLayer=L.layerGroup().addTo(map);
 let vesselLayer=L.layerGroup().addTo(map);
 let vesselGuideLayer=L.layerGroup().addTo(map); // AIS guide overlays
 
+// DATEX traffic notices: separate Leaflet pane keeps existing aircraft/AIS
+// markers and map movement untouched. Only geocoded road messages get pins.
+map.createPane('trafficNoticePane');
+map.getPane('trafficNoticePane').style.zIndex='625';
+let trafficNoticeLayer=L.layerGroup().addTo(map);
+let currentTrafficNotices=[];
+function safeTrafficText(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[ch]));
+}
+function trafficKind(event){
+  const message=String(event?.message||'').toLowerCase();
+  const type=String(event?.type||'').toLowerCase();
+  const validity=String(event?.validity||'').toLowerCase();
+  const now=Date.now();
+  const started=event?.start?Date.parse(event.start):NaN;
+  const ended=event?.end?Date.parse(event.end):NaN;
+  // Red is reserved for explicit closures with a currently valid time window.
+  const confirmed=validity==='active' && (!Number.isFinite(started)||started<=now) &&
+    (!Number.isFinite(ended)||ended>=now);
+  if(confirmed && /(?:stengt|stengning|closed|road\s*closed)/i.test(message))return 'closed';
+  if(/(?:veg(?:-| )?arbeid|veiarbeid|diriger|vedlikehold)/i.test(message) ||
+     /maintenance|roadworks/i.test(type))return 'work';
+  return 'info';
+}
+function renderTrafficNotices(){
+  trafficNoticeLayer.clearLayers();
+  // Prevent road pins from cluttering national overview/aircraft tracking.
+  if(map.getZoom()<9)return;
+  for(const event of currentTrafficNotices){
+    const lat=Number(event.lat),lon=Number(event.lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||
+       lat<62.9||lat>63.35||lon<7.35||lon>8.6)continue;
+    const kind=trafficKind(event);
+    const symbol=kind==='closed'?'⛔':kind==='work'?'⚠':'i';
+    const label=kind==='closed'?'Stengning':kind==='work'?'Vegarbeid':'Trafikkmelding';
+    const icon=L.divIcon({
+      className:'traffic-notice-icon',
+      html:'<span class="traffic-notice-marker traffic-notice-'+kind+'" aria-label="'+label+'">'+symbol+'</span>',
+      iconSize:[30,32],iconAnchor:[15,32],popupAnchor:[0,-26]
+    });
+    const details=[
+      '<strong>'+safeTrafficText(label)+'</strong>',
+      '<div>'+safeTrafficText(event.place||'Kristiansund')+'</div>',
+      event.message?'<div>'+safeTrafficText(event.message)+'</div>':'',
+      event.start?'<div>Fra: '+safeTrafficText(event.start)+'</div>':'',
+      event.end?'<div>Til: '+safeTrafficText(event.end)+'</div>':'',
+      '<small>Registrert i DATEX. Aktiv status ikke bekreftet.</small>',
+      '<small>Kilde: Statens vegvesen DATEX II</small>'
+    ].filter(Boolean).join('');
+    L.marker([lat,lon],{icon,pane:'trafficNoticePane',zIndexOffset:450,
+      title:label+' – '+String(event.place||'')})
+      .bindPopup('<div class="traffic-notice-popup">'+details+'</div>',{maxWidth:270})
+      .addTo(trafficNoticeLayer);
+  }
+}
+window.KsuTrafficMap={
+  update(data){
+    const dedupe=new Set();
+    currentTrafficNotices=[];
+    const events=[...Object.values(data?.roads||{}).flat(),...(data?.local||[])];
+    for(const event of events){
+      if(!Number.isFinite(Number(event?.lat))||!Number.isFinite(Number(event?.lon)))continue;
+      const key=[Number(event.lat).toFixed(4),Number(event.lon).toFixed(4),
+        String(event.place||'').trim().toLowerCase(),
+        String(event.message||'').trim().toLowerCase()].join('|');
+      if(dedupe.has(key))continue;
+      dedupe.add(key);
+      currentTrafficNotices.push(event);
+    }
+    renderTrafficNotices();
+  }
+};
+map.on('zoomend',renderTrafficNotices);
+
+
 const norwayAirports=[
   {code:'OSL',name:'Oslo Gardermoen',lat:60.1939,lon:11.1004,major:true},
   {code:'BGO',name:'Bergen Flesland',lat:60.2934,lon:5.2181,major:true},
