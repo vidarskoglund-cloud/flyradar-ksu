@@ -128,6 +128,14 @@ function trafficKind(event){
      /maintenance|roadworks/i.test(type))return 'work';
   return 'info';
 }
+function formatDatexDate(value){
+ const date=new Date(value);
+ if(!Number.isFinite(date.getTime()))return String(value||'');
+ return new Intl.DateTimeFormat('nb-NO',{
+  day:'numeric',month:'long',year:'numeric',
+  hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Oslo'
+ }).format(date).replace(' kl. ', ' kl. ');
+}
 function renderTrafficNotices(){
   trafficNoticeLayer.clearLayers();
   // Prevent road pins from cluttering national overview/aircraft tracking.
@@ -148,8 +156,8 @@ function renderTrafficNotices(){
       '<strong>'+safeTrafficText(label)+'</strong>',
       '<div>'+safeTrafficText(event.place||'Kristiansund')+'</div>',
       event.message?'<div>'+safeTrafficText(event.message)+'</div>':'',
-      event.start?'<div>Fra: '+safeTrafficText(event.start)+'</div>':'',
-      event.end?'<div>Til: '+safeTrafficText(event.end)+'</div>':'',
+      event.start?'<div>Fra: '+safeTrafficText(formatDatexDate(event.start))+'</div>':'',
+      event.end?'<div>Til: '+safeTrafficText(formatDatexDate(event.end))+'</div>':'',
       '<small>Registrert i DATEX. Aktiv status ikke bekreftet.</small>',
       '<small>Kilde: Statens vegvesen DATEX II</small>'
     ].filter(Boolean).join('');
