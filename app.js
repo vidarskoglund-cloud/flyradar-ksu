@@ -2413,10 +2413,10 @@ function aircraftTypeCard(p){
  const heli=isHelicopter(p);
  const name=info?.[0]||p.desc||(heli?'Helikopter':'Flytype ukjent');
  const label=info?.[1]||(heli?'Helikopter':'Fly');
- return '<details class="type-info" open><summary>Om flytypen</summary><div class="type-info-inner">'+
+ return '<section class="type-info"><div class="type-heading">Om flytypen</div><div class="type-info-inner">'+
  '<div id="aircraft-photo-slot">'+aircraftPhotoMarkup(p,typeIllustration(info?.[2]||(heli?'heli':'jet')))+'</div><strong>'+escapeVesselText(name)+'</strong>'+
  '<span>'+escapeVesselText(label)+(code?' · '+escapeVesselText(code):'')+'</span>'+
- '<small id="aircraft-photo-note">'+(AIRCRAFT_REG_PHOTOS[String(p.reg||'').trim().toUpperCase()]?'Foto av registreringen '+escapeVesselText(p.reg):'Typebilde eller illustrasjon – ikke nødvendigvis samme fly')+'</small></div></details>';
+ '<small id="aircraft-photo-note">'+(AIRCRAFT_REG_PHOTOS[String(p.reg||'').trim().toUpperCase()]?'Foto av registreringen '+escapeVesselText(p.reg):'Typebilde eller illustrasjon – ikke nødvendigvis samme fly')+'</small></div></section>';
 }
 function vesselMovementContext(v){
  const lat=Number(v?.lat),lon=Number(v?.lon);
