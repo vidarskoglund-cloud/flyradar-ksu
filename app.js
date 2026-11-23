@@ -2340,7 +2340,7 @@ function vesselDetail(v){
   ['Type',category],['MMSI',v.mmsi],['Fart',Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':''],
   ['Kurs',Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':''],
   ['Avstand KSU',Number.isFinite(Number(v.distanceNm))?Number(v.distanceNm).toFixed(1)+' NM':''],
-  ['Destinasjon',v.destination],['AIS-tid',v.msgtime]
+  ['Destinasjon',v.destination],['Siste AIS-posisjon',formatAisTime(v.msgtime)]
  ];
  return '<div style="min-width:190px"><b>'+escapeVesselText(name)+'</b>'+
   fields.filter(([,value])=>value!==''&&value!=null).map(([key,value])=>'<div><strong>'+escapeVesselText(key)+':</strong> '+escapeVesselText(value)+'</div>').join('')+
@@ -2443,10 +2443,26 @@ function updateVesselContext(v){
  const detail=$('vessel-motion-note');
  if(detail)detail.textContent=context.detail;
 }
+// Kystverket AIS timestamps are UTC; many values omit the timezone suffix.
+function formatAisTime(value){
+ const raw=String(value??'').trim();
+ if(!raw)return '';
+ const iso=raw.replace(' ','T');
+ const hasZone=/(?:Z|[+-]\d{2}:?\d{2})$/i.test(iso);
+ const date=new Date(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)&&!hasZone?iso+'Z':iso);
+ if(!Number.isFinite(date.getTime()))return raw;
+ const datePart=new Intl.DateTimeFormat('nb-NO',{
+  day:'2-digit',month:'2-digit',year:'numeric',timeZone:'Europe/Oslo'
+ }).format(date);
+ const timePart=new Intl.DateTimeFormat('nb-NO',{
+  hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Oslo'
+ }).format(date);
+ return datePart+' kl. '+timePart;
+}
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
- const fields=[['MMSI',v.mmsi],['IMO',v.imo],['Oppgitt AIS-destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['AIS-tid',v.msgtime]];
+ const fields=[['MMSI',v.mmsi],['IMO',v.imo],['Oppgitt AIS-destinasjon',v.destination],['Lengde',v.length&&v.length+' m'],['Bredde',v.width&&v.width+' m'],['Siste AIS-posisjon',formatAisTime(v.msgtime)]];
  const speed=v.speed!=null&&v.speed!==''&&Number.isFinite(Number(v.speed))?Number(v.speed).toFixed(1)+' knop':'–';
  const course=v.course!=null&&v.course!==''&&Number.isFinite(Number(v.course))?Math.round(Number(v.course))+'°':'–';
  return '<section class="vessel-detail" aria-label="Valgt skip">'+
@@ -2471,7 +2487,7 @@ function updateTypeCard(p){
    if(speed)speed.textContent=vessel.speed!=null&&vessel.speed!==''&&Number.isFinite(Number(vessel.speed))?Number(vessel.speed).toFixed(1)+' knop':'–';
    if(course)course.textContent=vessel.course!=null&&vessel.course!==''&&Number.isFinite(Number(vessel.course))?Math.round(Number(vessel.course))+'°':'–';
    const name=el.querySelector('#vessel-detail-name');if(name)name.textContent=vessel.name||('MMSI '+(vessel.mmsi||'ukjent'));
-   const fields={MMSI:vessel.mmsi,IMO:vessel.imo,'Oppgitt AIS-destinasjon':vessel.destination,Lengde:vessel.length&&vessel.length+' m',Bredde:vessel.width&&vessel.width+' m','AIS-tid':vessel.msgtime};
+   const fields={MMSI:vessel.mmsi,IMO:vessel.imo,'Oppgitt AIS-destinasjon':vessel.destination,Lengde:vessel.length&&vessel.length+' m',Bredde:vessel.width&&vessel.width+' m','Siste AIS-posisjon':formatAisTime(vessel.msgtime)};
    for(const field of el.querySelectorAll('[data-vessel-field]')){
      const key=field.dataset.vesselField,value=fields[key];
      field.textContent=key+': '+(value??'–');
