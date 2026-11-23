@@ -1648,13 +1648,13 @@ function idleAircraftGlimpse(list,now){
    .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
  const neighboring=[];
  for(const airport of IDLE_NEARBY_AIRPORTS){
-  const nearby=active.filter(p=>ksuDistanceNm(p)<=125)
+  const nearby=active.filter(p=>ksuDistanceNm(p)<=65)
     .map(p=>({p,d:idleAirportDistanceNm(airport.lat,airport.lon,Number(p.lat),Number(p.lon))}))
     .filter(row=>row.d<=12)
     .sort((a,b)=>a.d-b.d)[0];
   if(nearby)neighboring.push({...nearby,airport});
  }
- const general=active.filter(p=>ksuDistanceNm(p)<=120)
+ const general=active.filter(p=>ksuDistanceNm(p)<=45)
    .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
  if(!remote.length&&!neighboring.length&&!general.length){
    idleGlimpseSince=null;return null;
@@ -1693,7 +1693,7 @@ function fitMap(list,s){
   let target=best||glimpse;
   // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
   if(best)smartMapLastTrafficAt=now;
-  const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&
+  const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&ksuDistanceNm(selected)<=50&&
     Number.isFinite(Number(selected.lat))&&Number.isFinite(Number(selected.lon))&&
     !map.getBounds().pad(-0.06).contains([Number(selected.lat),Number(selected.lon)]);
   if(!best&&!glimpse&&!focusedOffscreen&&smartMapTarget?.key!=='normal'&&
@@ -1722,7 +1722,7 @@ function fitMap(list,s){
   // Keep the aircraft shown in the detail panel visible too. If it is outside
   // the current focus bounds, zoom OUT to include both it and the local view.
   // Never override the two-minute pause after manual map interactions.
-  const focused=selectedVesselTypeKey?'':selected&&list.find(p=>
+  const focused=selectedVesselTypeKey?'':selected&&ksuDistanceNm(selected)<=50&&list.find(p=>
     planeKey(p)===planeKey(selected)&&!p.signalLost&&
     Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
   const glimpseTarget=Boolean(target?.key?.startsWith('glimt:'));
