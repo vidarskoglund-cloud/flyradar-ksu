@@ -859,6 +859,73 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  body:not(.display-on) .traffic-headline-title{font-size:15px;line-height:19px}
 }
 
+/* Compact the permanently-open desktop sidebar without hiding the live
+   sections. Leave scrolling available only as a fallback on short screens. */
+@media(min-width:900px) and (min-height:640px) and (display-mode:browser){
+ body:not(.display-on) .nearest-panel{
+  padding:4px 8px;
+  scrollbar-width:thin;
+ }
+ body:not(.display-on) .nearest-panel .vessel-detail{
+  padding:6px 7px;
+ }
+ body:not(.display-on) .nearest-panel .vessel-detail-head{margin-bottom:2px}
+ body:not(.display-on) .nearest-panel .vessel-detail-metrics{
+  margin:4px 0;gap:5px
+ }
+ body:not(.display-on) .nearest-panel .vessel-detail-metrics>div{
+  padding:4px 6px
+ }
+ body:not(.display-on) .nearest-panel .vessel-detail-fields{
+  margin-top:4px;gap:3px 8px
+ }
+ body:not(.display-on) .nearest-panel .type-photo-wrap,
+ body:not(.display-on) .nearest-panel .type-illustration{
+  height:55px!important;max-height:55px!important
+ }
+ body:not(.display-on) .nearest-panel .type-photo{
+  max-height:55px!important;object-fit:contain
+ }
+ body:not(.display-on) .nearest-panel #vessel-photo-fallback svg{
+  max-height:55px!important
+ }
+ body:not(.display-on) .nearest-panel .type-info-inner{
+  padding:0 5px 4px;gap:2px
+ }
+ body:not(.display-on) .nearest-panel .type-info-inner .type-photo-wrap,
+ body:not(.display-on) .nearest-panel .type-info-inner .type-illustration{
+  height:55px!important
+ }
+ body:not(.display-on) .nearest-panel .always-visible h3{
+  min-height:17px;margin-bottom:2px;font-size:10px
+ }
+ body:not(.display-on) .nearest-panel .fs-schedule,
+ body:not(.display-on) .nearest-panel .speedboat-side,
+ body:not(.display-on) .nearest-panel .road-status-side,
+ body:not(.display-on) .nearest-panel .weather-side{
+  margin-top:3px!important;padding-top:2px!important
+ }
+ body:not(.display-on) .nearest-panel .speedboat-row{
+  padding:3px 2px;gap:4px
+ }
+ body:not(.display-on) .nearest-panel .schedule-row{
+  padding:2px 0!important
+ }
+ body:not(.display-on) .nearest-panel .road-status-row{
+  padding:1px 0!important
+ }
+ body:not(.display-on) .nearest-panel .road-local-heading{
+  padding:2px 0 1px!important
+ }
+ body:not(.display-on) .nearest-panel .weather-widget{
+  line-height:1.15
+ }
+ body:not(.display-on) .nearest-panel .type-credit,
+ body:not(.display-on) .nearest-panel #vessel-photo-note{
+  font-size:8px;line-height:1.15
+ }
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
