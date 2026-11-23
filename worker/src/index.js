@@ -672,13 +672,13 @@ export default {
           source: "Statens vegvesen DATEX II 3.1"
         }), { status: 503, headers });
       }
-      const cacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/check");
-      const cache = caches.default;
-      const hit = await cache.match(cacheKey);
-      if (hit) return hit;
+      // No cached diagnostics: stale errors obscure new deployments.
       let result;
+      let stage = "authorization";
+      const startedAt = Date.now();
       try {
         const authorization = "Basic " + btoa(env.DATEX_USERNAME + ":" + env.DATEX_PASSWORD);
+        stage = "upstream_fetch";
         const upstream = await fetch(
           "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata",
           { headers: { Authorization: authorization, Accept: "application/xml, text/xml;q=0.9" },
@@ -689,6 +689,7 @@ export default {
         if (upstream.body) await upstream.body.cancel();
         result = {
           ok: Boolean(xml), configured: true,
+          elapsed_ms: Date.now() - startedAt,
           state: xml ? "xml_response" : upstream.status === 401 || upstream.status === 403 ?
             "access_denied" : upstream.status === 200 ? "unexpected_format" : "upstream_error",
           http_status: upstream.status,
@@ -696,18 +697,23 @@ export default {
           checked_at: new Date().toISOString()
         };
       } catch (error) {
+        // Expose only safe categories, never exception messages or credentials.
+        const kind = String(error?.name || "");
+        const category = kind === "TimeoutError" || kind === "AbortError" ?
+          "timeout" : kind === "TypeError" ? "network_or_redirect" :
+          stage === "authorization" ? "authorization_encoding" : "unknown";
         result = {
           ok: false, configured: true, state: "connection_error",
+          error_category: category, stage,
+          elapsed_ms: Date.now() - startedAt,
           source: "Statens vegvesen DATEX II 3.1",
           checked_at: new Date().toISOString()
         };
       }
-      const response = new Response(JSON.stringify(result), {
+      return new Response(JSON.stringify(result), {
         status: result.ok ? 200 : 503,
-        headers: { ...corsHeaders(), "Cache-Control": "public, max-age=60, s-maxage=" + (result.ok ? 300 : 60) }
+        headers: { ...corsHeaders(), "Cache-Control": "no-store" }
       });
-      await cache.put(cacheKey, response.clone());
-      return response;
     }
 
     if(url.pathname==='/weather'){
