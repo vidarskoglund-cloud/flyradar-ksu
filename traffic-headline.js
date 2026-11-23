@@ -34,7 +34,8 @@ function roadHeadlines(){
 }
 function collect(){
  const live=typeof window.KsuHeadlineData==='function'?window.KsuHeadlineData():[];
- const items=[...roadHeadlines(),...(Array.isArray(live)?live:[])];
+ const police=window.KsuPoliceStatus?.headlines?.()||[];
+ const items=[...roadHeadlines(),...police,...(Array.isArray(live)?live:[])];
  return items.length?items.sort((a,b)=>a.level-b.level):[fallback];
 }
 function show(x){
