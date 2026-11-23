@@ -656,6 +656,119 @@ export default {
       );
     }
 
+    if (url.pathname === "/datex/roads") {
+      const headers = { ...corsHeaders(), "Cache-Control": "public, max-age=60, s-maxage=300" };
+      if (!env.DATEX_USERNAME || !env.DATEX_PASSWORD) {
+        return new Response(JSON.stringify({ ok: false, state: "credentials_missing" }), { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
+      }
+      const cache = caches.default;
+      const cacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/roads");
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+      const roads = [
+        ["Freifjordtunnelen", /freifjord(?:tunnel|tunell)/i],
+        ["Atlanterhavstunnelen", /atlanterhavstunnel/i],
+        ["Bergsøysundbrua", /bergs(?:ø|o|oe)ysund/i],
+        ["Omsundbrua", /omsundbrua/i],
+        ["Nordsundbrua", /nordsundbrua/i]
+      ];
+      const perRoad = Object.fromEntries(roads.map(([name]) => [name, []]));
+      const local = [];
+      const seen = new Set();
+      let records = 0, processedBytes = 0, complete = false;
+      try {
+        const upstream = await fetch("https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata", {
+          headers: {
+            Authorization: "Basic " + btoa(env.DATEX_USERNAME + ":" + env.DATEX_PASSWORD),
+            Accept: "application/xml, text/xml;q=0.9"
+          },
+          redirect: "manual",
+          signal: AbortSignal.timeout(25000)
+        });
+        if (!upstream.ok || !upstream.body) {
+          if (upstream.body) await upstream.body.cancel();
+          return new Response(JSON.stringify({ ok: false, state: "upstream_error", http_status: upstream.status }),
+            { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
+        }
+        const reader = upstream.body.getReader(), decoder = new TextDecoder();
+        let buffer = "";
+        const maxBytes = 80 * 1024 * 1024;
+        const field = (source, tag) => {
+          const re = new RegExp("<(?:[\\w.-]+:)?" + tag + "\\b[^>]*>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?" + tag + "\\s*>", "i");
+          const m = source.match(re);
+          return m ? m[1].replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "";
+        };
+        const processRecord = (raw) => {
+          records++;
+          // Only explicit locationDescription text is authoritative for matching.
+          // Alert-C external location names may refer to a broader nearby route.
+          const location = field(raw, "locationDescription").slice(0, 320);
+          if (!location) return;
+          const type = (raw.match(/xsi:type=["'][^"']*:([^"']+)/i) || [])[1] || "Unknown";
+          const comment = field(raw, "comment").slice(0, 300);
+          const id = (raw.match(/\bid=["']([^"']+)["']/i) || [])[1] || "";
+          const baseId = id.replace(/_\d+$/, "");
+          const start = field(raw, "overallStartTime") || null;
+          const end = field(raw, "overallEndTime") || null;
+          const validity = field(raw, "validityStatus") || null;
+          const item = { place: location, type, message: comment, start, end, validity };
+          const matchedRoads = roads.filter(([, pattern]) => pattern.test(location)).map(([name]) => name);
+          if (!matchedRoads.length && !/kristiansund/i.test(location)) return;
+          for (const name of matchedRoads) {
+            const dedupe = name + "|" + (baseId || location + comment);
+            if (seen.has(dedupe)) continue;
+            seen.add(dedupe);
+            if (perRoad[name].length < 5) perRoad[name].push(item);
+          }
+          if (/kristiansund/i.test(location)) {
+            const dedupe = "local|" + (baseId || location + comment);
+            if (!seen.has(dedupe)) {
+              seen.add(dedupe);
+              if (local.length < 15) local.push(item);
+            }
+          }
+        };
+        const opening = /<(?:[\w.-]+:)?situationRecord\b/;
+        const closing = /<\/(?:[\w.-]+:)?situationRecord\s*>/;
+        while (processedBytes < maxBytes) {
+          const part = await reader.read();
+          if (part.done) { complete = true; break; }
+          processedBytes += part.value.byteLength;
+          buffer += decoder.decode(part.value, { stream: true });
+          let open;
+          while ((open = buffer.search(opening)) !== -1) {
+            const afterOpen = buffer.slice(open);
+            const end = afterOpen.search(closing);
+            if (end < 0) { buffer = afterOpen; break; }
+            const closingTag = afterOpen.slice(end).match(closing)?.[0] || "";
+            const raw = afterOpen.slice(0, end + closingTag.length);
+            processRecord(raw);
+            buffer = afterOpen.slice(end + closingTag.length);
+          }
+          if (open === -1 && buffer.length > 200) buffer = buffer.slice(-200);
+          if (buffer.length > 2 * 1024 * 1024) {
+            throw Error("Oversized XML record");
+          }
+        }
+        if (!complete) await reader.cancel();
+        const result = {
+          ok: true, source: "Statens vegvesen DATEX II 3.1",
+          checked_at: new Date().toISOString(),
+          complete, bytes_read: processedBytes, records,
+          roads: perRoad, local,
+          status_note: "Registrerte DATEX-hendelser, ikke verifisert som aktive. Fravær av treff betyr ikke åpen vei."
+        };
+        const response = new Response(JSON.stringify(result), { headers });
+        if (complete) await cache.put(cacheKey, response.clone());
+        return response;
+      } catch (error) {
+        return new Response(JSON.stringify({ ok: false, state: "processing_error",
+          category: /timeout|abort/i.test(String(error?.name || "")) ? "timeout" : "network_or_xml",
+          checked_at: new Date().toISOString(), records, bytes_read: processedBytes }),
+          { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
+      }
+    }
+
     if (url.pathname === "/datex/local-preview") {
       // Limited discovery of relevant complete records, not a production status feed.
       const headers = { ...corsHeaders(), "Cache-Control": "no-store" };
