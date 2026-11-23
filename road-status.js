@@ -187,6 +187,6 @@ async function refresh(){
  }
  finally{clearTimeout(timeout);loading=false;paint();}
 }
-window.KsuRoadStatus={roads:ROADS,trafficUrl:ROAD_TRAFFIC_URL,paint,refresh};
+window.KsuRoadStatus={roads:ROADS,trafficUrl:ROAD_TRAFFIC_URL,paint,refresh,getCurrentSnapshot:()=>!lastError&&snapshot&&!snapshot.stale?snapshot:null};
 paint();refresh();setInterval(refresh,FIVE_MINUTES);
 })();
