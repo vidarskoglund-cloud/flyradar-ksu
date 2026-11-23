@@ -656,6 +656,78 @@ export default {
       );
     }
 
+    if (url.pathname === "/police") {
+      // Free official public police feed. Keep private incident details out
+      // of the public radar: only category, general area and publication time.
+      const headers = { ...corsHeaders(), "Cache-Control": "public, max-age=60, s-maxage=300" };
+      const cache = caches.default;
+      const key = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/police?v=1");
+      const hit = await cache.match(key);
+      if (hit) return hit;
+      try {
+        const records = new Map();
+        let pages = 0;
+        let sawValidFormat = false;
+        const now = Date.now();
+        for (let skip = 0; skip < 150; skip += 50) {
+          const params = new URLSearchParams({
+            take: "50", skip: String(skip),
+            sortByEnum: "LastMessageOn",
+            timeSpanType: "LastQuarter"
+          });
+          const response = await fetch("https://api.politiloggen.politiet.no/messagethreads?" + params, {
+            headers: { Accept: "application/json", "User-Agent": "KristiansundTrafikkradar/1.0 (+https://vidarskoglund-cloud.github.io/flyradar-ksu/)" },
+            signal: AbortSignal.timeout(9500)
+          });
+          if (!response.ok) throw new Error("Politiloggen HTTP " + response.status);
+          const body = await response.json();
+          if (!Array.isArray(body?.messageThreads)) throw new Error("Uventet svarformat fra Politiloggen");
+          sawValidFormat = true;
+          pages++;
+          for (const row of body.messageThreads) {
+            const district = String(row?.district?.name || row?.district || "").toLowerCase();
+            const municipality = String(row?.municipality?.name || row?.municipality || "").toLowerCase();
+            if (!district.includes("møre og romsdal") || !municipality.includes("kristiansund")) continue;
+            const rawCategory = String(row?.category?.name || row?.category || "");
+            const category = rawCategory.toLowerCase();
+            // Public infrastructure and emergency response only. No crime,
+            // missing-person, assault or individual-focused categories.
+            let kind = "";
+            if (/trafikk|ulykke/.test(category)) kind = "trafikk";
+            else if (/brann/.test(category)) kind = "brann";
+            else if (/redning|sjø|vaer|vær/.test(category)) kind = "redning";
+            else continue;
+            const dateRaw = row?.updatedOn || row?.createdOn || "";
+            const timestamp = Date.parse(dateRaw);
+            if (!Number.isFinite(timestamp) || timestamp > now + 300000 || now - timestamp > 24 * 3600000) continue;
+            const id = String(row?.id || "").trim();
+            if (!id || !/^[a-zA-Z0-9_-]{4,70}$/.test(id)) continue;
+            const area = String(row?.area || "Kristiansund").replace(/[<>]/g,"").trim().slice(0,75);
+            const active = row?.isActive === true;
+            records.set(id, { id, category:kind, label:rawCategory.slice(0,30),
+              area, updated_at:new Date(timestamp).toISOString(), active });
+          }
+          if (!body.hasMoreResults || !body.messageThreads.length) break;
+        }
+        if (!sawValidFormat) throw new Error("Mangler svar fra Politiloggen");
+        const incidents = [...records.values()]
+          .sort((a,b)=>Date.parse(b.updated_at)-Date.parse(a.updated_at)).slice(0,10);
+        const out = new Response(JSON.stringify({
+          ok:true, source:"Politiet – Politiloggen (NLOD 2.0)",
+          checked_at:new Date().toISOString(), partial: pages === 3,
+          location_scope:"Kristiansund kommune", incidents
+        }), { headers });
+        try { await cache.put(key,out.clone()); } catch (_) {}
+        return out;
+      } catch (error) {
+        return new Response(JSON.stringify({
+          ok:false,source:"Politiet – Politiloggen",
+          error:"Datakilden er midlertidig utilgjengelig",
+          detail:String(error?.message || error).slice(0,130)
+        }), { status:503, headers:{...corsHeaders(),"Cache-Control":"no-store"} });
+      }
+    }
+
     if (url.pathname === "/speedboat") {
       // Entur access through the Worker avoids browser CORS/preflight problems.
       // No credentials or paid services; cache to keep request volume low.
