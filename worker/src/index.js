@@ -711,7 +711,15 @@ export default {
           const start = field(raw, "overallStartTime") || null;
           const end = field(raw, "overallEndTime") || null;
           const validity = field(raw, "validityStatus") || null;
-          const item = { place: location, type, message: comment, start, end, validity };
+          // DATEX coordinatesForDisplay are WGS84 latitude / longitude.
+          // Never infer a marker position from place names or Alert-C codes.
+          const position = field(raw, "coordinatesForDisplay");
+          const lat = Number(field(position, "latitude"));
+          const lon = Number(field(position, "longitude"));
+          const coordinatesValid = position && Number.isFinite(lat) && Number.isFinite(lon) &&
+            lat >= 62.9 && lat <= 63.35 && lon >= 7.35 && lon <= 8.6;
+          const item = { place: location, type, message: comment, start, end, validity,
+            ...(coordinatesValid ? { lat, lon } : {}) };
           const matchedRoads = roads.filter(([, pattern]) => pattern.test(location)).map(([name]) => name);
           if (!matchedRoads.length && !/kristiansund/i.test(location)) return;
           for (const name of matchedRoads) {
@@ -756,6 +764,8 @@ export default {
           checked_at: new Date().toISOString(),
           complete, bytes_read: processedBytes, records,
           roads: perRoad, local,
+          geocoded: [...Object.values(perRoad).flat(), ...local].filter((event) =>
+            Number.isFinite(event.lat) && Number.isFinite(event.lon)).length,
           status_note: "Registrerte DATEX-hendelser, ikke verifisert som aktive. Fravær av treff betyr ikke åpen vei."
         };
         const response = new Response(JSON.stringify(result), { headers });
