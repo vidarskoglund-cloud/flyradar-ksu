@@ -44,13 +44,21 @@ function uniqueEvents(events){
  }
  return results;
 }
+function formatDatexDate(value){
+ const date=new Date(value);
+ if(!Number.isFinite(date.getTime()))return String(value||'');
+ return new Intl.DateTimeFormat('nb-NO',{
+  day:'numeric',month:'long',year:'numeric',
+  hour:'2-digit',minute:'2-digit',hourCycle:'h23',timeZone:'Europe/Oslo'
+ }).format(date).replace(' kl. ', ' kl. ');
+}
 function detailsText(event){
  const parts=[];
  if(event.place)parts.push('Sted: '+clean(event.place));
  if(event.message)parts.push('Melding: '+clean(event.message));
  if(event.type)parts.push('DATEX-type: '+clean(event.type));
- if(event.start)parts.push('Fra: '+clean(event.start));
- if(event.end)parts.push('Til: '+clean(event.end));
+ if(event.start)parts.push('Fra: '+formatDatexDate(event.start));
+ if(event.end)parts.push('Til: '+formatDatexDate(event.end));
  if(event.validity)parts.push('Gyldighetsstatus: '+clean(event.validity));
  parts.push('Registrert i DATEX. Aktiv status er ikke verifisert.');
  return parts.join('\n');
