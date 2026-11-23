@@ -662,7 +662,7 @@ export default {
         return new Response(JSON.stringify({ ok: false, state: "credentials_missing" }), { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
       }
       const cache = caches.default;
-      const cacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/roads");
+      const cacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/roads?geocoded=v1");
       const hit = await cache.match(cacheKey);
       if (hit) return hit;
       const roads = [
