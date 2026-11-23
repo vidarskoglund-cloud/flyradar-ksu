@@ -663,6 +663,12 @@ export default {
       if (!env.DATEX_USERNAME || !env.DATEX_PASSWORD) {
         return new Response(JSON.stringify({
           ok: false, configured: false, state: "credentials_missing",
+          bindings: {
+            datex_username: Boolean(env.DATEX_USERNAME),
+            datex_password: Boolean(env.DATEX_PASSWORD),
+            flightaware_key: Boolean(env.FLIGHTAWARE_API_KEY),
+            track_store: Boolean(env.TRACK_STORE)
+          },
           source: "Statens vegvesen DATEX II 3.1"
         }), { status: 503, headers });
       }
