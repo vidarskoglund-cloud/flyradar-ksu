@@ -644,6 +644,44 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  .nearest-panel .type-info .type-heading{padding:5px 7px;font-size:11px;font-weight:700;color:#b9d5e2}
 }
 
+/* Single-line headline in a reserved fixed-size header slot.
+   Dynamic text never changes page or map position. */
+.traffic-headline{display:none}
+@media(min-width:900px) and (display-mode:browser){
+ body:not(.display-on) header{
+   height:64px;min-height:64px;max-height:64px;padding:6px 14px;gap:14px
+ }
+ body:not(.display-on) header>div:first-child{flex:0 0 auto;min-width:205px}
+ body:not(.display-on) header>div:last-child{flex:0 0 auto;max-width:230px}
+ body:not(.display-on) .traffic-headline{
+   display:flex;flex:1 1 auto;min-width:0;max-width:720px;height:45px;
+   align-items:center;justify-content:center;margin:0 auto;
+   background:#0d1d30;border:1px solid #29445d;border-radius:8px;
+   overflow:hidden;padding:4px 14px;text-align:center
+ }
+ body:not(.display-on) .traffic-headline-content{min-width:0;width:100%;overflow:hidden}
+ body:not(.display-on) .traffic-headline-tag{
+   color:#81d4f4;font-size:9px;font-weight:750;letter-spacing:.09em;
+   line-height:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+ }
+ body:not(.display-on) .traffic-headline-title{
+   color:#f5f9fd;font-size:12px;line-height:15px;font-weight:700;
+   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+ }
+ body:not(.display-on) .traffic-headline-note{
+   color:#97b4c9;font-size:9px;line-height:11px;
+   white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+ }
+ body:not(.display-on) .traffic-headline[data-kind="VEITRAFIKK"]{border-color:#b88156}
+ body:not(.display-on) .traffic-headline[data-kind="VEITRAFIKK"] .traffic-headline-tag{color:#ffd391}
+ body:not(.display-on) .traffic-headline[data-kind="PLANLAGT"] .traffic-headline-tag{color:#f6cc8b}
+}
+@media(min-width:900px) and (max-width:1120px){
+ body:not(.display-on) .traffic-headline-note{display:none}
+ body:not(.display-on) header>div:first-child{min-width:175px}
+ body:not(.display-on) header>div:last-child{max-width:165px}
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
@@ -652,7 +690,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </style>
 </head>
 <body>
-<header><div><h1>Kristiansund Trafikkradar</h1><div class="muted">Trafikk og transport i Kristiansund og omegn</div></div><div style="text-align:right"><div id="status" class="muted">Starter…</div><div id="adsb-source-label" class="muted" style="font-size:10px;max-width:350px;margin-top:3px">Flydata: kontrollerer kilder…</div></div></header>
+<header><div><h1>Kristiansund Trafikkradar</h1><div class="muted">Trafikk og transport i Kristiansund og omegn</div></div><div id="traffic-headline" class="traffic-headline" aria-label="Aktuell trafikkinformasjon"><div class="traffic-headline-content"><div id="traffic-headline-tag" class="traffic-headline-tag">OVERSIKT</div><div id="traffic-headline-title" class="traffic-headline-title">Trafikkbildet oppdateres automatisk</div><div id="traffic-headline-note" class="traffic-headline-note">Fly, fartøy og vegtrafikk</div></div></div><div style="text-align:right"><div id="status" class="muted">Starter…</div><div id="adsb-source-label" class="muted" style="font-size:10px;max-width:350px;margin-top:3px">Flydata: kontrollerer kilder…</div></div></header>
 <main>
 
 
@@ -715,8 +753,9 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="aircraft-photos.js?v=3"></script>
 <script src="vessel-photos.js?v=7"></script>
 <script src="speedboat-schedule.js?v=2"></script>
-<script src="road-status.js?v=11"></script>
+<script src="road-status.js?v=12"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=199"></script>
+<script src="app.js?v=200"></script>
+<script src="traffic-headline.js?v=1"></script>
 
 </body></html>
