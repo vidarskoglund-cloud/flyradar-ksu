@@ -926,6 +926,22 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  }
 }
 
+/* Restore a little photographic detail in the otherwise compact sidebar. */
+@media(min-width:900px) and (min-height:640px) and (display-mode:browser){
+ body:not(.display-on) .nearest-panel .type-photo-wrap,
+ body:not(.display-on) .nearest-panel .type-illustration,
+ body:not(.display-on) .nearest-panel .type-info-inner .type-photo-wrap,
+ body:not(.display-on) .nearest-panel .type-info-inner .type-illustration{
+  height:76px!important;max-height:76px!important
+ }
+ body:not(.display-on) .nearest-panel .type-photo{
+  max-height:76px!important;object-fit:contain
+ }
+ body:not(.display-on) .nearest-panel #vessel-photo-fallback svg{
+  max-height:76px!important
+ }
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
@@ -999,7 +1015,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="speedboat-schedule.js?v=5"></script>
 <script src="road-status.js?v=12"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=204"></script>
+<script src="app.js?v=205"></script>
 <script src="traffic-headline.js?v=1"></script>
 
 </body></html>
