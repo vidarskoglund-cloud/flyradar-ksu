@@ -2365,7 +2365,6 @@ const AIRCRAFT_REG_PHOTOS={
 };
 const AIRCRAFT_TYPE_PHOTOS={
  E195:{file:'SE-RSK Embraer E195LR SAS.jpg',credit:'Marius Vassnes',license:'CC BY-SA 4.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/4.0/'},
- S92:{file:'Sikorsky S-92.jpg',credit:'David Monniaux',license:'CC BY-SA 3.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/'},
  DH8D:{file:'Widerøe LN-WDE Q400.jpg',credit:'Alasdair McLellan',license:'CC BY-SA 3.0',licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/'},
  DH8A:{file:'Widerøe - LN-WIM - De Havilland Canada DHC-8-100 Dash 8 8Q - Oslo Gardermoen Airport.jpg',credit:'Mitchul Hope',license:'Se Commons'},
  A20N:{file:'G-UJEC A320neo, easyJet, Palma de Mallorca 09-05-26.jpg',credit:'Duncan Kirk',license:'CC BY 4.0',licenseUrl:'https://creativecommons.org/licenses/by/4.0/'},
@@ -3417,7 +3416,11 @@ function render(autoFit=false){
     const ksuInfo=ksuFlightInfo(shown);
     const hasConfirmedRoute=Boolean(ksuInfo||rp);
     const inferred=hasConfirmedRoute?null:inferredRouteLabel(shown);
-    const routeBlock=ksuInfo
+    const ksuAirport=String(shown.ksuFlight?.airport||'').trim().toUpperCase();
+    const uncertainKsuRoute=Boolean(ksuInfo && (!ksuAirport || ksuAirport==='KSU' || ksuAirport==='ENKB'));
+    const routeBlock=uncertainKsuRoute
+      ? `<div class="flight-route fallback"><div class="route-loading">Offshorehelikopter · destinasjon ikke bekreftet</div></div>`
+      : ksuInfo
       ? `<div class="flight-route">
           <div class="route-end"><b>${ksuInfo.direction==='Ankomst KSU'?(shown.ksuFlight?.airport||'–'):'KSU'}</b><span>${ksuInfo.direction==='Ankomst KSU'?'Avgang':'Kristiansund'}</span></div>
           <div class="route-arrow"><span>✈</span><i></i></div>
@@ -3444,7 +3447,7 @@ function render(autoFit=false){
         </div>
         <div class="dist">${shown.signalLost?'Siste kjente avstand · ':''}${liveDistanceText(shown)}</div>
       </div>
-      ${ksuInfo?`<div class="ksu-flight"><b>${shown.ksuFlight?._inferredKsuMatch?'Mulig KSU-avgang':ksuInfo.direction}</b><span>${ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}${shown.ksuFlight?._inferredKsuMatch?' · sannsynlig kobling, ikke bekreftet':''}</span></div>`:''}
+      ${ksuInfo?`<div class="ksu-flight"><b>${shown.ksuFlight?._inferredKsuMatch?'Mulig KSU-avgang':ksuInfo.direction}</b><span>${uncertainKsuRoute?'Rute ikke bekreftet':ksuInfo.route} · planlagt ${ksuInfo.time}${ksuInfo.status?' · '+ksuInfo.status:''}${shown.ksuFlight?._inferredKsuMatch?' · sannsynlig kobling, ikke bekreftet':''}</span></div>`:''}
       ${routeBlock}
       ${pilot25LookupStatus(shown)?`<div class="route-pilot-note">${pilot25LookupStatus(shown)}</div>`:''}
       <div class="aircraft-metrics">
