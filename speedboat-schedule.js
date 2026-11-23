@@ -70,26 +70,34 @@ const BOARD_QUERY=`query KristiansundSpeedboat($id:String!){
  }
 }`;
 async function fetchBoard(){
- const id=await findStop();
- const json=await fetchJson(ENTUR+'/journey-planner/v3/graphql',{
-  method:'POST',
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({query:BOARD_QUERY,variables:{id}})
- });
- if(json.errors?.length)throw new Error('Entur-skjema: '+text(json.errors[0]?.message));
- if(!json.data?.stopPlace)throw new Error('Entur fant ikke hurtigbåtkaia');
- return json.data.stopPlace.estimatedCalls||[];
+ // Entur lookup is performed through our Worker to avoid browser CORS
+ // and handle aliases of Kristiansund hurtigbåtkai / trafikkterminal.
+ const controller=new AbortController();
+ const timer=setTimeout(()=>controller.abort(),24000);
+ try{
+  const response=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/speedboat',{
+   cache:'no-store',credentials:'omit',signal:controller.signal
+  });
+  if(!response.ok){
+   const body=await response.json().catch(()=>({}));
+   throw new Error(text(body.reason)||'Hurtigbåt HTTP '+response.status);
+  }
+  const data=await response.json();
+  if(!data.ok||!Array.isArray(data.calls))throw new Error(text(data.reason)||'Ugyldig Entur-svar');
+  return data.calls;
+ }finally{clearTimeout(timer);}
 }
+
 function toRows(calls,now=Date.now()){
  const results=[];
  for(const call of calls||[]){
   const line=call?.serviceJourney?.line;
-  if(text(line?.publicCode)!=='800')continue;
+  if(!['800','805'].includes(text(line?.publicCode)))continue;
   if(call.cancellation){
    // The board covers upcoming sailings, not cancelled trips.
    continue;
   }
-  if(line.transportMode&&line.transportMode!=='water')continue;
+  if(line.transportMode&&!['water','ferry'].includes(line.transportMode))continue;
   const label=text(call.destinationDisplay?.frontText)||'Rute 800';
   for(const [direction,allowed,aimed,expected,actual] of [
    ['ANK',call.forAlighting,call.aimedArrivalTime,call.expectedArrivalTime,call.actualArrivalTime],
@@ -119,7 +127,7 @@ function rowHtml(row){
    :(row.realtime?'Sanntidsdata · ':'Planlagt tid · ')+tag.toLowerCase();
  return `<div class="speedboat-row ${row.direction==='ANK'?'is-arrival':''}">
   <span class="speedboat-direction">${row.direction}</span>
-  <div class="speedboat-main"><strong>800</strong> <small>${escapeHtml(tag)} · ${escapeHtml(row.label)}</small>
+  <div class="speedboat-main"><strong>${escapeHtml(row.code)}</strong> <small>${escapeHtml(tag)} · ${escapeHtml(row.label)}</small>
   <small>${escapeHtml(note)}</small></div>
   <div class="speedboat-clock"><strong>${clock(row.when)}</strong>
    <small>${row.changed?'Ny tid':'Planlagt'}</small></div>
@@ -132,7 +140,7 @@ function render(){
  const html=lastCalls===null
   ?'<div class="schedule-empty">Henter rutetider fra Entur…</div>'
   :rows.length?rows.map(rowHtml).join('')
-   :'<div class="schedule-empty">Ingen kommende avganger eller ankomster for rute 800 registrert.</div>';
+   :'<div class="schedule-empty">Ingen kommende avganger eller ankomster for rute 800/805 registrert i Entur.</div>';
  for(const node of nodes)node.innerHTML=html;
 }
 async function refresh(){
