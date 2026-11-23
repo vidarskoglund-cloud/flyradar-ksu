@@ -2313,6 +2313,13 @@ function updateVesselMotionHistory(items){
   }
   persistVesselTracks();
 }
+// Frequent local ferry movements are useful on the map but not a reason
+// to repeatedly take focus from less routine traffic.
+function routineLocalFerry(v){
+ const mmsi=String(v?.mmsi||'').trim(),imo=String(v?.imo||'').trim();
+ const name=String(v?.name||'').trim().toUpperCase();
+ return mmsi==='257087420'||imo==='9855393'||name==='TUSTNA';
+}
 function movingHarborVessel(v){
   const key=vesselKey(v),row=vesselMotionHistory.get(key);
   const lat=Number(v.lat),lon=Number(v.lon),speed=Number(v.speed);
@@ -2328,7 +2335,7 @@ function movingHarborVessel(v){
   const entering=row.trend==='inn'&&d>VESSEL_HARBOR_CORE_NM;
   const exiting=row.trend==='ut'&&d>VESSEL_HARBOR_CORE_NM;
   return {key,d,lat,lon,speed,inHarbor,entering,exiting,
-    rank:inHarbor?2.8:(entering||exiting?2.65:2.25)};
+    rank:routineLocalFerry(v)?0.65:(inHarbor?2.8:(entering||exiting?2.65:2.25))};
 }
 
 const escapeVesselText=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -3702,7 +3709,7 @@ window.KsuHeadlineData=()=>{
       detail:'Basert på observert posisjon og bevegelse · '+ksuDistanceNm(p).toFixed(1)+' NM'};
    return null;
   }).filter(Boolean);
- const ship=vessels.filter(v=>Number.isFinite(Number(v.speed))&&Number(v.speed)>=1.5)
+ const ship=vessels.filter(v=>!routineLocalFerry(v)&&Number.isFinite(Number(v.speed))&&Number(v.speed)>=1.5)
   .slice(0,30).map(v=>{
    const context=vesselMovementContext(v);
    if(context.title!=='Fartøy nærmer seg havneområdet')return null;
