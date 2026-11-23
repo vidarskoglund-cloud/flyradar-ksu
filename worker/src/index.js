@@ -656,6 +656,90 @@ export default {
       );
     }
 
+    if (url.pathname === "/speedboat") {
+      // Entur access through the Worker avoids browser CORS/preflight problems.
+      // No credentials or paid services; cache to keep request volume low.
+      const headers = { ...corsHeaders(), "Cache-Control": "public, max-age=60, s-maxage=300" };
+      const cache = caches.default;
+      const key = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/speedboat?version=1");
+      const hit = await cache.match(key);
+      if (hit) return hit;
+      const enturHeaders = { "ET-Client-Name": "vidarskoglund-trafikkradar" };
+      const getEntur = async (path) => {
+        const r = await fetch("https://api.entur.io" + path, { headers: enturHeaders, signal: AbortSignal.timeout(11000) });
+        if (!r.ok) throw new Error("Entur geocoder HTTP " + r.status);
+        return r.json();
+      };
+      try {
+        const searches = [
+          { q: "Kristiansund hurtigbåtkai", limit: "25", layers: "stopPlace", multimodal: "all" },
+          { q: "Kristiansund trafikkterminal", limit: "25", layers: "stopPlace", multimodal: "all" },
+          { q: "Kristiansund", limit: "40", layers: "stopPlace", multimodal: "all" }
+        ];
+        const selected = new Map();
+        for (const search of searches) {
+          const params = new URLSearchParams({ ...search, lang: "no" });
+          const data = await getEntur("/geocoder/v3/autocomplete?" + params);
+          for (const feature of data.features || []) {
+            const p = feature.properties || {};
+            const name = String(p.names?.default || p.name || "").toLowerCase();
+            const id = String(p.id || feature.id || "");
+            const c = feature.geometry?.coordinates;
+            if (!/^NSR:StopPlace:\d+$/.test(id) || !Array.isArray(c) ||
+                Math.abs(Number(c[1]) - 63.112) > 0.065 ||
+                Math.abs(Number(c[0]) - 7.73) > 0.08) continue;
+            const modes = p.transportModes || [];
+            const water = modes.some(m => /water|ferry/i.test(String(m?.mode || m)));
+            const named = /hurtigbåt|hurtigbat|trafikkterminal|fausken/i.test(name);
+            if (!name.includes("kristiansund") || (!water && !named)) continue;
+            selected.set(id, { id, name, preferred: water || /hurtigbåt|hurtigbat/i.test(name) });
+          }
+          if ([...selected.values()].some(v => v.preferred)) break;
+        }
+        const stops = [...selected.values()].sort((a,b) => Number(b.preferred) - Number(a.preferred)).slice(0,3);
+        if (!stops.length) throw new Error("Fant ikke stoppested ved Kristiansund hurtigbåtkai i Entur");
+        const query = `query KsuSpeedboat($id:String!){
+          stopPlace(id:$id){ id name estimatedCalls(timeRange:93600,numberOfDepartures:120,arrivalDeparture:both){
+            aimedArrivalTime expectedArrivalTime actualArrivalTime
+            aimedDepartureTime expectedDepartureTime actualDepartureTime
+            forAlighting forBoarding realtime cancellation predictionInaccurate
+            serviceJourney{line{publicCode transportMode}}
+            destinationDisplay{frontText}
+          }}
+        }`;
+        const calls = [], found = [];
+        for (const stop of stops) {
+          const response = await fetch("https://api.entur.io/journey-planner/v3/graphql", {
+            method: "POST",
+            headers: { ...enturHeaders, "Content-Type": "application/json" },
+            body: JSON.stringify({ query, variables: { id: stop.id } }),
+            signal: AbortSignal.timeout(11000)
+          });
+          if (!response.ok) throw new Error("Entur journey-planner HTTP " + response.status);
+          const result = await response.json();
+          if (result.errors?.length) throw new Error("Entur GraphQL: " + String(result.errors[0].message).slice(0,150));
+          if (result.data?.stopPlace) {
+            found.push({ id: stop.id, name: result.data.stopPlace.name });
+            calls.push(...(result.data.stopPlace.estimatedCalls || []));
+          }
+          if (calls.some(c => ["800","805"].includes(String(c?.serviceJourney?.line?.publicCode || "")))) break;
+        }
+        const filtered = calls.filter(c => ["800","805"].includes(String(c?.serviceJourney?.line?.publicCode || "")));
+        const response = new Response(JSON.stringify({
+          ok: true, source: "Entur Journey Planner v3",
+          checked_at: new Date().toISOString(), stops: found,
+          calls: filtered, scanned_calls: calls.length
+        }), { headers });
+        try { await cache.put(key, response.clone()); } catch (_) {}
+        return response;
+      } catch (error) {
+        return new Response(JSON.stringify({
+          ok: false, state: "entur_unavailable",
+          reason: String(error?.message || error).slice(0,180)
+        }), { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
+      }
+    }
+
     if (url.pathname === "/datex/roads") {
       const headers = { ...corsHeaders(), "Cache-Control": "public, max-age=60, s-maxage=300" };
       if (!env.DATEX_USERNAME || !env.DATEX_PASSWORD) {
