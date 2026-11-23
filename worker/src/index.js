@@ -656,6 +656,54 @@ export default {
       );
     }
 
+    if (url.pathname === "/datex/check") {
+      // Read-only connectivity check. Never return credentials or traffic XML.
+      // Keep this on the feature branch until credentials are installed and tested.
+      const headers = { ...corsHeaders(), "Cache-Control": "no-store" };
+      if (!env.DATEX_USERNAME || !env.DATEX_PASSWORD) {
+        return new Response(JSON.stringify({
+          ok: false, configured: false, state: "credentials_missing",
+          source: "Statens vegvesen DATEX II 3.1"
+        }), { status: 503, headers });
+      }
+      const cacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/check");
+      const cache = caches.default;
+      const hit = await cache.match(cacheKey);
+      if (hit) return hit;
+      let result;
+      try {
+        const authorization = "Basic " + btoa(env.DATEX_USERNAME + ":" + env.DATEX_PASSWORD);
+        const upstream = await fetch(
+          "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata",
+          { headers: { Authorization: authorization, Accept: "application/xml, text/xml;q=0.9" },
+            signal: AbortSignal.timeout(15000), redirect: "error" }
+        );
+        const contentType = upstream.headers.get("Content-Type") || "";
+        const xml = upstream.ok && /(?:xml|octet-stream)/i.test(contentType);
+        if (upstream.body) await upstream.body.cancel();
+        result = {
+          ok: Boolean(xml), configured: true,
+          state: xml ? "xml_response" : upstream.status === 401 || upstream.status === 403 ?
+            "access_denied" : upstream.status === 200 ? "unexpected_format" : "upstream_error",
+          http_status: upstream.status,
+          source: "Statens vegvesen DATEX II 3.1",
+          checked_at: new Date().toISOString()
+        };
+      } catch (error) {
+        result = {
+          ok: false, configured: true, state: "connection_error",
+          source: "Statens vegvesen DATEX II 3.1",
+          checked_at: new Date().toISOString()
+        };
+      }
+      const response = new Response(JSON.stringify(result), {
+        status: result.ok ? 200 : 503,
+        headers: { ...corsHeaders(), "Cache-Control": "public, max-age=60, s-maxage=" + (result.ok ? 300 : 60) }
+      });
+      await cache.put(cacheKey, response.clone());
+      return response;
+    }
+
     if(url.pathname==='/weather'){
       // A bounded shared edge cache prevents each website visitor from
       // issuing separate requests to weather providers.
