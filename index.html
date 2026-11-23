@@ -462,6 +462,17 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .special-flight-tag{display:inline-flex;width:max-content;max-width:100%;margin-top:5px;padding:3px 8px;border:1px solid #3e8192;border-radius:7px;color:#b9f3ff;background:#123345;font-size:10px;font-weight:700;letter-spacing:.02em}
 .special-flight-tag[data-special-role="rescue"],.special-flight-tag[data-special-role="ambulance"]{border-color:#85aa65;background:#1d342c;color:#dcffbc}
 .special-flight-tag[data-special-role="military"]{border-color:#9a8a5c;color:#f3dca6;background:#332c1b}
+/* DATEX incident pins: overlay, never changes aircraft or vessel layers. */
+.traffic-notice-icon{background:none;border:0}
+.traffic-notice-marker{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;
+ border:2px solid #edf5ff;box-shadow:0 2px 9px #000b;font-size:16px;font-weight:900;line-height:1}
+.traffic-notice-work{background:#ffc847;color:#262b32}
+.traffic-notice-closed{background:#e63c4b;color:white}
+.traffic-notice-info{background:#238cdb;color:white;font-family:system-ui,sans-serif}
+.traffic-notice-popup{color:#15283c;font-size:12px;line-height:1.5;display:grid;gap:5px}
+.traffic-notice-popup strong{font-size:14px}
+.traffic-notice-popup small{font-size:10px;color:#51687c}
+
 /* Compact DATEX road notices with accessible expandable descriptions. */
 .road-status-list .road-event{border-top:1px solid #1b2d43}
 .road-status-list .road-event:first-child{border-top:0}
@@ -655,8 +666,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="vessel-photos.js?v=7"></script>
 <script src="vessel-wikidata.js?v=1"></script>
 <script src="speedboat-schedule.js?v=2"></script>
-<script src="road-status.js?v=3"></script>
+<script src="road-status.js?v=4"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=192"></script>
+<script src="app.js?v=193"></script>
 
 </body></html>
