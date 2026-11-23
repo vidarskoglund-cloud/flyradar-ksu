@@ -151,7 +151,10 @@ async function refresh(){
   const payload=await response.json();
   if(!payload?.ok||!payload?.roads)throw Error('DATEX invalid response');
   snapshot=payload;lastError=false;
- }catch(_error){lastError=true;snapshot=null;}
+  if(window.KsuTrafficMap?.update)window.KsuTrafficMap.update(snapshot);
+ }catch(_error){lastError=true;snapshot=null;
+  if(window.KsuTrafficMap?.update)window.KsuTrafficMap.update(null);
+ }
  finally{clearTimeout(timeout);loading=false;paint();}
 }
 window.KsuRoadStatus={roads:ROADS,trafficUrl:ROAD_TRAFFIC_URL,paint,refresh};
