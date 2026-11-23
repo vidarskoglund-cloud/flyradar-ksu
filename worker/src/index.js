@@ -692,7 +692,8 @@ export default {
         }
         const reader = upstream.body.getReader(), decoder = new TextDecoder();
         let buffer = "";
-        const maxBytes = 80 * 1024 * 1024;
+        // A bounded scan fits Workers CPU/time limits; larger snapshots are marked partial.
+        const maxBytes = 12 * 1024 * 1024;
         const field = (source, tag) => {
           const re = new RegExp("<(?:[\\w.-]+:)?" + tag + "\\b[^>]*>([\\s\\S]*?)<\\/(?:[\\w.-]+:)?" + tag + "\\s*>", "i");
           const m = source.match(re);
@@ -700,10 +701,12 @@ export default {
         };
         const processRecord = (raw) => {
           records++;
-          // Only explicit locationDescription text is authoritative for matching.
+          // Filter first; expensive per-record parsing is only needed for local roads.
           // Alert-C external location names may refer to a broader nearby route.
           const location = field(raw, "locationDescription").slice(0, 320);
           if (!location) return;
+          const matchedRoads = roads.filter(([, pattern]) => pattern.test(location)).map(([name]) => name);
+          if (!matchedRoads.length && !/kristiansund/i.test(location)) return;
           const type = (raw.match(/xsi:type=["'][^"']*:([^"']+)/i) || [])[1] || "Unknown";
           const comment = field(raw, "comment").slice(0, 300);
           const id = (raw.match(/\bid=["']([^"']+)["']/i) || [])[1] || "";
@@ -720,8 +723,6 @@ export default {
             lat >= 62.9 && lat <= 63.35 && lon >= 7.35 && lon <= 8.6;
           const item = { place: location, type, message: comment, start, end, validity,
             ...(coordinatesValid ? { lat, lon } : {}) };
-          const matchedRoads = roads.filter(([, pattern]) => pattern.test(location)).map(([name]) => name);
-          if (!matchedRoads.length && !/kristiansund/i.test(location)) return;
           for (const name of matchedRoads) {
             const dedupe = name + "|" + (baseId || location + comment);
             if (seen.has(dedupe)) continue;
@@ -769,7 +770,8 @@ export default {
           status_note: "Registrerte DATEX-hendelser, ikke verifisert som aktive. Fravær av treff betyr ikke åpen vei."
         };
         const response = new Response(JSON.stringify(result), { headers });
-        await cache.put(cacheKey, response.clone());
+        // Cache failures must not turn a successful DATEX parse into an outage.
+        try { await cache.put(cacheKey, response.clone()); } catch (_) {}
         return response;
       } catch (error) {
         return new Response(JSON.stringify({ ok: false, state: "processing_error",
