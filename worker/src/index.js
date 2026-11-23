@@ -682,7 +682,7 @@ export default {
         const upstream = await fetch(
           "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata",
           { headers: { Authorization: authorization, Accept: "application/xml, text/xml;q=0.9" },
-            signal: AbortSignal.timeout(15000), redirect: "error" }
+            signal: AbortSignal.timeout(15000), redirect: "manual" }
         );
         const contentType = upstream.headers.get("Content-Type") || "";
         const xml = upstream.ok && /(?:xml|octet-stream)/i.test(contentType);
