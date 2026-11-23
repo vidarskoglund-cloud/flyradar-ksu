@@ -656,6 +656,80 @@ export default {
       );
     }
 
+    if (url.pathname === "/datex/local-preview") {
+      // Limited discovery of relevant complete records, not a production status feed.
+      const headers = { ...corsHeaders(), "Cache-Control": "no-store" };
+      if (!env.DATEX_USERNAME || !env.DATEX_PASSWORD) {
+        return new Response(JSON.stringify({ ok: false, state: "credentials_missing" }), { status: 503, headers });
+      }
+      const names = [
+        ["Freifjordtunnelen", /freifjord(?:tunnel|tunell)/i],
+        ["Atlanterhavstunnelen", /atlanterhavstunnel/i],
+        ["Bergsøysundbrua", /bergs(?:ø|o|oe)ysund/i],
+        ["Omsundbrua", /omsund/i],
+        ["Nordsundbrua", /nordsund/i],
+        ["Kristiansund", /kristiansund/i]
+      ];
+      const found = Object.fromEntries(names.map(([name]) => [name, []]));
+      const startedAt = Date.now();
+      try {
+        const resp = await fetch(
+          "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata",
+          { headers: {
+              Authorization: "Basic " + btoa(env.DATEX_USERNAME + ":" + env.DATEX_PASSWORD),
+              Accept: "application/xml, text/xml;q=0.9"
+            }, redirect: "manual", signal: AbortSignal.timeout(25000) }
+        );
+        if (!resp.ok) {
+          if (resp.body) await resp.body.cancel();
+          return new Response(JSON.stringify({ ok: false, state: "upstream_error", http_status: resp.status }), { status: 503, headers });
+        }
+        // Retain only a limited XML prefix, and only return small public-road excerpts.
+        const limit = 12 * 1024 * 1024;
+        let xml = "", bytes = 0, truncated = false;
+        const reader = resp.body?.getReader();
+        if (!reader) throw Error("No stream");
+        const decoder = new TextDecoder();
+        while (bytes < limit) {
+          const p = await reader.read();
+          if (p.done) break;
+          const take = Math.min(p.value.byteLength, limit - bytes);
+          xml += decoder.decode(p.value.subarray(0, take), { stream: true });
+          bytes += take;
+          if (take < p.value.byteLength) { truncated = true; break; }
+        }
+        if (bytes >= limit) truncated = true;
+        if (truncated) await reader.cancel();
+        xml += decoder.decode();
+        const re = /<(?:[A-Za-z_][\w.-]*:)?situationRecord\b[^>]*>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?situationRecord\s*>/g;
+        let completeRecords = 0;
+        const strip = (value) => value.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim();
+        for (const match of xml.matchAll(re)) {
+          completeRecords++;
+          const raw = match[0];
+          for (const [name, pattern] of names) {
+            if (!pattern.test(raw) || found[name].length >= 4) continue;
+            const type = (raw.match(/xsi:type=["'][^"']*:([^"']+)/) || [])[1] || "unknown";
+            // Collect only short fields directly useful for investigating the feed.
+            const descriptions = [...raw.matchAll(/<(?:[A-Za-z_][\w.-]*:)?(?:alertCLocationName|locationDescription|comment|areaName)\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?(?:alertCLocationName|locationDescription|comment|areaName)\s*>/g)]
+              .map(m => strip(m[1])).filter(Boolean).slice(0, 4).map(v => v.slice(0, 180));
+            found[name].push({ type, descriptions });
+          }
+        }
+        return new Response(JSON.stringify({
+          ok: true, source: "Statens vegvesen DATEX II 3.1",
+          scanned_bytes: bytes, truncated, complete_records_in_prefix: completeRecords,
+          matches: found, checked_at: new Date().toISOString(),
+          elapsed_ms: Date.now() - startedAt,
+          note: "Exploratory incomplete XML prefix; entries have not been validated as active events"
+        }), { headers });
+      } catch (error) {
+        return new Response(JSON.stringify({ ok: false, state: "preview_error",
+          category: /timeout|abort/i.test(String(error?.name || "")) ? "timeout" : "fetch_or_parse"
+        }), { status: 503, headers });
+      }
+    }
+
     if (url.pathname === "/datex/inspect") {
       // Read-only, bounded DATEX schema discovery. No raw XML, credentials
       // or authorization headers are returned to public callers.
