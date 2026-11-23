@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v8', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v9', pending=new Map();
 const photoErrors=new Map();
 // Source-verified Commons file titles, bound to a specific AIS identity.
 // A title is only a lookup hint: each image still passes the license and identity checks.
@@ -48,6 +48,8 @@ function pick(v,pages){
   if(!/\.(jpe?g|webp|png)$/i.test(filename))continue;
   const fileWords=vesselWords(filename);
   if(fileWords.some(w=>['logo','model','drawing','illustration','render','plan','diagram'].includes(w)))continue;
+  // Text scans may mention boats without depicting any vessel.
+  if(/(?:newspaper|news[ -]?paper|clipping|article|obituary|new york world|newsprint|scan|printed page)/i.test(filename))continue;
   const info=page.imageinfo?.[0],meta=info?.extmetadata;
   if(!info||!meta)continue;
   const license=plain(meta.LicenseShortName?.value);
@@ -150,6 +152,9 @@ async function lookupRepresentative(v){
  // For a named routine ferry, show the neutral icon rather than a misleading
  // generic boat photograph if no identity-verified image is available.
  if(strictlyIdentifiedFerry(v))return null;
+ // Wikimedia pilot-boat image searches have returned newspaper clippings.
+ // Require an identity-verified picture for pilot boats instead of generic guesses.
+ if(/^(?:LOS[ -]?\d+|PILOT\b|LOSB[AÅ]T)/i.test(String(v.name||'')))return null;
  const spec=TYPE_PHOTOS.find(x=>x.test(v));
  if(!spec)return null;
  const saved=get('type:'+spec.id);
@@ -168,7 +173,9 @@ async function lookupRepresentative(v){
     if(!/\.(?:jpe?g|webp)$/i.test(filename)||/\b(?:logo|drawing|render|model|diagram|illustration)\b/i.test(filename))continue;
     const categories=(page.categories||[]).map(c=>String(c.title||'').replace(/^Category:/i,'')).join(' ');
     if(!spec.match.test(filename.replace(/_/g,' ')+' '+categories))continue;
-    const info=page.imageinfo?.[0],meta=info?.extmetadata;
+    // Text scans may mention boats without depicting any vessel.
+  if(/(?:newspaper|news[ -]?paper|clipping|article|obituary|new york world|newsprint|scan|printed page)/i.test(filename))continue;
+  const info=page.imageinfo?.[0],meta=info?.extmetadata;
     if(!info||!meta)continue;
     const license=plain(meta.LicenseShortName?.value);
     if(!/^(?:CC BY|CC0|Public domain|PD-)/i.test(license)||/\b(?:NC|ND)\b/i.test(license))continue;
