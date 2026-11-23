@@ -1654,7 +1654,9 @@ function idleAircraftGlimpse(list,now){
     .sort((a,b)=>a.d-b.d)[0];
   if(nearby)neighboring.push({...nearby,airport});
  }
- const general=active.filter(p=>ksuDistanceNm(p)<=45)
+ // With little local air traffic, briefly include a more distant aircraft
+ // (up to 100 NM). This is only secondary context, never a KSU arrival.
+ const general=active.filter(p=>ksuDistanceNm(p)<=100)
    .sort((a,b)=>ksuDistanceNm(a)-ksuDistanceNm(b));
  if(!remote.length&&!neighboring.length&&!general.length){
    idleGlimpseSince=null;return null;
@@ -1686,11 +1688,15 @@ function fitMap(list,s){
   if(now<manualMapUntil)return;
   const candidates=smartMapCandidate(list);
   const best=candidates[0]||null;
-  // KSU-fly og aktive havnefartøy har alltid forrang over fjerntrafikk.
-  if(best)idleGlimpseSince=null;
-  const glimpse=!best?idleAircraftGlimpse(list,now):null;
+  // Local aircraft and important vessel operations take priority. During
+  // ordinary boat traffic, allow a brief distant-aircraft glimpse occasionally.
+  const routineBoatFocus=Boolean(best?.key?.startsWith('bat:')&&best.rank<=2.8);
+  const localAircraft=candidates.some(x=>x.key.startsWith('fly:')&&x.d<=25);
+  const allowGlimpse=!best||(routineBoatFocus&&!localAircraft);
+  if(!allowGlimpse)idleGlimpseSince=null;
+  const glimpse=allowGlimpse?idleAircraftGlimpse(list,now):null;
   const current=candidates.find(x=>x.key===smartMapTarget?.key)||null;
-  let target=best||glimpse;
+  let target=routineBoatFocus&&glimpse?glimpse:(best||glimpse);
   // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
   if(best)smartMapLastTrafficAt=now;
   const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&ksuDistanceNm(selected)<=50&&
