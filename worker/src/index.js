@@ -713,7 +713,7 @@ export default {
           const validity = field(raw, "validityStatus") || null;
           // DATEX coordinatesForDisplay are WGS84 latitude / longitude.
           // Never infer a marker position from place names or Alert-C codes.
-          const position = field(raw, "coordinatesForDisplay");
+          const position = (raw.match(/<(?:[\w.-]+:)?coordinatesForDisplay\b[^>]*>([\s\S]*?)<\/(?:[\w.-]+:)?coordinatesForDisplay\s*>/i) || [])[1] || "";
           const lat = Number(field(position, "latitude"));
           const lon = Number(field(position, "longitude"));
           const coordinatesValid = position && Number.isFinite(lat) && Number.isFinite(lon) &&
