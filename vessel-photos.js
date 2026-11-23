@@ -1,6 +1,14 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v4', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v5', pending=new Map();
+const photoErrors=new Map();
+// Source-verified Commons file titles, bound to a specific AIS identity.
+// A title is only a lookup hint: each image still passes the license and identity checks.
+const VERIFIED_FILE_HINTS={
+ '257982900:ANGVIK':['File:Sundbåten angvik.JPG','File:SundbåtenAngvik2018.jpg']
+};
+function photoStatus(key){return photoErrors.get(key)||'';}
+function vesselPhotoKey(v){return [String(v.mmsi||''),String(v.imo||''),String(v.name||'').toUpperCase()].join(':');}
 function get(key){
  try{const item=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];return item&&item.until>Date.now()?{hit:true,photo:item.photo}:{hit:false};}catch(e){return {hit:false};}
 }
@@ -64,7 +72,7 @@ function pick(v,pages){
  return options.sort((a,b)=>b.score-a.score)[0]?.photo||null;
 }
 async function search(v){
- const name=String(v.name||'').trim(),key=[String(v.mmsi||''),String(v.imo||''),name.toUpperCase()].join(':');
+ const name=String(v.name||'').trim(),key=vesselPhotoKey(v);
  const cached=get(key);if(cached.hit)return cached.photo;
  if(pending.has(key))return pending.get(key);
  const task=(async()=>{
@@ -72,6 +80,21 @@ async function search(v){
    const imo=String(v.imo||'').replace(/\D/g,'');
    const mmsi=String(v.mmsi||'').replace(/\D/g,'');
    const cleanName=name.replace(/"/g,'').slice(0,60).trim();
+   const knownFiles=VERIFIED_FILE_HINTS[mmsi+':'+name.toUpperCase()]||[];
+   if(knownFiles.length){
+    const q=new URLSearchParams({action:'query',format:'json',origin:'*',
+      titles:knownFiles.join('|'),prop:'imageinfo|categories',cllimit:'max',
+      iiprop:'url|extmetadata',iiurlwidth:'720'});
+    try{
+     const response=await fetch('https://commons.wikimedia.org/w/api.php?'+q,
+      {credentials:'omit',signal:AbortSignal.timeout(8000)});
+     if(response.ok){
+      const json=await response.json();
+      const verified=pick(v,json.query?.pages);
+      if(verified){photoErrors.delete(key);save(key,verified);return verified;}
+     }
+    }catch(e){console.warn('Kunne ikke kontrollere kjente Commons-filer',e);}
+   }
    const terms=[imo.length===7?'"'+imo+'"':'',
      mmsi.length===9?'"'+mmsi+'"':'',
      cleanName.length>=5?'"'+cleanName+'" ship':'',
@@ -89,8 +112,12 @@ async function search(v){
     photo=pick(v,j.query?.pages);
     if(photo)break;
    }
+   photoErrors.delete(key);
    save(key,photo);return photo;
-  }catch(e){console.warn('Fartøyfoto ikke tilgjengelig',e);return null;}
+  }catch(e){
+   photoErrors.set(key,'Oppslag mot Wikimedia Commons feilet · prøv igjen senere');
+   console.warn('Fartøyfoto ikke tilgjengelig',e);return null;
+  }
   finally{pending.delete(key);}
  })();
  pending.set(key,task);return task;
@@ -109,7 +136,8 @@ window.loadVesselPopupPhoto=async function(v,popupElement){
   const link=document.createElement('a');
   link.href='https://commons.wikimedia.org/w/index.php?search='+encodeURIComponent(String(v.name||'')+' ship')+'&title=Special:MediaSearch&type=image';
   link.target='_blank';link.rel='noopener noreferrer';
-  link.textContent='Se etter fartøybilder på Wikimedia Commons';
+  link.textContent=photoStatus(vesselPhotoKey(v))||
+    'Se etter fartøybilder på Wikimedia Commons';
   host.append(link);
   return;
  }
@@ -136,7 +164,8 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
  if(!photo){
    const note=document.getElementById('vessel-photo-note');
-   if(note)note.textContent='Fant ikke et sikkert skipsfoto i Wikimedia Commons · viser illustrasjon';
+   if(note)note.textContent=photoStatus(vesselPhotoKey(v))||
+     'Fant ikke et sikkert skipsfoto i Wikimedia Commons · viser illustrasjon';
    return;
  }
  const slot=document.getElementById('vessel-photo-slot'),fallback=document.getElementById('vessel-photo-fallback');
