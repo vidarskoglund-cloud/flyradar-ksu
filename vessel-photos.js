@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v6', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v7', pending=new Map();
 const photoErrors=new Map();
 // Source-verified Commons file titles, bound to a specific AIS identity.
 // A title is only a lookup hint: each image still passes the license and identity checks.
@@ -16,7 +16,7 @@ function save(key,photo){
  try{
   const now=Date.now(),raw=JSON.parse(localStorage.getItem(CACHE)||'{}'),items=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
   for(const k of Object.keys(items))if(!items[k]||items[k].until<=now)delete items[k];
-  items[key]={photo,until:now+(photo?7:1)*86400000};
+  items[key]={photo,until:now+(photo?7*86400000:3*3600000)};
   localStorage.setItem(CACHE,JSON.stringify(Object.fromEntries(Object.entries(items).slice(-100))));
  }catch(e){}
 }
@@ -58,7 +58,7 @@ function pick(v,pages){
   const sameMmsi=mmsi.length===9&&hasWords(filename+' '+categories+' '+description,[mmsi]);
   // A ship's name alone (e.g. a fjord name) may describe a landscape.
   // Require a second maritime signal from filename, category or description.
-  const maritime=/\b(ship|ships|vessel|vessels|ferry|ferger|ferge|ferja|cargo|tanker|boat|boats|mv|ms|mf|skip|skipsfoto|supply|offshore)\b/i
+  const maritime=/\b(ship|ships|vessel|vessels|ferry|ferger|ferge|ferja|cargo|tanker|boat|boats|pilot|losbat|losbat|losbåt|pilotboat|tugboat|tug|fishing|fiskebat|cruise|mv|ms|mf|skip|skipsfoto|supply|offshore)\b/i
     .test(vesselWords(filename+' '+categories+' '+description).join(' '));
   const nameMatch=titleName||categoryName||descriptionName;
   const supportedName=nameMatch&&maritime;
@@ -100,12 +100,14 @@ async function search(v){
      mmsi.length===9?'"'+mmsi+'"':'',
      cleanName.length>=5?'"'+cleanName+'" ship':'',
      cleanName.length>=5?'"'+cleanName+'" vessel':'',
-     cleanName.length>=5?'"'+cleanName+'"':''].filter(Boolean);
+     cleanName.length>=5?'"'+cleanName+'"':'',
+     cleanName.length>=4?cleanName+' ship photo':'',
+     cleanName.length>=4?cleanName+' boat vessel':''].filter(Boolean);
    if(!terms.length)return null;
    let photo=null;
-   for(const term of terms.slice(0,3)){
+   for(const term of terms.slice(0,5)){
     const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
-     gsrsearch:term,gsrnamespace:'6',gsrlimit:'35',
+     gsrsearch:term,gsrnamespace:'6',gsrlimit:'50',
      prop:'imageinfo|categories',cllimit:'max',iiprop:'url|extmetadata',iiurlwidth:'720'});
     const r=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{credentials:'omit',signal:AbortSignal.timeout(8000)});
     if(!r.ok)throw Error('HTTP '+r.status);
@@ -123,6 +125,58 @@ async function search(v){
  })();
  pending.set(key,task);return task;
 }
+// A representative Commons photograph is shown only when its vessel category
+// is reasonably verifiable. This is NEVER labelled as the tracked vessel.
+const TYPE_PHOTOS=[
+ {id:'pilot',test:v=>/^(?:LOS[ -]?\d+|PILOT\b|LOSB[AÅ]T)/i.test(String(v.name||'')),
+  terms:['pilot boat at sea','pilot vessel boat'],
+  match:/\b(?:pilot[ -]?boat|pilot[ -]?vessel|pilotbåt|losbåt|pilot[ -]?cutter)\b/i},
+ {id:'passenger',test:v=>Number(v.shipType)>=60&&Number(v.shipType)<=69,
+  terms:['passenger ferry ship at sea'],
+  match:/\b(?:passenger[ -]?ship|passenger[ -]?ferry|ferryboat|car ferry|ferge)\b/i},
+ {id:'cargo',test:v=>Number(v.shipType)>=70&&Number(v.shipType)<=79,
+  terms:['cargo ship underway'],
+  match:/\b(?:cargo[ -]?ship|freighter|bulk[ -]?carrier|general cargo)\b/i}
+];
+async function lookupRepresentative(v){
+ const spec=TYPE_PHOTOS.find(x=>x.test(v));
+ if(!spec)return null;
+ const saved=get('type:'+spec.id);
+ if(saved.hit)return saved.photo;
+ for(const term of spec.terms){
+  try{
+   const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
+    gsrsearch:term,gsrnamespace:'6',gsrlimit:'35',
+    prop:'imageinfo|categories',cllimit:'max',iiprop:'url|extmetadata',iiurlwidth:'720'});
+   const r=await fetch('https://commons.wikimedia.org/w/api.php?'+q,
+    {credentials:'omit',signal:AbortSignal.timeout(9000)});
+   if(!r.ok)continue;
+   const data=await r.json();
+   for(const page of Object.values(data.query?.pages||{})){
+    const filename=String(page.title||'').replace(/^File:/i,'');
+    if(!/\.(?:jpe?g|webp)$/i.test(filename)||/\b(?:logo|drawing|render|model|diagram|illustration)\b/i.test(filename))continue;
+    const categories=(page.categories||[]).map(c=>String(c.title||'').replace(/^Category:/i,'')).join(' ');
+    if(!spec.match.test(filename.replace(/_/g,' ')+' '+categories))continue;
+    const info=page.imageinfo?.[0],meta=info?.extmetadata;
+    if(!info||!meta)continue;
+    const license=plain(meta.LicenseShortName?.value);
+    if(!/^(?:CC BY|CC0|Public domain|PD-)/i.test(license)||/\b(?:NC|ND)\b/i.test(license))continue;
+    const src=info.thumburl||info.url,source=info.descriptionurl;
+    if(!/^https:\/\/upload\.wikimedia\.org\//.test(src||'')||
+       !/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/.test(source||''))continue;
+    const lic=String(meta.LicenseUrl?.value||'');
+    const photo={src,source,license,confirmedId:false,representative:true,
+      licenseUrl:/^https:\/\/(?:creativecommons\.org|commons\.wikimedia\.org)\//.test(lic)?lic:source,
+      credit:plain(meta.Artist?.value||meta.Credit?.value||info.user||'Se bildekilde')};
+    save('type:'+spec.id,photo);return photo;
+   }
+  }catch(e){console.warn('Representativt skipsfoto kunne ikke hentes',e);}
+ }
+ // Short negative caching only: newly uploaded photos can become available.
+ save('type:'+spec.id,null);
+ return null;
+}
+
 // Reuse the same ID/name-checked, license-filtered Commons lookup in
 // Leaflet popups. Do not substitute generic ship pictures for a named vessel.
 window.loadVesselPopupPhoto=async function(v,popupElement){
@@ -130,7 +184,7 @@ window.loadVesselPopupPhoto=async function(v,popupElement){
  if(!host)return;
  const key=String(v.mmsi||v.name||'').trim();
  if(host.dataset.vesselPhotoKey!==key)return;
- const photo=await search(v);
+ const photo=(await search(v))||(await lookupRepresentative(v));
  if(!host.isConnected||host.dataset.vesselPhotoKey!==key)return;
  host.replaceChildren();
  if(!photo){
@@ -147,7 +201,7 @@ window.loadVesselPopupPhoto=async function(v,popupElement){
  link.className='vessel-popup-photo-link';
  const img=document.createElement('img');
  img.src=photo.src;
- img.alt=(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
+ img.alt=photo.representative?'Typebilde av tilsvarende fartøy':(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
  img.loading='lazy';img.decoding='async';
  img.className='vessel-popup-photo';
  img.onerror=()=>{
@@ -156,12 +210,12 @@ window.loadVesselPopupPhoto=async function(v,popupElement){
  link.append(img);
  const credit=document.createElement('small');
  credit.className='vessel-popup-photo-credit';
- credit.textContent=(photo.confirmedId?'Identifisert med IMO/MMSI':'Bilde funnet via skipsnavn')+
+ credit.textContent=(photo.representative?'Typebilde – ikke samme skip':photo.confirmedId?'Identifisert med IMO/MMSI':'Bilde funnet via skipsnavn')+
    ' · '+(photo.credit||'Fotograf')+' · '+photo.license+' · Wikimedia Commons';
  host.append(link,credit);
 };
 window.loadSelectedVesselPhoto=async function(v,identity){
- const photo=await search(v);
+ const photo=(await search(v))||(await lookupRepresentative(v));
  if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
  if(!photo){
    const note=document.getElementById('vessel-photo-note');
@@ -172,7 +226,7 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  const slot=document.getElementById('vessel-photo-slot'),fallback=document.getElementById('vessel-photo-fallback');
  const note=document.getElementById('vessel-photo-note');
  if(!slot||!fallback)return;
- const img=document.createElement('img');img.className='type-photo';img.loading='eager';img.decoding='async';img.alt=(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
+ const img=document.createElement('img');img.className='type-photo';img.loading='eager';img.decoding='async';img.alt=photo.representative?'Typebilde av tilsvarende fartøy':(photo.confirmedId?'Foto av ':'Mulig foto av ')+String(v.name||'fartøy');
  const wrap=document.createElement('div');wrap.className='type-photo-wrap';wrap.append(img);
  // A lazy image detached from the DOM may never load, so attach it before src.
  // Keep the illustration visible while the real image is loading.
@@ -185,7 +239,7 @@ window.loadSelectedVesselPhoto=async function(v,identity){
  img.onload=()=>{
    if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
    wrap.hidden=false;slot.append(credit);fallback.hidden=true;
-   if(note)note.textContent=(photo.confirmedId?'Foto knyttet til IMO/MMSI':'Mulig bilde funnet via skipsnavn')+' · Wikimedia Commons · AIS fra Kystverket';
+   if(note)note.textContent=(photo.representative?'Typebilde – ikke samme skip':photo.confirmedId?'Foto knyttet til IMO/MMSI':'Mulig bilde funnet via skipsnavn')+' · Wikimedia Commons · AIS fra Kystverket';
  };
  img.onerror=()=>{
    if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
