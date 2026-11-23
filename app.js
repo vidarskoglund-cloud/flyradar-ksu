@@ -3632,6 +3632,59 @@ async function adaptiveRefresh(){
 setInterval(renderAvinor,30000);
 loadAvinor();loadOffshore();loadVessels();adaptiveRefresh();setInterval(loadAvinor,600000);setInterval(loadVessels,30000);requestAnimationFrame(animateAircraftMotion);
 
+// Potential pilot transfers are hypotheses inferred from several fresh AIS fixes,
+// never confirmation of an assignment or boarding. No external API calls.
+const pilotEncounters=new Map();
+function pilotVessel(v){
+ const name=String(v?.name||'').trim().toUpperCase();
+ return /^(?:LOS[ -]?\d{1,4}|LOSB[AÅ]T[ -]?\d+|PILOT[ -]?(?:BOAT|\d))/i.test(name);
+}
+function pilotEncounterHeadlines(){
+ const now=Date.now(),out=[],activeKeys=new Set();
+ const pilots=vessels.filter(v=>pilotVessel(v)&&Number(v.speed)>=3.5).slice(0,8);
+ const targets=vessels.filter(v=>!pilotVessel(v)&&Number(v.speed)>=1.5 &&
+   Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon))).slice(0,120);
+ for(const pilot of pilots){
+  const pKey=vesselKey(pilot),pRow=vesselMotionHistory.get(pKey);
+  if(!pKey||!pRow||!Number.isFinite(Number(pilot.lat))||!Number.isFinite(Number(pilot.lon))||
+     now-pRow.at>90000)continue;
+  for(const target of targets){
+   const tKey=vesselKey(target),tRow=vesselMotionHistory.get(tKey);
+   if(!tKey||tKey===pKey||!tRow||now-tRow.at>90000)continue;
+   const gap=nm(dist(Number(pilot.lat),Number(pilot.lon),Number(target.lat),Number(target.lon)));
+   if(!Number.isFinite(gap)||gap>2.5)continue;
+   const pair=pKey+'|'+tKey;
+   activeKeys.add(pair);
+   const prev=pilotEncounters.get(pair);
+   // Ignore repeated polling of an unchanged AIS fix.
+   const newFix=Boolean(prev&&(pRow.at>prev.pilotAt||tRow.at>prev.targetAt));
+   if(!prev){
+    pilotEncounters.set(pair,{gap,pilotAt:pRow.at,targetAt:tRow.at,started:now,at:now,closing:0});
+    continue;
+   }
+   if(newFix){
+    const closing=prev.gap-gap;
+    const reliable=closing>=0.05&&closing<=0.9;
+    pilotEncounters.set(pair,{gap,pilotAt:pRow.at,targetAt:tRow.at,
+      started:prev.started,at:now,closing:reliable?prev.closing+1:0});
+   }
+   const state=pilotEncounters.get(pair);
+   if(state.closing<2||now-state.started<45000||gap>1.5)continue;
+   const bearing=bearingBetween(Number(pilot.lat),Number(pilot.lon),Number(target.lat),Number(target.lon));
+   const course=Number(pilot.course);
+   if(!Number.isFinite(course)||angleDiff(course,bearing)>75)continue;
+   const pilotName=String(pilot.name||'Losbåt').trim().slice(0,28);
+   const vesselName=String(target.name||'fartøy').trim().slice(0,32);
+   out.push({level:2.5,category:'MULIG LOSOPERASJON',
+      message:pilotName+' nærmer seg '+vesselName,
+      detail:'AIS-spor viser redusert avstand · '+gap.toFixed(1)+' NM · losoppdrag ikke bekreftet'});
+  }
+ }
+ for(const [key,state] of pilotEncounters){
+  if(!activeKeys.has(key)||now-state.at>5*60*1000)pilotEncounters.delete(key);
+ }
+ return out.sort((a,b)=>a.detail.localeCompare(b.detail)).slice(0,1);
+}
 // Read-only summary for the fixed-height information bar.
 // Do not infer a confirmed arrival, destination or harbour call from tracking alone.
 window.KsuHeadlineData=()=>{
@@ -3656,7 +3709,7 @@ window.KsuHeadlineData=()=>{
    return {level:4,category:'BÅTTRAFIKK',message:(v.name||'Fartøy')+' nærmer seg havneområdet',
      detail:'Bevegelse registrert i AIS · havneanløp ikke bekreftet'};
   }).filter(Boolean).slice(0,2);
- return [...aircraft,...ship];
+ return [...aircraft,...pilotEncounterHeadlines(),...ship];
 };
 document.addEventListener('fullscreenchange',()=>{
   setTimeout(()=>{
