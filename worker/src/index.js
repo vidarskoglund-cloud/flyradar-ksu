@@ -665,6 +665,19 @@ export default {
       const cacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/roads?geocoded=v1");
       const hit = await cache.match(cacheKey);
       if (hit) return hit;
+      const lastGoodKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/datex/roads?last_good=v1");
+      const lastGood = async (reason) => {
+        try {
+          const cached = await cache.match(lastGoodKey);
+          if (!cached) return null;
+          const prev = await cached.json();
+          const age = Date.now() - Date.parse(prev?.checked_at);
+          if (!prev?.ok || !prev?.roads || !Number.isFinite(age) || age < 0 || age > 21600000) return null;
+          return new Response(JSON.stringify({...prev, stale: true, stale_reason: reason,
+            status_note: "Tidligere DATEX-registreringer, oppdatering feilet. Aktiv status er ikke bekreftet."}),
+            {headers:{...corsHeaders(),"Cache-Control":"no-store"}});
+        } catch (_) { return null; }
+      };
       const roads = [
         ["Freifjordtunnelen", /freifjord(?:tunnel|tunell)/i],
         ["Atlanterhavstunnelen", /atlanterhavstunnel/i],
@@ -687,7 +700,7 @@ export default {
         });
         if (!upstream.ok || !upstream.body) {
           if (upstream.body) await upstream.body.cancel();
-          return new Response(JSON.stringify({ ok: false, state: "upstream_error", http_status: upstream.status }),
+          return (await lastGood("upstream_error")) || new Response(JSON.stringify({ ok: false, state: "upstream_error", http_status: upstream.status }),
             { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
         }
         const reader = upstream.body.getReader(), decoder = new TextDecoder();
@@ -764,6 +777,7 @@ export default {
           ok: true, source: "Statens vegvesen DATEX II 3.1",
           checked_at: new Date().toISOString(),
           complete, bytes_read: processedBytes, records,
+          coverage: complete ? "complete_snapshot" : "partial_snapshot",
           roads: perRoad, local,
           geocoded: [...Object.values(perRoad).flat(), ...local].filter((event) =>
             Number.isFinite(event.lat) && Number.isFinite(event.lon)).length,
@@ -772,9 +786,11 @@ export default {
         const response = new Response(JSON.stringify(result), { headers });
         // Cache failures must not turn a successful DATEX parse into an outage.
         try { await cache.put(cacheKey, response.clone()); } catch (_) {}
+        try { await cache.put(lastGoodKey, new Response(JSON.stringify(result),
+          {headers:{...corsHeaders(),"Cache-Control":"public, max-age=21600"}})); } catch (_) {}
         return response;
       } catch (error) {
-        return new Response(JSON.stringify({ ok: false, state: "processing_error",
+        return (await lastGood("processing_error")) || new Response(JSON.stringify({ ok: false, state: "processing_error",
           category: /timeout|abort/i.test(String(error?.name || "")) ? "timeout" : "network_or_xml",
           checked_at: new Date().toISOString(), records, bytes_read: processedBytes }),
           { status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
