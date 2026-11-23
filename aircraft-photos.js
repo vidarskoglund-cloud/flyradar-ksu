@@ -2,7 +2,7 @@
 'use strict';
 // Extra image lookups only for the aircraft shown in the detail panel.
 // Do not infer that a type photo depicts the specific registered aircraft.
-const CACHE='kristiansund-aircraft-photos-v4',pending=new Map();
+const CACHE='kristiansund-aircraft-photos-v5',pending=new Map();
 function cacheRead(key){
  try{
   const x=JSON.parse(localStorage.getItem(CACHE)||'{}')[key];
@@ -67,7 +67,7 @@ const TYPE_SEARCH={
  A320:{terms:['Airbus A320 airliner'],patterns:[/\ba320\b/i]},
  A319:{terms:['Airbus A319 aircraft'],patterns:[/\ba319\b/i]},
  A321:{terms:['Airbus A321 aircraft'],patterns:[/\ba321\b/i]},
- B38M:{terms:['Boeing 737 MAX 8 aircraft'],patterns:[/\b(?:737 max 8|737-?8 max|b38m)\b/i]},
+ B38M:{terms:['Boeing 737 MAX 8','Boeing 737-8 MAX','Boeing 737 MAX Ryanair'],patterns:[/\b(?:737[ -]?max[ -]?8|737[ -]?8[ -]?max|b38m|max[ -]?8|737[ -]?8200)\b/i]},
  E195:{terms:['Embraer E195 aircraft'],patterns:[/\b(?:e195|erj ?195|embraer 195)\b/i]},
  E190:{terms:['Embraer E190 aircraft'],patterns:[/\b(?:e190|erj ?190|embraer 190)\b/i]},
  E290:{terms:['Embraer E190 E2 aircraft'],patterns:[/\b(?:e190 ?e2|e190-?e2|erj ?190-?300)\b/i]},
@@ -136,7 +136,7 @@ async function lookupType(type){
   try{
    for(const term of spec.terms){
     const q=new URLSearchParams({action:'query',format:'json',origin:'*',generator:'search',
-      gsrsearch:term,gsrnamespace:'6',gsrlimit:'35',
+      gsrsearch:term,gsrnamespace:'6',gsrlimit:'50',
       prop:'imageinfo|categories',cllimit:'max',iiprop:'url|extmetadata',iiurlwidth:'720'});
     const response=await fetch('https://commons.wikimedia.org/w/api.php?'+q,{
       credentials:'omit',signal:AbortSignal.timeout(10000)});
