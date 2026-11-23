@@ -656,6 +656,94 @@ export default {
       );
     }
 
+    if (url.pathname === "/datex/inspect") {
+      // Read-only, bounded DATEX schema discovery. No raw XML, credentials
+      // or authorization headers are returned to public callers.
+      const headers = { ...corsHeaders(), "Cache-Control": "no-store" };
+      if (!env.DATEX_USERNAME || !env.DATEX_PASSWORD) {
+        return new Response(JSON.stringify({ ok: false, state: "credentials_missing" }), { status: 503, headers });
+      }
+      const start = Date.now();
+      try {
+        const upstream = await fetch(
+          "https://datex-server-get-v3-1.atlas.vegvesen.no/datexapi/GetSituation/pullsnapshotdata",
+          {
+            headers: {
+              Authorization: "Basic " + btoa(env.DATEX_USERNAME + ":" + env.DATEX_PASSWORD),
+              Accept: "application/xml, text/xml;q=0.9"
+            },
+            redirect: "manual",
+            signal: AbortSignal.timeout(25000)
+          }
+        );
+        if (!upstream.ok) {
+          if (upstream.body) await upstream.body.cancel();
+          return new Response(JSON.stringify({ ok: false, state: "upstream_error", http_status: upstream.status }),
+            { status: 503, headers });
+        }
+        // The entire upstream feed can be large. Inspect a bounded prefix;
+        // if truncated, never interpret a missing keyword as no event.
+        const limit = 12 * 1024 * 1024;
+        let xml = "", bytes = 0, truncated = false;
+        const reader = upstream.body?.getReader();
+        if (!reader) throw Error("No upstream body");
+        const decoder = new TextDecoder();
+        while (bytes < limit) {
+          const part = await reader.read();
+          if (part.done) break;
+          const remaining = limit - bytes;
+          const slice = part.value.byteLength > remaining ? part.value.subarray(0, remaining) : part.value;
+          xml += decoder.decode(slice, { stream: true });
+          bytes += slice.byteLength;
+          if (part.value.byteLength > remaining) { truncated = true; break; }
+        }
+        if (bytes >= limit) truncated = true;
+        if (truncated) await reader.cancel();
+        xml += decoder.decode();
+        const tags = new Map();
+        for (const match of xml.matchAll(/<([A-Za-z_][\\w.-]*:)?([A-Za-z_][\\w.-]*)\\b/g)) {
+          const tag = match[2];
+          tags.set(tag, (tags.get(tag) || 0) + 1);
+        }
+        const terms = [
+          "Freifjord", "Atlanterhavstunnel", "Bergsøysund", "Bergsoysund",
+          "Omsund", "Nordsund", "Kristiansund", "Krifast", "Gjemnes",
+          "E39", "Rv70", "Fv64"
+        ];
+        const matched = [];
+        for (const term of terms) {
+          const positions = [];
+          const lower = xml.toLocaleLowerCase("nb-NO"), needle = term.toLocaleLowerCase("nb-NO");
+          let at = 0;
+          while (positions.length < 3 && (at = lower.indexOf(needle, at)) !== -1) {
+            const left = Math.max(0, at - 110), right = Math.min(xml.length, at + needle.length + 110);
+            const context = xml.slice(left, right)
+              .replace(/<[^>]*>/g, " ").replace(/&(?:#\\d+|#x[\\da-f]+|\\w+);/gi, " ")
+              .replace(/\\s+/g, " ").trim().slice(0, 180);
+            positions.push(context);
+            at += needle.length;
+          }
+          if (positions.length) matched.push({ term, examples: positions });
+        }
+        const root = xml.match(/<(?!\\?|!)([A-Za-z_][\\w:.-]*)\\b/);
+        const topTags = [...tags.entries()].sort((a,b) => b[1] - a[1]).slice(0, 35)
+          .map(([name,count]) => ({ name, count }));
+        return new Response(JSON.stringify({
+          ok: true, source: "Statens vegvesen DATEX II 3.1",
+          checked_at: new Date().toISOString(),
+          bytes_inspected: bytes, truncated, root_tag: root?.[1] || null,
+          top_tags: topTags, matching_terms: matched,
+          elapsed_ms: Date.now() - start,
+          note: truncated ? "Partial XML prefix; no-match does not imply no active event" :
+            "Tag counts describe the returned XML; not yet a validated geographic filter"
+        }), { headers: { ...corsHeaders(), "Cache-Control": "no-store" } });
+      } catch (error) {
+        return new Response(JSON.stringify({ ok: false, state: "inspection_error",
+          error_category: /timeout|abort/i.test(String(error?.name || "")) ? "timeout" : "fetch_or_parse",
+          checked_at: new Date().toISOString() }), { status: 503, headers });
+      }
+    }
+
     if (url.pathname === "/datex/check") {
       // Read-only connectivity check. Never return credentials or traffic XML.
       // Keep this on the feature branch until credentials are installed and tested.
