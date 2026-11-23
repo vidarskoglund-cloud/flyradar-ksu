@@ -107,21 +107,9 @@ function paint(){
      body.textContent=entries.map(detailsText).join('\n\n---\n\n');
     }
     el.append(item);
-   }else{
-    const row=document.createElement('div');row.className='road-status-row';
-    const name=document.createElement('span');name.className='road-status-name';name.textContent=road.name;
-    const status=document.createElement('span');status.className='road-status-unknown';
-    status.textContent=lastError?(snapshot?'Sist registrert · ikke oppdatert':'Data utilgjengelig'):
-      snapshot?.complete?'Ingen stedfestet melding':
-      snapshot?'Ingen treff · delvis kontroll':'Kontrollerer…';
-    row.append(name,status);el.append(row);
    }
-  }
-  if(snapshot && !snapshot.complete){
-   const note=document.createElement('div');
-   note.className='road-local-heading';
-   note.textContent='Kun deler av Vegvesenets datasett er kontrollert. Manglende treff sier ikke om veien er åpen.';
-   el.append(note);
+   // Main roads without an explicit DATEX notice stay hidden.
+   // An empty result is not proof that a road is open.
   }
   const local=uniqueEvents(snapshot?.local||[]);
   if(local.length){
@@ -156,7 +144,7 @@ function paint(){
   credit.append(document.createTextNode(
    lastError&&snapshot?'DATEX · eldre registreringer (oppdatering feilet) · ':
    snapshot?.complete?'DATEX · oppdateres hvert 5. minutt · status ikke bekreftet · ':
-    snapshot?'DATEX · delvis datasett · status ikke bekreftet · ':
+    snapshot?'DATEX · delvis datasett · ingen treff betyr ikke åpen vei · ':
     'DATEX · status ikke tilgjengelig · '
   ));
   const link=document.createElement('a');link.href=ROAD_TRAFFIC_URL;
