@@ -140,21 +140,9 @@ function paint(){
    const heading=document.createElement('div');
    heading.className='road-local-heading';heading.textContent='Andre trafikkmeldinger · ikke bekreftet aktive';
    el.append(heading);
-   for(const [index,event] of local.slice(0,3).entries()){
+   // Always show all local notices in a single live list, without "show more".
+   for(const [index,event] of local.entries()){
     el.append(eventLine(event,id+'|local|'+index+'|'+clean(event.place),shortPlace(event.place)));
-   }
-   if(local.length>3){
-    const more=document.createElement('details');
-    more.className='road-more';
-    const key=id+'|more';more.open=Boolean(expanded[key]);
-    more.addEventListener('toggle',()=>{expanded[key]=more.open;});
-    const summary=document.createElement('summary');
-    summary.textContent='Vis '+(local.length-3)+' flere meldinger';
-    more.append(summary);
-    local.slice(3).forEach((event,index)=>{
-     more.append(eventLine(event,id+'|extra|'+index+'|'+clean(event.place),shortPlace(event.place)));
-    });
-    el.append(more);
    }
   }
  }
