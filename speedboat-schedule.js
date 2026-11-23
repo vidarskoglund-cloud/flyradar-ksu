@@ -118,7 +118,7 @@ function toRows(calls,now=Date.now()){
  }
  return results.sort((a,b)=>a.when-b.when)
   .filter((row,i,all)=>all.findIndex(r=>r.direction===row.direction&&r.when===row.when&&r.label===row.label)===i)
-  .slice(0,4);
+  .slice(0,2);
 }
 function rowHtml(row){
  const tag=row.direction==='ANK'?'Ankomst':'Avgang';
