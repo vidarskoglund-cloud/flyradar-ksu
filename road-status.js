@@ -12,6 +12,14 @@ const ROAD_TRAFFIC_URL='https://www.vegvesen.no/trafikk/';
 const ENDPOINT='https://flyradar-ksu.vidar-skoglund.workers.dev/datex/roads';
 const FIVE_MINUTES=5*60*1000;
 let snapshot=null,lastError=false,loading=false;
+const LAST_DATEX_KEY='ksu-datex-last-good-v1';
+try{
+ const saved=JSON.parse(localStorage.getItem(LAST_DATEX_KEY)||'null');
+ if(saved?.ok&&saved?.roads&&Number.isFinite(Date.parse(saved.checked_at)) &&
+    Date.now()-Date.parse(saved.checked_at)<6*60*60*1000){
+  snapshot=saved;lastError=true;
+ }
+}catch(_error){}
 const expanded={};
 
 function clean(s){return String(s||'').replace(/\s+/g,' ').trim();}
@@ -103,7 +111,7 @@ function paint(){
     const row=document.createElement('div');row.className='road-status-row';
     const name=document.createElement('span');name.className='road-status-name';name.textContent=road.name;
     const status=document.createElement('span');status.className='road-status-unknown';
-    status.textContent=lastError?'Data utilgjengelig':
+    status.textContent=lastError?(snapshot?'Sist registrert · ikke oppdatert':'Data utilgjengelig'):
       snapshot?.complete?'Ingen stedfestet melding':
       snapshot?'Ingen melding i undersøkte data':'Kontrollerer…';
     row.append(name,status);el.append(row);
@@ -133,13 +141,14 @@ function paint(){
   }
  }
  for(const summary of document.querySelectorAll('details.road-status-side > summary > small')){
-  summary.textContent=lastError?'DATEX utilgjengelig':
+  summary.textContent=lastError?(snapshot?'DATEX · sist mottatt':'DATEX utilgjengelig'):
     snapshot?.checked_at?'DATEX · '+new Date(snapshot.checked_at).toLocaleTimeString('nb-NO',{hour:'2-digit',minute:'2-digit'}):
     'DATEX · kontrollerer';
  }
  for(const credit of document.querySelectorAll('.road-status-credit')){
   credit.replaceChildren();
   credit.append(document.createTextNode(
+   lastError&&snapshot?'DATEX · eldre registreringer (oppdatering feilet) · ':
    snapshot?.complete?'DATEX · oppdateres hvert 5. minutt · status ikke bekreftet · ':
     snapshot?'DATEX · delvis datasett · status ikke bekreftet · ':
     'DATEX · status ikke tilgjengelig · '
@@ -159,8 +168,12 @@ async function refresh(){
   const payload=await response.json();
   if(!payload?.ok||!payload?.roads)throw Error('DATEX invalid response');
   snapshot=payload;lastError=false;
+  try{localStorage.setItem(LAST_DATEX_KEY,JSON.stringify(payload));}catch(_error){}
   if(window.KsuTrafficMap?.update)window.KsuTrafficMap.update(snapshot);
- }catch(_error){lastError=true;snapshot=null;
+ }catch(_error){
+  lastError=true;
+  // Retain historical notices in the panel, but remove live map markers.
+  // Never treat stale events as current traffic restrictions.
   if(window.KsuTrafficMap?.update)window.KsuTrafficMap.update(null);
  }
  finally{clearTimeout(timeout);loading=false;paint();}
