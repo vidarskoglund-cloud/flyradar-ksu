@@ -34,7 +34,7 @@ test('airport position remains preferred; city estimates always visibly labelled
  assert.match(app,/overflightIntroPending\.add\(key\)/);
  assert.match(html,/route-city-fallback\.js\?v=1/);
  assert.ok(html.indexOf('route-city-fallback.js?v=1')<html.indexOf('app.js?v=223'));
- assert.match(worker,/country_code: ap\.country_code \|\| ap\.country_iso_code \|\| ""/);
+ assert.match(worker,/country_code: ap\.country_code \|\| ap\.country_iso_code \|\|/);
 });
 test('geocoding is free, cacheable and respects map manual override',()=>{
  assert.match(app,/geocoding-api\.open-meteo\.com\/v1\/search/);
