@@ -46,7 +46,7 @@ test('only current, valid routes are restored',()=>{
 });
 test('load order defers cache restore until app.js provides routeText',()=>{
  assert.ok(html.indexOf('aircraft/route-cache.js?v=1')>=0);
- assert.ok(html.indexOf('aircraft/route-cache.js?v=1')<html.indexOf('app.js?v=217'));
+ assert.ok(html.indexOf('aircraft/route-cache.js?v=1')<html.indexOf('app.js?v=218'));
  assert.doesNotMatch(source,/^loadSavedRoutes\(\);\s*$/m);
  assert.match(app,/^loadSavedRoutes\(\);\s*$/m);
  assert.doesNotMatch(app,/function saveConfirmedRoute\s*\(/);
