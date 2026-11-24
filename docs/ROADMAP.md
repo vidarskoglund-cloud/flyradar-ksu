@@ -53,6 +53,10 @@ Avklar havneområder, prioritering av inn-/utseilinger, fartøyinfo og mulig spo
 
 Enkel navigasjon for Fly/Båter/Områder, lokale valg, tydelig faktisk varslingsstatus, og teknisk informasjon under administrasjon.
 
+### Neste oppgave: felles register for prioritert trafikk
+
+**Oppgave:** [#89 – prioritert fly- og fartøytrafikk](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/89). Kartlegging dokumentert i [PRIORITERT-TRAFIKK.md](PRIORITERT-TRAFIKK.md). Vi begynner med verifisert Kystekspressen-flåte og karakteriseringstester; identitet, ikon, dekning og kartfokus holdes adskilt. Ingen aktiv kodeendring eller Cloudflare Worker-deploy er utført som del av kartleggingen.
+
 ## Planlagt teknisk oppdeling (ikke gjennomført)
 
 ```text
