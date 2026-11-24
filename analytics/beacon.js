@@ -17,7 +17,7 @@
   // Prevent loading the third-party beacon during development or file previews.
   if(location.hostname!=='vidarskoglund-cloud.github.io')return;
   const beacon=document.createElement('script');
-  beacon.defer=true;
+  beacon.type='module';
   beacon.src='https://static.cloudflareinsights.com/beacon.min.js';
   beacon.dataset.cfBeacon=JSON.stringify({token,spa:false});
   document.head.appendChild(beacon);
