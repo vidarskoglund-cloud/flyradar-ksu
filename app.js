@@ -427,7 +427,7 @@ function remoteDepartureCandidates(){
 async function fetchRemoteCallsign(callsign){
   if(!callsign)return null;
   const urls=[
-    'https://api.adsb.lol/v2/callsign/'+encodeURIComponent(callsign)
+    'https://opendata.adsb.fi/api/v2/callsign/'+encodeURIComponent(callsign)
   ];
   for(const url of urls){
     try{
@@ -464,11 +464,26 @@ function routeContainsAirport(route,code){
   const aps=Array.isArray(route?._airports)?route._airports:[];
   return aps.some(a=>[a.iata,a.icao,a.code].some(x=>String(x||'').toUpperCase()===c));
 }
+// Origin scanning can encounter several airline aircraft. Check at most two
+// distinct callsigns per flight/date in each discovery pass. The Worker enforces
+// the shared monthly FlightAware cap for all browsers.
+const remoteKsuRouteChecked=new Set();
+function remoteKsuOriginRouteKey(callsign,now=Date.now()){
+  return new Date(now).toISOString().slice(0,10)+'|'+String(callsign||'').trim().toUpperCase();
+}
+async function remoteKsuCandidateRoute(a){
+  const callsign=String(a?.flight||'').trim().toUpperCase();
+  if(!callsign)return null;
+  const key=remoteKsuOriginRouteKey(callsign);
+  if(remoteKsuRouteChecked.has(key))return null;
+  remoteKsuRouteChecked.add(key);
+  return routeForCallsign(callsign,a.lat,a.lon,a.alt_baro??a.alt_geom,'ksu');
+}
 async function discoverKsuAircraftFromDeparture(f){
   const origin=airportByCode(f?.airport);
   if(!origin)return null;
   try{
-    const url=`https://api.adsb.lol/v2/point/${origin.lat}/${origin.lon}/25`;
+    const url=`https://opendata.adsb.fi/api/v3/lat/${origin.lat}/lon/${origin.lon}/dist/25`;
     const j=await fetchJson(url);
     const rows=(Array.isArray(j?.ac)?j.ac:[]).filter(a=>{
       const cs=compactFlightId(a.flight);
@@ -479,9 +494,13 @@ async function discoverKsuAircraftFromDeparture(f){
       return airline?cs.startsWith(airline):true;
     }).slice(0,8);
 
+    let checked=0;
     for(const a of rows){
+      if(checked>=2)break;
       const callsign=String(a.flight||'').trim();
-      const route=await routeForCallsign(callsign,a.lat,a.lon);
+      if(remoteKsuRouteChecked.has(remoteKsuOriginRouteKey(callsign)))continue;
+      checked++;
+      const route=await remoteKsuCandidateRoute(a);
       if(routeContainsAirport(route,'KSU')&&routeContainsAirport(route,origin.code)){
         a._matchedRoute=route;
         return a;
@@ -495,7 +514,7 @@ async function discoverKsuDepartureAircraft(f){
   const ksu=airportByCode('KSU');
   if(!destination||!ksu)return null;
   try{
-    const url=`https://api.adsb.lol/v2/point/${ksu.lat}/${ksu.lon}/25`;
+    const url=`https://opendata.adsb.fi/api/v3/lat/${ksu.lat}/lon/${ksu.lon}/dist/25`;
     const j=await fetchJson(url);
     const rows=(Array.isArray(j?.ac)?j.ac:[]).filter(a=>{
       const cs=compactFlightId(a.flight);
@@ -560,7 +579,7 @@ async function updateRemoteKsuTracking(){
         });
       }
 
-      const p=normalize({...raw,_source:'adsb.lol · KSU fjernsporing'},s);
+      const p=normalize({...raw,_source:'adsb.fi · KSU fjernsporing'},s);
       p.remoteTracked=true;
       p.ksuFlight=f;
       if(raw._matchedRoute){
