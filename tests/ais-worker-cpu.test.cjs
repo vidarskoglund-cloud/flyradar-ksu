@@ -17,6 +17,7 @@ function makeHarness(data,{upstreamStatus=200,failCachePut=false}={}){
    async put(key,response){counts.cacheWrite++;if(failCachePut)throw Error('cache backend unavailable');memory.set(key.url,response.clone())}};
  const sandbox={Date,Number,String,Object,Array,Math,JSON,Boolean,Request,Response,AbortSignal,URL,Map,
   caches:{default:cache},setTimeout,Promise,console:{warn:()=>{}},
+  KSU:{lat:63.1118,lon:7.8245},
   corsHeaders:()=>({'Content-Type':'application/json; charset=utf-8'}),
   fetch:async()=>{counts.fetch++;return new Response(JSON.stringify(data),{status:upstreamStatus})}};
  vm.createContext(sandbox);
