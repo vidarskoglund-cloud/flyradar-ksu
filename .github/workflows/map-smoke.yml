@@ -15,6 +15,7 @@ on:
       - "tests/aircraft-route-cache.test.cjs"
       - "tests/aircraft-auto-route-eligibility.test.cjs"
       - "tests/remote-ksu-origin-tracking.test.cjs"
+      - "tests/remote-ksu-ground-taxiing.test.cjs"
       - "tests/map-focus-geometry.test.cjs"
       - "tests/map-aircraft-focus-priority.test.cjs"
       - "tests/map-focus-target.test.cjs"
@@ -35,6 +36,7 @@ on:
       - "tests/aircraft-route-cache.test.cjs"
       - "tests/aircraft-auto-route-eligibility.test.cjs"
       - "tests/remote-ksu-origin-tracking.test.cjs"
+      - "tests/remote-ksu-ground-taxiing.test.cjs"
       - "tests/map-focus-geometry.test.cjs"
       - "tests/map-aircraft-focus-priority.test.cjs"
       - "tests/map-focus-target.test.cjs"
@@ -65,4 +67,4 @@ jobs:
           node --check aircraft/route-cache.js
           node --check aircraft/auto-route-eligibility.js
       - name: Test focused aircraft and map traffic notices
-        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/aircraft-auto-route-eligibility.test.cjs tests/remote-ksu-origin-tracking.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs tests/worker-route-diagnostics.test.cjs
+        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/aircraft-auto-route-eligibility.test.cjs tests/remote-ksu-origin-tracking.test.cjs tests/remote-ksu-ground-taxiing.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs tests/worker-route-diagnostics.test.cjs
