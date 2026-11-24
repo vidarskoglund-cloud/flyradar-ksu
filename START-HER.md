@@ -32,6 +32,7 @@ Kristiansund Trafikkradar viser fly/helikopter og fartøy ved Kvernberget, Krist
 - PR #65: målrettet GitHub Actions-testworkflow opprettet.
 - PR #66: lokal sporhistorikk flyttet til `aircraft/track-history.js`, med versjonsoppdatering av `app.js` for å unngå gammel nettlesercache.
 - PR #68: rutecache flyttet til `aircraft/route-cache.js`, med lagring, validering, utløp og regresjonstester; live-kontroll etter sammenslåing gjenstår.
+- PR #70: rene geometrihjelpere for kartfokus flyttet til `map/focus-geometry.js` med egne tester. Selve kartprioriteringen er uendret.
 - Bruker rapporterte at nettsiden fungerte før siste endring. Utrullingen etter PR #66 og full testkjøring er ikke bekreftet her.
 
 ## Neste arbeid
