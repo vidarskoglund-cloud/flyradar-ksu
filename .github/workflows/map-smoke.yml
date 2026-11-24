@@ -9,6 +9,7 @@ on:
       - "tests/web-analytics.test.cjs"
       - "worker/src/index.js"
       - "tests/ais-worker-cpu.test.cjs"
+      - "tests/flightaware-overflight.test.cjs"
       - "tests/worker-route-diagnostics.test.cjs"
       - "index.html"
       - "map/**"
@@ -40,6 +41,7 @@ on:
       - "tests/web-analytics.test.cjs"
       - "worker/src/index.js"
       - "tests/ais-worker-cpu.test.cjs"
+      - "tests/flightaware-overflight.test.cjs"
       - "tests/worker-route-diagnostics.test.cjs"
       - "index.html"
       - "map/**"
@@ -90,4 +92,4 @@ jobs:
           node --check aircraft/route-cache.js
           node --check aircraft/auto-route-eligibility.js
       - name: Test focused aircraft and map traffic notices
-        run: node --test tests/web-analytics.test.cjs tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/mobile-road-notices.test.cjs tests/police-empty-state.test.cjs tests/road-period-visual.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/aircraft-auto-route-eligibility.test.cjs tests/remote-ksu-origin-tracking.test.cjs tests/remote-ksu-ground-taxiing.test.cjs tests/ksu-turnaround-callsign.test.cjs tests/featured-fast-ferry.test.cjs tests/kystekspressen-ais.test.cjs tests/ais-worker-cpu.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs tests/worker-route-diagnostics.test.cjs
+        run: node --test tests/web-analytics.test.cjs tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/mobile-road-notices.test.cjs tests/police-empty-state.test.cjs tests/road-period-visual.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/aircraft-auto-route-eligibility.test.cjs tests/remote-ksu-origin-tracking.test.cjs tests/remote-ksu-ground-taxiing.test.cjs tests/ksu-turnaround-callsign.test.cjs tests/featured-fast-ferry.test.cjs tests/kystekspressen-ais.test.cjs tests/ais-worker-cpu.test.cjs tests/flightaware-overflight.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs tests/worker-route-diagnostics.test.cjs

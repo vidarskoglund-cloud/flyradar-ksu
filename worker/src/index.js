@@ -359,6 +359,31 @@ export class TrackStore extends DurableObject {
       });
     }
 
+    // Shared callsign/day guard. Only one visitor can reserve a paid
+    // overflight lookup; a cached route is returned to later visitors.
+    if (url.pathname === "/overflight-route-cache" &&
+        ["GET","POST","PUT"].includes(request.method)) {
+      const payload=request.method==="GET" ? Object.fromEntries(url.searchParams) :
+        await request.json().catch(()=>({}));
+      const callsign=String(payload.callsign||"").trim().toUpperCase();
+      const day=String(payload.day||"");
+      if (!/^[A-Z0-9-]{2,16}$/.test(callsign) || !/^\d{4}-\d{2}-\d{2}$/.test(day))
+        return new Response(JSON.stringify({ok:false}),{status:400});
+      const key="overflightRoute:"+day+":"+callsign;
+      const current=(await this.ctx.storage.get(key))||null;
+      if (request.method==="GET")
+        return Response.json({ok:true,found:!!current,state:current?.state||"missing",route:current?.route||null});
+      if (request.method==="POST") {
+        if(current)return Response.json({ok:true,allowed:false,state:current.state,route:current.route||null});
+        await this.ctx.storage.put(key,{state:"pending",at:Date.now()});
+        return Response.json({ok:true,allowed:true});
+      }
+      if(!current)return new Response(JSON.stringify({ok:false}),{status:409});
+      const route=payload.route||null;
+      await this.ctx.storage.put(key,{state:route?"found":"empty",route,at:Date.now()});
+      return Response.json({ok:true});
+    }
+
     if ((request.method === "GET" || request.method === "POST") && url.pathname === "/flightaware-budget") {
       const month = new Date().toISOString().slice(0, 7);
       let state = (await this.ctx.storage.get("flightawareBudget")) || { month, spent: 0, calls: 0 };
@@ -436,6 +461,9 @@ function faAirport(ap) {
     icao,
     name: ap.name || "",
     city: ap.city || "",
+    // Coordinates are optional in AeroAPI airport objects; never infer them.
+    ...(Number.isFinite(Number(ap.latitude)) && Number.isFinite(Number(ap.longitude))
+      ? { lat: Number(ap.latitude), lon: Number(ap.longitude) } : {}),
   };
 }
 
@@ -513,7 +541,7 @@ async function flightAwareUsage(env, force = false) {
   }
 }
 
-async function flightAwareRoute(env, callsign) {
+async function flightAwareRoute(env, callsign, recentOnly = false) {
   if (!env.FLIGHTAWARE_API_KEY) return null;
 
   const actualUsage = await flightAwareUsage(env);
@@ -548,7 +576,8 @@ async function flightAwareRoute(env, callsign) {
   const flights = Array.isArray(j?.flights) ? j.flights.slice() : [];
   flights.sort((a, b) => flightTimeScore(a) - flightTimeScore(b));
 
-  const f = flights.find((x) => x?.origin && x?.destination) || null;
+  const f = flights.find((x) => x?.origin && x?.destination &&
+    (!recentOnly || flightTimeScore(x) <= 18 * 60 * 60 * 1000)) || null;
   if (!f) return null;
 
   const from = faAirport(f.origin);
@@ -1358,7 +1387,15 @@ export default {
       const lon = Number(url.searchParams.get("lon"));
       const alt = Number(url.searchParams.get("alt"));
       const faScope = (url.searchParams.get("fa_scope") || "").toLowerCase();
-      const allowFlightAware =
+      const speed = Number(url.searchParams.get("speed"));
+      // High-altitude, fast transit; exclude local approaches in the browser.
+      // Server independently enforces altitude, speed and 50 NM radius.
+      const overflight = faScope === "overflight" &&
+        Number.isFinite(lat) && Number.isFinite(lon) &&
+        distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50 &&
+        Number.isFinite(alt) && alt >= 25000 &&
+        Number.isFinite(speed) && speed >= 300;
+      const allowFlightAware = overflight ||
         faScope === "ksu" ||
         (faScope === "active50" && Number.isFinite(lat) && Number.isFinite(lon) &&
           distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50) ||
@@ -1381,6 +1418,41 @@ export default {
       let flightAwareAttempted = false;
       let flightAwareResult = "not-tried";
 
+      // For a verified transit, ask FlightAware first (within the existing
+      // server-side monthly budget), then the free source if necessary.
+      if (overflight) {
+        // Durable Object serializes reservations across all browsers/edge colos.
+        const day=new Date().toISOString().slice(0,10);
+        const stub=env.TRACK_STORE.get(env.TRACK_STORE.idFromName("ksu"));
+        const payload={callsign,day};
+        try {
+          const reservation=await stub.fetch("https://track-store/overflight-route-cache",{
+            method:"POST",headers:{"Content-Type":"application/json"},
+            body:JSON.stringify(payload)
+          });
+          if(reservation.ok){
+            const state=await reservation.json();
+            if(routeUsable(state.route)){
+              route=state.route;source="flightaware";flightAwareResult="cached";
+            }else if(state.allowed){
+              flightAwareAttempted=true;
+              let faRoute=null;
+              try { faRoute=await flightAwareRoute(env,callsign,true); }
+              catch (_) { flightAwareResult="error"; }
+              if(routeUsable(faRoute)){
+                route=faRoute;source="flightaware";flightAwareResult="found";
+              }else if(flightAwareResult!=="error")flightAwareResult="no-route";
+              await stub.fetch("https://track-store/overflight-route-cache",{
+                method:"PUT",headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({...payload,route:routeUsable(faRoute)?faRoute:null})
+              }).catch(()=>null);
+            }else flightAwareResult="already-checked";
+          }else flightAwareResult="cache-unavailable";
+        }catch(_){flightAwareResult="cache-unavailable";}
+        // Fail closed on cache errors: do not charge or repeat paid requests.
+      }
+
+      if (!routeUsable(route)) {
       try {
         adsbLolAttempted = true;
         const body = {
@@ -1421,7 +1493,8 @@ export default {
           : "network-or-upstream";
       }
 
-      if (!routeUsable(route) && allowFlightAware) {
+      }
+      if (!routeUsable(route) && allowFlightAware && !overflight) {
         flightAwareAttempted = true;
         try {
           const faRoute = await flightAwareRoute(env, callsign);
@@ -1442,6 +1515,7 @@ export default {
         callsign,
         source,
         flightaware_allowed: allowFlightAware,
+        overflight,
         diagnostics: {
           adsb_lol_attempted: adsbLolAttempted,
           adsb_lol_result: adsbLolResult,

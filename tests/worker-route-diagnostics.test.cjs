@@ -19,8 +19,9 @@ test('diagnostics distinguish timeout, invalid JSON and upstream/network errors'
  assert.match(route,/adsb_lol_error_type: adsbLolErrorType/);
  assert.match(route,/adsbLolResult = "http-" \+ r\.status/);
 });
-test('FlightAware only follows unsuccessful free lookup and keeps existing budget guard',()=>{
- assert.match(route,/if \(!routeUsable\(route\) && allowFlightAware\)/);
+test('FlightAware first for validated overflight, otherwise fallback only after free miss',()=>{
+ assert.match(route,/if \(!routeUsable\(route\) && allowFlightAware && !overflight\)/);
+ assert.match(route,/if \(overflight\) \{/);
  assert.match(route,/flightAwareRoute\(env, callsign\)/);
  assert.match(src,/FLIGHTAWARE_MONTHLY_BUDGET_USD = 4\.50/);
  assert.match(src,/actualCost \+ FLIGHTAWARE_QUERY_COST_USD > FLIGHTAWARE_MONTHLY_BUDGET_USD/);
