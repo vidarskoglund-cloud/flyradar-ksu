@@ -1897,6 +1897,29 @@ function canLookupRoute(p,now=Date.now()){
   const rank={ '':0,pilot25:0,local:1,zone25:1,active50:2,ksu:3 };
   return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
 }
+// At most one automatic paid-eligible attempt per callsign/day per page session.
+// Shared paid budget is enforced server-side by the existing Worker.
+const automaticKsuRouteAttempted=new Set();
+let automaticKsuRouteLastAt=0;
+const AUTOMATIC_KSU_ROUTE_GAP_MS=20000;
+function queueAutomaticKsuRouteLookup(list,now=Date.now()){
+  if(now-automaticKsuRouteLastAt<AUTOMATIC_KSU_ROUTE_GAP_MS)return;
+  const candidate=(list||[])
+    .filter(p=>{
+      const key=flightRouteKey(p);
+      if(!key||automaticKsuRouteAttempted.has(key)||routeRequests.has(key)||cachedAircraftRoute(p))return false;
+      const d=ksuDistanceNm(p);
+      if(!automaticKsuRouteEligible(p,d,p.ksuFlight?'':ksuMovementStatus(p).label))return false;
+      return canLookupRoute(p,now);
+    })
+    .sort((a,b)=>Boolean(b.ksuFlight)-Boolean(a.ksuFlight)||ksuDistanceNm(a)-ksuDistanceNm(b))[0];
+  if(!candidate)return;
+  const key=flightRouteKey(candidate);
+  automaticKsuRouteAttempted.add(key);
+  automaticKsuRouteLastAt=now;
+  // enrichRoute claims routeRequests before its first network await.
+  void enrichRoute(candidate);
+}
 async function enrichRoute(p){
   if(!p||!p.flight)return;
   const callsign=p.flight.trim();
@@ -3252,13 +3275,14 @@ async function refresh(){
     planes=preserveKsuLastKnown(planes);
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
-    // Diagnostic mode: no automatic per-aircraft route lookups.
+    // Only verified KSU flights and strong observed approaches receive automatic route lookup.
     check50NmNotifications(planes);
     if(proximityCrossings(planes).length)playProximityTone();
     renderProximityAlert(planes);
     document.body.dataset.liveSource='direct';
     render(true);
     // The explicit 25 NM pilot runs one FREE lookup per flight/day, no paid fallback.
+    queueAutomaticKsuRouteLookup(planes);
     void runFreeRoutePilot25(planes);
   }catch(e){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
