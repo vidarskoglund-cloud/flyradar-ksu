@@ -1616,7 +1616,6 @@ function fitMap(list,s){
   if(!allowGlimpse)idleGlimpseSince=null;
   const glimpse=allowGlimpse?idleAircraftGlimpse(list,now):null;
   const current=candidates.find(x=>x.key===smartMapTarget?.key)||null;
-  let target=routineBoatFocus&&glimpse?glimpse:(best||glimpse);
   // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
   if(best)smartMapLastTrafficAt=now;
   const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&ksuDistanceNm(selected)<=100&&
@@ -1625,11 +1624,8 @@ function fitMap(list,s){
   if(!best&&!glimpse&&!focusedOffscreen&&smartMapTarget?.key!=='normal'&&
      !String(smartMapTarget?.key).startsWith('glimt:')&&
      now-smartMapLastTrafficAt<SMART_MAP_RETURN_DELAY_MS)return;
-  // Hold på samme mål i minst 30 sekunder, unntatt høyere prioritet.
-  if(current&&best&&current.key!==best.key&&
-     now-smartMapChangedAt<SMART_MAP_HOLD_MS&&best.rank<=current.rank){
-    target=current;
-  }
+  const target=chooseMapFocusTarget({best,glimpse,current,routineBoatFocus,now,
+    changedAt:smartMapChangedAt,holdMs:SMART_MAP_HOLD_MS});
   const targetChanged=smartMapTarget?.key!==(target?.key||'normal');
   if(!target){
     if(smartMapTarget?.key!=='normal'){
