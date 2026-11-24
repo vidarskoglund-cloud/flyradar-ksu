@@ -140,16 +140,15 @@ function paint(){
    const heading=document.createElement('div');
    heading.className='road-local-heading';heading.textContent='Andre trafikkmeldinger · ikke bekreftet aktive';
    el.append(heading);
-   // Always show all local notices in a single live list, without "show more".
+   // Render local notices; collapse extras in the PC sidebar.
    for(const [index,event] of local.entries()){
     el.append(eventLine(event,id+'|local|'+index+'|'+clean(event.place),shortPlace(event.place)));
    }
   }
-  // On fullscreen monitors, keep the two highest-priority notices visible.
-  // Additional notices remain available on demand, without hiding them
-  // from the normal desktop or changing the DATEX map overlay.
+  // Keep two notices visible in the PC sidebar, ordinary or fullscreen.
+  // The mobile list and DATEX map overlay remain unchanged.
   const compact=id==='road-status-side'&&
-   window.matchMedia('(min-width:900px) and (display-mode:fullscreen)').matches;
+   window.matchMedia('(min-width:900px)').matches;
   if(compact){
    const items=[...el.querySelectorAll(':scope > .road-event')];
    if(items.length>2){
