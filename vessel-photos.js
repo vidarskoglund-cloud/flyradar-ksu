@@ -1,6 +1,6 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v9', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v10', pending=new Map();
 const photoErrors=new Map();
 // Source-verified Commons file titles, bound to a specific AIS identity.
 // A title is only a lookup hint: each image still passes the license and identity checks.
@@ -202,7 +202,10 @@ window.loadVesselPopupPhoto=async function(v,popupElement){
  if(!host)return;
  const key=String(v.mmsi||v.name||'').trim();
  if(host.dataset.vesselPhotoKey!==key)return;
- const photo=(await search(v))||(await lookupRepresentative(v));
+ // Only show an actual photo when the AIS identity (IMO/MMSI) matches.
+  // Generic type pictures can be very misleading for a named vessel.
+  const candidate=await search(v);
+  const photo=candidate?.confirmedId?candidate:null;
  if(!host.isConnected||host.dataset.vesselPhotoKey!==key)return;
  host.replaceChildren();
  if(!photo){
@@ -233,7 +236,10 @@ window.loadVesselPopupPhoto=async function(v,popupElement){
  host.append(link,credit);
 };
 window.loadSelectedVesselPhoto=async function(v,identity){
- const photo=(await search(v))||(await lookupRepresentative(v));
+ // Only show an actual photo when the AIS identity (IMO/MMSI) matches.
+  // Generic type pictures can be very misleading for a named vessel.
+  const candidate=await search(v);
+  const photo=candidate?.confirmedId?candidate:null;
  if(document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
  if(!photo){
    const note=document.getElementById('vessel-photo-note');
