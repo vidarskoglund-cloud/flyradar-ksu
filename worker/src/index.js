@@ -671,7 +671,7 @@ async function fetchWeather(){
  };
 }
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders() });
     }
@@ -1249,6 +1249,17 @@ export default {
     }
 
     if (url.pathname === "/vessels") {
+      // Share the same short-lived AIS response between visitors in one Cloudflare colo.
+      // A cached response avoids re-parsing the nationwide GeoJSON on every page refresh.
+      const aisCache = caches.default;
+      const aisCacheKey = new Request("https://flyradar-ksu.vidar-skoglund.workers.dev/vessels?cache=v2");
+      try {
+        const cached = await aisCache.match(aisCacheKey);
+        if (cached) return cached;
+      } catch (error) {
+        // Cache API failures must not interrupt vessel tracking.
+        console.warn("AIS cache lookup unavailable:", String(error?.message || error));
+      }
       try {
         const aisUrl = "https://kystdatahuset.kystverket.no/ws/api/ais/realtime/geojson";
         let data, lastAisError;
@@ -1273,36 +1284,46 @@ export default {
         }
         if (!data) throw lastAisError || new Error("AIS upstream unavailable");
         const rows = Array.isArray(data?.features) ? data.features : (Array.isArray(data) ? data : []);
-        const parsed = rows.map(normalizeVesselFeature).filter(Boolean);
-        const nearby = parsed.map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
-          .filter(v => v.distanceNm <= 25);
-        const vessels = parsed.map(v => {
+        const vessels = [];
+        let parsedCount = 0, within25 = 0, withSpeed25 = 0;
+        // Single traversal: normalize once and calculate distance once.
+        // Do not classify/allocate full vessel objects for targets beyond 110 NM.
+        for (const feature of rows) {
+          const v = normalizeVesselFeature(feature);
+          if (!v) continue;
+          parsedCount++;
           const distanceNmFromKsu = distanceNm(KSU.lat, KSU.lon, v.lat, v.lon);
+          if (distanceNmFromKsu <= 25) {
+            within25++;
+            if (Number.isFinite(v.speed)) withSpeed25++;
+          }
+          if (distanceNmFromKsu > 110) continue;
           const name = String(v.name || "").toUpperCase();
           const dest = String(v.destination || "").toUpperCase();
           const coastal = /(HAVILA|HURTIGRUTEN|NORDLYS|POLARLYS|KONG HARALD|NORDKAPP|RICHARD WITH|MIDNATSOL|FINNMARKEN|TROLLFJORD|NORDSTJERNEN|LOFOTEN|VESTERALEN|SPITSBERGEN|CAPELLA|CASTOR|POLARIS|POLLUX)/.test(name);
           const fastNamed = /(TRONDHEIMSFJORD|TER NINGEN|TERNINGEN|TYRHAUG|FJORDPRINSESSEN|FJORDDRONNINGEN)/.test(name);
           const fastRoute = Number(v.shipType) >= 40 && Number(v.shipType) <= 49 &&
             /(TRONDHEIM|KRISTIANSUND|BREKSTAD|EDOY|EDØY)/.test(dest);
-          const known=kystekspressenIdentity(v);
-          const observed=known?.status==="observed_2026";
-          const category=coastal?"hurtigrute":observed?"hurtigbat":fastNamed?"hurtigbat":fastRoute?"mulig_hurtigbat":"";
-          return {...v,distanceNm:distanceNmFromKsu,category,
-            kystekspressen:known?{name:known.name,route:known.route,status:known.status}:null};
-        }).filter(v=>includeVesselInRadar(v))
-          .sort((a,b) => a.distanceNm - b.distanceNm);
+          const known = kystekspressenIdentity(v);
+          const observed = known?.status === "observed_2026";
+          const category = coastal ? "hurtigrute" : observed ? "hurtigbat" : fastNamed ? "hurtigbat" : fastRoute ? "mulig_hurtigbat" : "";
+          const row = { ...v, distanceNm: distanceNmFromKsu, category,
+            kystekspressen: known ? { name: known.name, route: known.route, status: known.status } : null };
+          if (includeVesselInRadar(row)) vessels.push(row);
+        }
+        vessels.sort((a, b) => a.distanceNm - b.distanceNm);
         const diagnostic = {
           upstream_type: Array.isArray(data) ? "array" : String(data?.type || typeof data),
           upstream_rows: rows.length,
-          parsed_coordinates: parsed.length,
-          within_25_nm: nearby.length,
-          with_speed: nearby.filter(v => Number.isFinite(v.speed)).length,
+          parsed_coordinates: parsedCount,
+          within_25_nm: within25,
+          with_speed: withSpeed25,
           moving: vessels.length,
           sample_property_keys: rows.length ? Object.keys(rows[0]?.properties || rows[0] || {}).slice(0,25) : [],
           sample_geometry: rows.slice(0,3).map(v => ({ type: v?.geometry?.type || null, coordinates: JSON.stringify(v?.geometry?.coordinates ?? null).slice(0,160), lat: v?.properties?.latitude ?? null, lon: v?.properties?.longitude ?? null }))
         };
 
-        return new Response(JSON.stringify({
+        const response = new Response(JSON.stringify({
           ok: true,
           source: "kystverket",
           generated_at: new Date().toISOString(),
@@ -1312,6 +1333,12 @@ export default {
         }), {
           headers: { ...corsHeaders(), "Cache-Control": "public, max-age=20, s-maxage=30" },
         });
+        // Cache only successful responses; failed upstream reads must never poison the cache.
+        // The existing caller cadence remains 30 seconds; this is shared edge caching only.
+        if (ctx?.waitUntil) ctx.waitUntil(
+          aisCache.put(aisCacheKey, response.clone()).catch(error =>
+            console.warn("AIS cache write unavailable:", String(error?.message || error))));
+        return response;
       } catch (error) {
         return new Response(JSON.stringify({
           ok: false,
