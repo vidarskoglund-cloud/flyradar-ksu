@@ -1632,7 +1632,7 @@ function idleAircraftGlimpse(list,now){
 }
 function fitMap(list,s){
   const now=Date.now();
-  if(now<manualMapUntil||now<overflightIntroUntil)return;
+  if(now<manualMapUntil||(typeof overflightIntroUntil!=='undefined'&&now<overflightIntroUntil))return;
   const candidates=smartMapCandidate(list);
   const best=candidates[0]||null;
   // Local aircraft and important vessel operations take priority. During
