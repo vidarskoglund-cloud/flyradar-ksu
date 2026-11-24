@@ -71,3 +71,40 @@ En kjent identitet skal **ikke** automatisk bety høy kartfokusprioritet.
 - Er det ønskelig at alle prioriterte fartøy får eget etikettikon, eller bare ved nærhet til Kristiansund? Dette er en senere presentasjonsbeslutning.
 
 **Neste konkrete steg:** Utfør fase A som lesebasert kartlegging, og skriv karakteriseringstester for dagens regler før første produksjonsendring.
+
+## Fase A – kildebasert fartøykontroll 24.11.2026
+
+**Omfang:** Offentlige kildeopplysninger, ikke ny live-spørring mot vår produksjons-Worker. Operatøren Norled bekrefter at de drifter rute 800 Trondheim–Kristiansund og 805 Trondheim–Brekstad på vegne av AtB: https://www.norled.no/rutetider-hurtigbat-og-ferje/trondelag/ .
+
+**Viktig tidsendring:** En artikkel fra 13.–17.11.2026 om Norleds nye fartøydisponering melder at **VINGTOR og NJORD planlegges satt inn på Trondheim–Kristiansund i desember 2026**, og **FRØYA på Trondheim–Brekstad**. Dette er *planlagt* og må ikke registreres som allerede utført. Kilder:
+- https://www.np.no/nyheter/nye-bater-usikker-fremtid/230283
+- https://muckrack.com/pal-sundy/articles (gjengivelse av NT24/Tidens Krav, «Nye hurtigbåter på vei», 13.11.2026).
+
+### Fartøy vi kan knytte til ruten eller det planlagte byttet
+
+| Fartøy | MMSI | IMO | Kallesignal | Tidsstatus 24.11.2026 | Sikkerhet og kilder |
+| --- | --- | --- | --- | --- | --- |
+| **EKSPRESSEN** | **258416000** | **9481829** | LCBK | Historisk AIS-observert på rute 800 i 2026; brukes også i dagens frontend-markering | Havspor AIS-arkiv 27.07–15.09.2026; ikke verifisert som dagens fartøy: https://havspor.no/fartoy/ekspressen |
+| **FJORDPRINSESSEN** | **259604000** | **9196735** | LJVE | AIS-observert på ruten i 2026 og omtalt ved Kristiansund i november; ikke garantert fast drift i dag | https://havspor.no/fartoy/fjordprinsessen , https://www.bronn.no/index.php/hurtigbater/fjordprinsessen |
+| **VINGTOR** | **257151900** | **9616814** | LCNQ | **Planlagt** Trondheim–Kristiansund fra desember 2026 | Fartøyidentitet: https://globalfishingwatch.org/platform/vessel/49ab08bb0-0347-6edc-37b7-fc54c12e5b66 , https://shiptrail.io/vessel/257151900-vingtor . Ruteendring: nyhet over. AIS 23.11.2026 oppgitt ved Bergen, som *ikke* viser at flytting er gjennomført |
+| **NJORD** | **257781000** | **9631539** | LCSU | **Planlagt** Trondheim–Kristiansund fra desember 2026 | Identitet: https://www.shipspotting.com/photos/3285545 og https://batomtaler.skipsrevyen.no/ms-froya-ms-njord/m/s-froya-m/s-njord/1106725 . Ikke forveksle med andre «Njord»-fartøy |
+| **FRØYA** | **257605000** | **9616826** | LCNR | **Planlagt** Trondheim–Brekstad fra desember 2026 (rute 805), ikke automatisk rute 800 | Identitet: https://www.shipspotting.com/photos/3280398 , https://commons.wikimedia.org/wiki/Category:Fr%C3%B8ya_(ship,_2012) . Ruteendring: nyhet over |
+
+**Kildegrense:** Fartøyenes MMSI/IMO/kallesignal er verifisert mot tilgjengelige eksterne fartøyprofiler, men *ikke* mot fersk Kystverket-AIS i denne gjennomgangen. Den operasjonelle listen per 24.11.2026 og planlagt omlegging i desember er to forskjellige ting. Faktisk iverksettelsesdato, reserver og alternative fartøy må fortsatt bekreftes. Norleds eksisterende rutetabell for Bergen i 2026 nevner VINGTOR, NJORD og FRØYA i Vestland; en planlagt overflytting er altså ikke en dokumentert fullført overflytting: https://www.norled.no/wp-content/uploads/2026/05/2026-Bergen-Sogn-Flam-Bergen.pdf .
+
+### Historiske og ubekreftede treff
+
+- **TYRHAUG** er bekreftet historisk rute-800-fartøy i Statens havarikommisjons rapport om hendelsen 28.06.2023; det er ikke bevis for at skipet seiler i 2026. https://nsia.no/Marine/Published-reports/2024-03?attach=1&pid=SHT-Report-ReportFile
+- **LADEJARL** var tidligere Kystekspressen-fartøy, men nyere driftshistorikk sier overført til Fjord1/Vestland i 2025–2026. Ikke markér som aktivt Kystekspressen-fartøy: https://hsc-norway.no/ladejarl-2002.html .
+- **TRONDHEIMSFJORD, TERNINGEN, FJORDDRONNINGEN** forekommer i eksisterende navnefilter, men aktiv tilhørighet og MMSI er ikke dokumentert i denne kontrollen. Behold som kandidater, ikke fastslått flåte.
+- **TEISTEN** er avbildet ved Kristiansund i 2025, ikke bekreftet som aktivt fartøy 24.11.2026: https://www.np.no/nyheter/hun-horer-ikke-pa-folkets-vilje-vil-legge-ned-ruta/228271
+
+### Konsekvenser for ny identitetsmodell
+
+1. Registrer **MMSI/IMO** per skip som stabile identitetsnøkler, med tydelig `historisk`, `observert_2026`, `planlagt_desember_2026` og `bekreftet_aktiv` status. Ikke sett `bekreftet_aktiv` uten datert driftsbevis.
+2. Registrer **rute 800 vs 805 separat**. FRØYA skal ikke identifiseres som Trondheim–Kristiansund bare fordi den går på rute 805.
+3. VINGTOR/NJORD/FRØYA får ingen aktiv spesialmarkering før drift og AIS er verifisert etter fartøybyttet.
+4. Test AIS-identifikasjon og kaivisning **uten** å gjøre ubegrensede /vessels-kall, øke Worker CPU-forbruk eller endre KSU-prioritet.
+5. Dokumenter fartøybytter som tidslinje, ikke overskriv eldre flåtehistorikk.
+
+**Status for fase A:** Fem relevante fartøysidentiteter med MMSI, IMO og kallesignal er kildekontrollert. *Komplett aktiv flåte, reservebåter og status for desemberendringen er ennå ikke verifisert.*
