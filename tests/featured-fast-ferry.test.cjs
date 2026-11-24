@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const app=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
-const start=app.indexOf('function featuredFastFerry(v){');
+const start=app.indexOf('const FEATURED_FAST_FERRIES=');
 const end=app.indexOf('function vesselKind(v){',start);
 assert.ok(start>=0&&end>start);
 const context=vm.createContext({
