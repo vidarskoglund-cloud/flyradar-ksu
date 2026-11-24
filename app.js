@@ -2157,11 +2157,28 @@ async function fetchJson(url){
     return await r.json();
   }
 }
+// EKSPRESSEN is the AIS-confirmed Trondheim fast ferry observed at KSU.
+// Identify by unique MMSI first; the explicit name is a fallback for missing MMSI.
+function featuredFastFerry(v){
+  const mmsi=String(v?.mmsi??'').trim();
+  const name=String(v?.name??'').trim().toUpperCase();
+  return mmsi==='258416000'||(!mmsi&&name==='EKSPRESSEN');
+}
 function vesselIcon(v){
-  const tr=Number.isFinite(Number(v.heading))?Number(v.heading):(Number.isFinite(Number(v.course))?Number(v.course):0);
+  const tr=vesselHeading(v);
+  const selected=vesselKey(v)===selectedVesselTypeKey?' selected':'';
+  if(featuredFastFerry(v)){
+    // The vessel rotates with its AIS heading; the name remains horizontal.
+    const ship='<svg viewBox="0 0 52 52" width="38" height="38" aria-hidden="true" focusable="false"><path d="M26 3 L37 19 L35 37 L26 46 L17 37 L15 19 Z" fill="#00bcd4" stroke="#fff" stroke-width="2.7" stroke-linejoin="round"/><path d="M26 14 L31 24 L29 34 L23 34 L21 24 Z" fill="#083149" stroke="#e8fcff" stroke-width="1.3"/><path d="M26 4 V13" stroke="#e8fcff" stroke-width="2"/></svg>';
+    return L.divIcon({
+      className:'vessel-wrap vessel-wrap-featured',
+      html:`<div class="vessel-marker fast-ferry${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="fast-ferry-label">EKSPRESSEN</span>`,
+      iconSize:[52,52],iconAnchor:[26,26]
+    });
+  }
   return L.divIcon({
     className:'vessel-wrap',
-    html:`<div class="vessel-marker${vesselKey(v)===selectedVesselTypeKey?' selected':''}" style="transform:rotate(${tr}deg)">▲</div>`,
+    html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">▲</div>`,
     iconSize:[26,26],iconAnchor:[13,13]
   });
 }
