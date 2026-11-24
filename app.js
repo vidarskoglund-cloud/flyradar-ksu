@@ -1906,8 +1906,16 @@ function displayRoute(p){
   if(inferred)return `${inferred.label} · ${inferred.name}`;
   return 'Rute ikke tilgjengelig';
 }
+function isHighOverflight(p){
+  const d=ksuDistanceNm(p),alt=Number(p?.alt),speed=Number(p?.gs);
+  return Boolean(p?.flight&&!p.ksuFlight&&!p.signalLost&&
+    Number.isFinite(d)&&d<=50&&Number.isFinite(alt)&&alt>=25000&&
+    Number.isFinite(speed)&&speed>=300&&
+    !confirmedKsuArrival(p)&&!specialService(p));
+}
 function routeLookupScope(p){
   if(p.ksuFlight)return 'ksu';
+  if(isHighOverflight(p))return 'overflight';
   const activeKey=selected?planeKey(selected):'';
   const isActive50=Boolean(activeKey&&activeKey===planeKey(p)&&nm(p.d)<=50&&!p.signalLost);
   if(isActive50)return 'active50';
@@ -1921,7 +1929,7 @@ function canLookupRoute(p,now=Date.now()){
   const last=routeAttempts.get(key);
   if(!last)return true;
   // Entering paid-lookup eligibility must bypass an earlier free-only miss.
-  const rank={ '':0,pilot25:0,local:1,zone25:1,active50:2,ksu:3 };
+  const rank={ '':0,pilot25:0,local:1,zone25:1,active50:2,overflight:3,ksu:4 };
   return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
 }
 // At most one automatic paid-eligible attempt per callsign/day per page session.
@@ -1971,6 +1979,7 @@ async function enrichRoute(p){
     u.searchParams.set('lat',p.lat);
     u.searchParams.set('lon',p.lon);
     if(Number.isFinite(Number(p.alt)))u.searchParams.set('alt',Number(p.alt));
+    if(Number.isFinite(Number(p.gs)))u.searchParams.set('speed',Number(p.gs));
     if(scope)u.searchParams.set('fa_scope',scope);
     const resp=await fetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
