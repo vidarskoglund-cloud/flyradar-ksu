@@ -108,6 +108,8 @@ function eventLine(event,key,placeLabel){
  const status=document.createElement('span');
  status.className='road-status-unknown';
  status.textContent=eventStatus(event);
+ status.dataset.phase=eventPhase(event);
+ status.title='Varslet tidsperiode – aktivitet er ikke bekreftet';
  summary.append(name,status);details.append(summary);
  const body=document.createElement('div');
  body.className='road-event-body';
