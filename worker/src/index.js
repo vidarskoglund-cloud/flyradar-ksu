@@ -541,7 +541,7 @@ async function flightAwareUsage(env, force = false) {
   }
 }
 
-async function flightAwareRoute(env, callsign) {
+async function flightAwareRoute(env, callsign, recentOnly = false) {
   if (!env.FLIGHTAWARE_API_KEY) return null;
 
   const actualUsage = await flightAwareUsage(env);
@@ -576,7 +576,8 @@ async function flightAwareRoute(env, callsign) {
   const flights = Array.isArray(j?.flights) ? j.flights.slice() : [];
   flights.sort((a, b) => flightTimeScore(a) - flightTimeScore(b));
 
-  const f = flights.find((x) => x?.origin && x?.destination) || null;
+  const f = flights.find((x) => x?.origin && x?.destination &&
+    (!recentOnly || flightTimeScore(x) <= 18 * 60 * 60 * 1000)) || null;
   if (!f) return null;
 
   const from = faAirport(f.origin);
@@ -1436,7 +1437,7 @@ export default {
             }else if(state.allowed){
               flightAwareAttempted=true;
               let faRoute=null;
-              try { faRoute=await flightAwareRoute(env,callsign); }
+              try { faRoute=await flightAwareRoute(env,callsign,true); }
               catch (_) { flightAwareResult="error"; }
               if(routeUsable(faRoute)){
                 route=faRoute;source="flightaware";flightAwareResult="found";
