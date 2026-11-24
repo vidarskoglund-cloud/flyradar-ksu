@@ -38,6 +38,7 @@ Kristiansund Trafikkradar viser fly/helikopter og fartøy ved Kvernberget, Krist
 - PR #76: beslutningen om å flytte/holde kartet skilt ut til `map/focus-motion-decision.js`. 4 000 direkte sammenligninger uten avvik; Leaflet, zoom, manuell styring og fokusgrenser beholdt.
 - PR #78: automatisk rutekontroll gjeninnført for KSU-fly inntil 50 NM eller sterke observerte innflyginger innen 25 NM, med høyest ett forsøk per kallesignal/dag i nettleseren. Workerens månedlige FlightAware-grense på 4,50 USD er uendret.
 - PR #79: fjernsporing ved BGO/OSL og KSU bruker adsb.fi-kallesignal- og radiusoppslag. Identitetsbekreftelse med maks to nye rutekandidater per oppdagelsesrunde; bekreftet rute må omfatte både opprinnelsesflyplassen og KSU.
+- PR #83: WIF5AD (LN-WDI) kobles til Avinors WF571 KSU→BGO ved bekreftet avgang, riktig tid og flyregistrering. Tidligere innflyging WIF5DY/WF570 beholdes separat; gammel ankomstkobling fjernes når ny operativ avgang identifiseres. Åtte isolerte funksjonskontroller bestått; live-kontroll gjenstår.
 - Bruker meldte at nettsiden fungerte etter PR #77. PR #78–79 må testes mot ekte kommende BGO/OSL-fly, inkludert taksing og flyrute; full GitHub Actions-kjøring er ikke bekreftet.
 
 ## Neste arbeid
