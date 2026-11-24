@@ -486,6 +486,11 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .type-info-inner .type-illustration{height:108px}
 @media(max-width:700px){.type-info-inner .type-photo-wrap{height:92px}.type-info-inner .type-illustration{height:92px}}
 
+/* DATEX time-period cues only; never imply confirmed live roadworks. */
+.road-status-unknown[data-phase="planned"]{color:#82b9f2}
+.road-status-unknown[data-phase="period"]{color:#f0c66f}
+.road-status-unknown[data-phase="ended"]{color:#8996a6}
+.road-status-unknown[data-phase="unknown"]{color:var(--m)}
 /* Compact DATEX road notices with accessible expandable descriptions. */
 .road-status-list .road-event{border-top:1px solid #1b2d43}
 .road-status-list .road-event:first-child{border-top:0}
@@ -1471,7 +1476,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="aircraft-photos.js?v=5"></script>
 <script src="vessel-photos.js?v=13"></script>
 <script src="speedboat-schedule.js?v=5"></script>
-<script src="road-status.js?v=14"></script>
+<script src="road-status.js?v=15"></script>
 <script src="weather.js?v=1"></script>
 <script src="map/traffic-notice-utils.js?v=1"></script>
 <script src="aircraft/track-history.js?v=1"></script>
