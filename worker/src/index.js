@@ -1220,11 +1220,28 @@ export default {
 
     if (url.pathname === "/vessels") {
       try {
-        const r = await fetch("https://kystdatahuset.kystverket.no/ws/api/ais/realtime/geojson", {
-          headers: { "User-Agent": "Flyradar-KSU/1.0" },
-        });
-        if (!r.ok) throw new Error("AIS HTTP " + r.status);
-        const data = await r.json();
+        const aisUrl = "https://kystdatahuset.kystverket.no/ws/api/ais/realtime/geojson";
+        let data, lastAisError;
+        // Retry once on transient upstream errors. Never retry permanent 4xx.
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const r = await fetch(aisUrl, {
+              headers: { "User-Agent": "Flyradar-KSU/1.0", "Accept": "application/geo+json, application/json" },
+              signal: AbortSignal.timeout(12000),
+            });
+            if (!r.ok) {
+              if (r.status >= 400 && r.status < 500) throw new Error("AIS permanent HTTP " + r.status);
+              throw new Error("AIS HTTP " + r.status);
+            }
+            data = await r.json();
+            break;
+          } catch (error) {
+            lastAisError = error;
+            if (String(error?.message || "").includes("permanent") || attempt === 1) break;
+            await new Promise(resolve => setTimeout(resolve, 400));
+          }
+        }
+        if (!data) throw lastAisError || new Error("AIS upstream unavailable");
         const rows = Array.isArray(data?.features) ? data.features : (Array.isArray(data) ? data : []);
         const parsed = rows.map(normalizeVesselFeature).filter(Boolean);
         const nearby = parsed.map(v => ({ ...v, distanceNm: distanceNm(KSU.lat, KSU.lon, v.lat, v.lon) }))
