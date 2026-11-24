@@ -31,7 +31,7 @@ test('return null when there are no candidates',()=>{
 });
 test('load target decision before main app, with no duplicate hold logic',()=>{
  assert.ok(html.indexOf('map/focus-target.js?v=1')>=0);
- assert.ok(html.indexOf('map/focus-target.js?v=1')<html.indexOf('app.js?v=222'));
+ assert.ok(html.indexOf('map/focus-target.js?v=1')<html.indexOf('app.js?v=223'));
  assert.match(app,/chooseMapFocusTarget\(\{/);
  assert.doesNotMatch(app,/now-smartMapChangedAt<SMART_MAP_HOLD_MS&&best.rank<=current.rank/);
 });
