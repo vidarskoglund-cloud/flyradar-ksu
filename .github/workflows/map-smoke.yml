@@ -1,0 +1,39 @@
+name: Map regression smoke tests
+
+on:
+  pull_request:
+    paths:
+      - "app.js"
+      - "index.html"
+      - "map/**"
+      - "tests/focused-aircraft-auto-map.test.cjs"
+      - "tests/traffic-notice-utils.test.cjs"
+      - ".github/workflows/map-smoke.yml"
+  push:
+    branches: [main]
+    paths:
+      - "app.js"
+      - "index.html"
+      - "map/**"
+      - "tests/focused-aircraft-auto-map.test.cjs"
+      - "tests/traffic-notice-utils.test.cjs"
+      - ".github/workflows/map-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  map-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check map/traffic-notice-utils.js
+      - name: Test focused aircraft and map traffic notices
+        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs
