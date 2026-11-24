@@ -27,13 +27,13 @@ function render(){
  const current=recent();
  list.replaceChildren();
  if(stamp)stamp.textContent=healthy?'Politiloggen · '+clock(new Date().toISOString()):'Ikke oppdatert';
- if(!healthy&&!lastGood){
+ if(!healthy){
   const el=document.createElement('div');el.className='police-empty';
   el.textContent='Politiloggen er utilgjengelig akkurat nå';list.append(el);return;
  }
  if(!current.length){
   const el=document.createElement('div');el.className='police-empty';
-  el.textContent='Ingen nye offentlige meldinger i Kristiansund';list.append(el);return;
+  el.textContent='Ingen nye politimeldinger i området';list.append(el);return;
  }
  for(const item of current.slice(0,2)){
   const row=document.createElement('div');row.className='police-row';
