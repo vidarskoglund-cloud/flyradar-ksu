@@ -14,6 +14,25 @@ function curatedAngvik(v,title){
  const normalized='File:'+String(title||'').replace(/^File:/i,'').replace(/_/g,' ');
  return key==='257982900:ANGVIK'&&VERIFIED_FILE_HINTS[key].some(f=>f.toLowerCase()===normalized.toLowerCase());
 }
+
+// Precisely identified Angvik: a fixed Commons photograph avoids stale
+// negative lookup results, browser Commons API failures and fuzzy name matches.
+// Licensed CC BY-SA 3.0. Source: Wikimedia Commons, Harald Oppedal (2008).
+const ANGVIK_PHOTO={
+ src:'https://commons.wikimedia.org/wiki/Special:FilePath/Sundb%C3%A5ten_angvik.JPG?width=720',
+ source:'https://commons.wikimedia.org/wiki/File:Sundb%C3%A5ten_angvik.JPG',
+ license:'CC BY-SA 3.0',
+ licenseUrl:'https://creativecommons.org/licenses/by-sa/3.0/',
+ credit:'Harald Oppedal',
+ confirmedId:true
+};
+function isAngvik(v){
+ const mmsi=String(v?.mmsi||'').trim();
+ const name=String(v?.name||'').trim().toUpperCase();
+ // Use the vessel's unique AIS MMSI, or its exact name when AIS omits MMSI.
+ return mmsi==='257982900'||(name==='ANGVIK'&&(!mmsi||mmsi==='257982900'));
+}
+
 function photoStatus(key){return photoErrors.get(key)||'';}
 function vesselPhotoKey(v){return [String(v.mmsi||''),String(v.imo||''),String(v.name||'').toUpperCase()].join(':');}
 function get(key){
@@ -90,6 +109,7 @@ function pick(v,pages){
  return options.sort((a,b)=>b.score-a.score)[0]?.photo||null;
 }
 async function search(v){
+ if(isAngvik(v))return ANGVIK_PHOTO;
  const name=String(v.name||'').trim(),key=vesselPhotoKey(v);
  const cached=get(key);if(cached.hit)return cached.photo;
  if(pending.has(key))return pending.get(key);
