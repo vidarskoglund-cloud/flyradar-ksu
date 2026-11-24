@@ -44,7 +44,7 @@ const fixtures={type:'FeatureCollection',features:[
 ]};
 test('one pass retains known quay ferries and excludes unknown idle vessels',async()=>{
  const h=makeHarness(fixtures),r=await h.run();
- assert.equal(r.status,200);
+ assert.equal(r.status,200,JSON.stringify(r.json));
  assert.equal(r.json.ok,true);
  assert.deepEqual(r.json.vessels.map(v=>v.mmsi).sort(),['000000002','258416000','259604000'].sort());
  assert.equal(r.json.diagnostic.upstream_rows,7);
@@ -54,7 +54,7 @@ test('one pass retains known quay ferries and excludes unknown idle vessels',asy
 test('successful AIS response is reused between visits to same edge',async()=>{
  const h=makeHarness(fixtures);
  const a=await h.run(),b=await h.run();
- assert.equal(a.status,200);assert.equal(b.status,200);
+ assert.equal(a.status,200,JSON.stringify(a.json));assert.equal(b.status,200,JSON.stringify(b.json));
  assert.equal(h.counts.fetch,1);
  assert.equal(h.counts.cacheWrite,1);
  assert.deepEqual(a.json.vessels,b.json.vessels);
@@ -70,7 +70,7 @@ test('upstream HTTP errors are not cached',async()=>{
 test('cache write failure does not break a successful AIS response',async()=>{
  const h=makeHarness(fixtures,{failCachePut:true});
  const a=await h.run();
- assert.equal(a.status,200);
+ assert.equal(a.status,200,JSON.stringify(a.json));
  assert.equal(a.json.vessels.length,3);
 });
 test('existing API schema, cache lifetime and Worker budgets are unchanged',()=>{
