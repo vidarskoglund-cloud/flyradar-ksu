@@ -26,6 +26,13 @@ Kristiansund Trafikkradar viser fly/helikopter og fartøy ved Kvernberget, Krist
 - PR #59 rettet callsign ved ruteoppslag og avvisning av ugyldig rutecache. PR #60 utvidet inkludering av valgt fly i kartutsnittet til 100 NM. Koden er slått sammen i `main`; brukeropplevelse mot faktiske fly må fortsatt observeres.
 - Tidligere opplysninger om 15 eller 60 sekunders flyoppdatering er historiske og skal ikke styre ny konfigurering.
 
+## Fremdrift kodeoppdeling (24.11.2026)
+
+- PR #64: trafikkmelding-hjelpere flyttet til `map/traffic-notice-utils.js`.
+- PR #65: målrettet GitHub Actions-testworkflow opprettet.
+- PR #66: lokal sporhistorikk flyttet til `aircraft/track-history.js`, med versjonsoppdatering av `app.js` for å unngå gammel nettlesercache.
+- Bruker rapporterte at nettsiden fungerte før siste endring. Utrullingen etter PR #66 og full testkjøring er ikke bekreftet her.
+
 ## Neste arbeid
 
 1. Fullfør test- og driftskontroll i #18, herunder publisert Pages, separat Worker, Tailscale/lokal server, AIS og manuell kartzoom.
