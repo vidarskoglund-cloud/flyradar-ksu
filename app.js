@@ -2972,7 +2972,11 @@ function attachAvinorMatches(){
       const linkedRoute=p.routeData &&
         routeContainsAirport(p.routeData,'KSU') &&
         routeContainsAirport(p.routeData,f.airport);
-      if(f._inferredKsuMatch || (!exact && !linkedRoute))p.ksuFlight=null;
+      // A known operational departure callsign must not retain the earlier
+      // arrival solely because the same physical aircraft/HEX was reused.
+      const knownOperational=VERIFIED_KSU_CALLSIGNS[compactFlightId(p.flight)];
+      if((knownOperational&&!verifiedKsuCallsignMatch(p,f))||
+         f._inferredKsuMatch||(!exact&&!linkedRoute))p.ksuFlight=null;
     }
     if(!p.ksuFlight){
       const call=compactFlightId(p.flight);
