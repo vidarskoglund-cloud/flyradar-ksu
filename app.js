@@ -1632,7 +1632,7 @@ function idleAircraftGlimpse(list,now){
 }
 function fitMap(list,s){
   const now=Date.now();
-  if(now<manualMapUntil)return;
+  if(now<manualMapUntil||now<overflightIntroUntil)return;
   const candidates=smartMapCandidate(list);
   const best=candidates[0]||null;
   // Local aircraft and important vessel operations take priority. During
@@ -1709,7 +1709,7 @@ function fitMap(list,s){
 }
 // Brukerens zoom og panorering skal overstyre automatisk fokus i to minutter.
 map.on('zoomstart',()=>{
-  if(!autoMapTransition){manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;updateMapFocusStatus();}
+  if(!autoMapTransition){overflightIntroUntil=0;manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;updateMapFocusStatus();}
 });
 function airportLabel(a){
   if(!a)return'';
@@ -1955,6 +1955,39 @@ function queueAutomaticKsuRouteLookup(list,now=Date.now()){
   // enrichRoute claims routeRequests before its first network await.
   void enrichRoute(candidate);
 }
+// Overview is shown once, only for a confirmed FlightAware route with both
+// real airport coordinates. Return to local focus without moving a manually used map.
+const overflightShown=new Set();
+let overflightIntroUntil=0;
+function showOverflightRouteIntro(p){
+  const key=flightRouteKey(p);
+  if(!key||overflightShown.has(key)||!isHighOverflight(p)||
+     p.routeLookupSource!=="flightaware"||Date.now()<manualMapUntil)return;
+  const airports=p.routeData?._airports;
+  if(!Array.isArray(airports)||airports.length<2)return;
+  const from=airportCoords(airports[0]),to=airportCoords(airports[airports.length-1]);
+  if(!from||!to)return; // Never approximate international airports.
+  overflightShown.add(key);
+  const flightKey=planeKey(p);
+  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const introAt=Date.now();
+  overflightIntroUntil=introAt+(reduced?0:6000);
+  const options={padding:[55,55],maxZoom:6,animate:!reduced,duration:1.8};
+  autoMapTransition=true;
+  map.once('moveend',()=>{autoMapTransition=false;});
+  map.fitBounds(L.latLngBounds([from,[p.lat,p.lon],to]),options);
+  if(reduced){overflightIntroUntil=0;return;}
+  setTimeout(()=>{
+    if(overflightIntroUntil!==introAt+6000)return;
+    overflightIntroUntil=0;
+    if(Date.now()<manualMapUntil||!selected||planeKey(selected)!==flightKey)return;
+    const latest=planes.find(item=>planeKey(item)===flightKey&&!item.signalLost)||p;
+    autoMapTransition=true;
+    map.once('moveend',()=>{autoMapTransition=false;});
+    map.flyToBounds(L.latLngBounds([[63.1118,7.8245],[latest.lat,latest.lon]]),
+      {padding:[65,65],maxZoom:10,animate:true,duration:2.1});
+  },5500);
+}
 async function enrichRoute(p){
   if(!p||!p.flight)return;
   const callsign=p.flight.trim();
@@ -1992,7 +2025,10 @@ async function enrichRoute(p){
     p.routeLookupDiagnostics=j?.diagnostics||null;
     p.routeLookupState=r?'found':'not-found';
     p.route=routeText(r);
-    if(selected&&selected.hex===p.hex)select(p,false);
+    if(selected&&selected.hex===p.hex){
+      select(p,false);
+      if(r)showOverflightRouteIntro(p);
+    }
   }catch(e){
     p.routeData=null;
     p.routeLookupState='error';
