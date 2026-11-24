@@ -1318,6 +1318,7 @@ export default {
       let source = null;
       let adsbLolAttempted = false;
       let adsbLolResult = "not-tried";
+      let adsbLolErrorType = null;
       let flightAwareAttempted = false;
       let flightAwareResult = "not-tried";
 
@@ -1338,6 +1339,7 @@ export default {
             "User-Agent": "Flyradar-KSU/1.0",
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(3500),
         });
 
         if (r.ok) {
@@ -1354,6 +1356,10 @@ export default {
         }
       } catch (error) {
         adsbLolResult = "error";
+        adsbLolErrorType = error?.name === "AbortError" || error?.name === "TimeoutError"
+          ? "timeout"
+          : error instanceof SyntaxError ? "invalid-json"
+          : "network-or-upstream";
       }
 
       if (!routeUsable(route) && allowFlightAware) {
@@ -1380,6 +1386,7 @@ export default {
         diagnostics: {
           adsb_lol_attempted: adsbLolAttempted,
           adsb_lol_result: adsbLolResult,
+          adsb_lol_error_type: adsbLolErrorType,
           flightaware_attempted: flightAwareAttempted,
           flightaware_result: flightAwareResult,
         },
