@@ -49,5 +49,5 @@ test('existing verified arrival WIF9VK remains supported',()=>{
 test('old arrival is dropped on new known operational departure callsign',()=>{
  assert.match(app,/knownOperational&&!verifiedKsuCallsignMatch\(p,f\)/);
  assert.match(app,/p\.ksuFlight=p\.ksuFlight\|\|findKsuFlight\(p\)/);
- assert.ok(html.includes('app.js?v=220'));
+ assert.ok(html.includes('app.js?v=221'));
 });
