@@ -46,6 +46,7 @@ function setup({offscreen=true,manual=false,lost=false,distanceNm=51.5}={}){
   window:{matchMedia:()=>({matches:true})},autoMapTransition:false
  });
  vm.runInContext(fs.readFileSync(path.join(__dirname,'../map/focus-target.js'),'utf8'),ctx);
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../map/focus-motion-decision.js'),'utf8'),ctx);
  vm.runInContext(code,ctx);
  return {ctx,chosen,changes};
 }

@@ -1666,11 +1666,12 @@ function fitMap(list,s){
   const focusedOutside=Boolean(focusedPoint&&!inside.contains(focusedPoint));
   const pointsVisible=target?target.points.every(pos=>inside.contains(pos)):
     inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
-  if(pointsVisible&&!focusedOutside&&Math.abs(map.getZoom()-wantedZoom)<=1)return;
-  // An off-screen focused aircraft should not wait for the normal cooldown;
-  // other automatic framing still honors the normal focus hold.
-  if(target&&!targetChanged&&!focusedOutside&&
-    now-smartMapLastMoveAt<SMART_MAP_MOVE_COOLDOWN_MS&&target.d>5)return;
+  // Keep the same close-enough and movement-cooldown rules in a pure helper.
+  if(!shouldMoveMapFocus({
+    pointsVisible,focusedOutside,currentZoom:map.getZoom(),wantedZoom,
+    target,targetChanged,now,lastMoveAt:smartMapLastMoveAt,
+    cooldownMs:SMART_MAP_MOVE_COOLDOWN_MS
+  }))return;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   autoMapTransition=true;
   const opts={padding,maxZoom,animate:!reduced,duration:2.2};

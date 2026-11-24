@@ -14,6 +14,7 @@ on:
       - "tests/map-focus-geometry.test.cjs"
       - "tests/map-aircraft-focus-priority.test.cjs"
       - "tests/map-focus-target.test.cjs"
+      - "tests/map-focus-motion-decision.test.cjs"
       - ".github/workflows/map-smoke.yml"
   push:
     branches: [main]
@@ -29,6 +30,7 @@ on:
       - "tests/map-focus-geometry.test.cjs"
       - "tests/map-aircraft-focus-priority.test.cjs"
       - "tests/map-focus-target.test.cjs"
+      - "tests/map-focus-motion-decision.test.cjs"
       - ".github/workflows/map-smoke.yml"
   workflow_dispatch:
 
@@ -50,7 +52,8 @@ jobs:
           node --check map/focus-geometry.js
           node --check map/aircraft-focus-priority.js
           node --check map/focus-target.js
+          node --check map/focus-motion-decision.js
           node --check aircraft/track-history.js
           node --check aircraft/route-cache.js
       - name: Test focused aircraft and map traffic notices
-        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs
+        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs
