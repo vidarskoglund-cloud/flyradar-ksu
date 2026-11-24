@@ -26,5 +26,5 @@ test('origin route checks have a per-day callsign guard and a two-candidate limi
 test('origin lookups use existing Worker route and budget gate, not a new paid service',()=>{
  assert.match(app,/return routeForCallsign\(callsign,a\.lat,a\.lon,a\.alt_baro\?\?a\.alt_geom,'ksu'\)/);
  assert.match(app,/flyradar-ksu\.vidar-skoglund\.workers\.dev\/route/);
- assert.ok(html.indexOf('app.js?v=222')>0);
+ assert.ok(html.indexOf('app.js?v=223')>0);
 });
