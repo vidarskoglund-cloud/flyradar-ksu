@@ -1035,6 +1035,87 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  }
 }
 
+/* Fullscreen-specific layout: fit all information groups on the monitor.
+   Browser and mobile variants are unaffected. The sidebar scrolls only as
+   an accessible fallback when a viewport is too short or details are opened. */
+@media(min-width:900px) and (display-mode:fullscreen){
+ .nearest-panel{
+  display:flex!important;flex-direction:column;
+  gap:0;overflow-y:auto!important;overflow-x:hidden!important;
+  scrollbar-width:thin;padding:5px 8px!important;
+ }
+ .nearest-panel h2{font-size:10px;margin:0 0 3px}
+ .nearest-panel .cards{margin-top:0}
+ .nearest-panel .card{padding:0}
+ .nearest-panel .aircraft-head{margin-bottom:2px}
+ .nearest-panel .aircraft-title .call{font-size:19px}
+ .nearest-panel .dist{font-size:16px}
+ .nearest-panel .operator{font-size:10px}
+ .nearest-panel .ksu-flight{margin-top:3px;padding:4px 6px}
+ .nearest-panel .flight-route{margin-top:3px;padding:5px 7px}
+ .nearest-panel .route-end b{font-size:18px}
+ .nearest-panel .aircraft-metrics{margin-top:3px;gap:4px}
+ .nearest-panel .aircraft-metrics>div{padding:4px 5px}
+ .nearest-panel .movement-status{margin-top:3px;padding:3px 6px}
+ .nearest-panel .type-info{margin-top:4px}
+ .nearest-panel .type-info summary{padding:3px 6px}
+ .nearest-panel .type-info-inner{padding:0 5px 4px;gap:1px}
+ .nearest-panel .type-photo-wrap,
+ .nearest-panel .type-illustration,
+ .nearest-panel .type-info-inner .type-photo-wrap,
+ .nearest-panel .type-info-inner .type-illustration{
+  height:75px!important;max-height:75px!important
+ }
+ .nearest-panel .type-photo{height:100%;max-height:75px!important;object-fit:contain}
+ .nearest-panel #vessel-photo-fallback svg{max-height:75px!important}
+ .nearest-panel .vessel-detail{margin-top:3px;gap:4px;padding:5px 6px}
+ .nearest-panel .vessel-detail-head strong{font-size:16px}
+ .nearest-panel .vessel-detail-metrics{gap:4px}
+ .nearest-panel .vessel-detail-metrics>div{padding:3px 5px;gap:2px}
+ .nearest-panel .vessel-detail-fields{gap:2px 7px}
+ .nearest-panel .fs-schedule,
+ .nearest-panel .speedboat-side,
+ .nearest-panel .road-status-side,
+ .nearest-panel .police-side,
+ .nearest-panel .weather-side{
+  flex:0 0 auto;min-height:0;max-height:none!important;
+  margin-top:4px!important;padding-top:3px!important
+ }
+ .nearest-panel .fs-schedule{overflow:visible}
+ .nearest-panel #avinor-list-side{overflow:visible;padding:0}
+ .nearest-panel .always-visible h3,
+ .nearest-panel .fs-schedule h3{
+  min-height:15px;margin:0 0 2px;font-size:10px
+ }
+ .nearest-panel .schedule-row{padding:2px 0!important}
+ .nearest-panel .speedboat-row{padding:3px 0!important}
+ .nearest-panel .road-event>summary{padding:2px 0}
+ .nearest-panel .road-local-heading{padding:2px 0 1px}
+ .nearest-panel .road-status-credit{margin-top:2px}
+ .nearest-panel .road-fullscreen-more{
+  border-top:1px solid #24394e;font-size:10px
+ }
+ .nearest-panel .road-fullscreen-more>summary{
+  cursor:pointer;color:var(--a);padding:4px 0
+ }
+ .nearest-panel .police-row{padding:2px 0}
+ .nearest-panel .weather-block{padding:2px 0}
+ .nearest-panel .weather-widget{font-size:10px;line-height:1.18}
+}
+@media(min-width:900px) and (max-height:850px) and (display-mode:fullscreen){
+ .nearest-panel .type-photo-wrap,
+ .nearest-panel .type-illustration,
+ .nearest-panel .type-info-inner .type-photo-wrap,
+ .nearest-panel .type-info-inner .type-illustration{
+  height:58px!important;max-height:58px!important
+ }
+ .nearest-panel .type-photo{max-height:58px!important}
+ .nearest-panel .aircraft-title .call{font-size:18px}
+ .nearest-panel .flight-route{padding:3px 6px}
+ .nearest-panel .schedule-row{padding:1px 0!important}
+ .nearest-panel .speedboat-row{padding:2px 0!important}
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
@@ -1110,9 +1191,9 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="aircraft-photos.js?v=5"></script>
 <script src="vessel-photos.js?v=10"></script>
 <script src="speedboat-schedule.js?v=5"></script>
-<script src="road-status.js?v=12"></script>
+<script src="road-status.js?v=13"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=207"></script>
+<script src="app.js?v=208"></script>
 <script src="police-status.js?v=1"></script>
 <script src="traffic-headline.js?v=2"></script>
 
