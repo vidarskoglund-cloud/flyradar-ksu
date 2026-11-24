@@ -6,7 +6,10 @@ Kart for fly- og helikoptertrafikk rundt Kristiansund/Kvernberget, med AIS-båts
 
 ## Prosjektstyring
 
-- [Utviklingsplan og systemoversikt](docs/ROADMAP.md)
+- [Start her – kort prosjektstatus](START-HER.md)
+- [Gjeldende systemoppsett](docs/SYSTEMOPPSETT.md)
+- [Utviklingsplan](docs/ROADMAP.md)
+- [Bevart endringshistorikk](docs/ENDRINGSHISTORIKK.md)
 - [Fase 1: stabilisering og tester](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/18)
 - [Fase 2: bedre kodeoppdeling](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/19)
 - [Fase 3: havne- og AIS-sporing](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/20)
