@@ -1261,6 +1261,25 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  }
 }
 
+/* Reduce tall aircraft cards in the normal PC sidebar; keep the mobile
+   and dedicated fullscreen variants unchanged. */
+@media(min-width:900px) and (display-mode:browser){
+ body:not(.display-on) .nearest-panel .type-photo-wrap,
+ body:not(.display-on) .nearest-panel .type-illustration,
+ body:not(.display-on) .nearest-panel .type-info-inner .type-photo-wrap,
+ body:not(.display-on) .nearest-panel .type-info-inner .type-illustration{
+   height:60px!important;max-height:60px!important
+ }
+ body:not(.display-on) .nearest-panel .type-photo{max-height:60px!important;object-fit:contain}
+ body:not(.display-on) .nearest-panel #vessel-photo-fallback svg{max-height:60px!important}
+ body:not(.display-on) .nearest-panel .road-fullscreen-more{
+   border-top:1px solid #24394e;font-size:10px
+ }
+ body:not(.display-on) .nearest-panel .road-fullscreen-more>summary{
+   cursor:pointer;color:var(--a);padding:4px 0;min-height:24px
+ }
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
@@ -1337,9 +1356,9 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="aircraft-photos.js?v=5"></script>
 <script src="vessel-photos.js?v=11"></script>
 <script src="speedboat-schedule.js?v=5"></script>
-<script src="road-status.js?v=13"></script>
+<script src="road-status.js?v=14"></script>
 <script src="weather.js?v=1"></script>
-<script src="app.js?v=208"></script>
+<script src="app.js?v=209"></script>
 <script src="police-status.js?v=1"></script>
 <script src="traffic-headline.js?v=2"></script>
 
