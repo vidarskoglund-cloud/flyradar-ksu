@@ -1740,7 +1740,7 @@ function fitMap(list,s){
   let target=routineBoatFocus&&glimpse?glimpse:(best||glimpse);
   // Ikke kast bort det lokale kartutsnittet ved kortvarig tap av fly/AIS.
   if(best)smartMapLastTrafficAt=now;
-  const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&ksuDistanceNm(selected)<=50&&
+  const focusedOffscreen=selected&&!selectedVesselTypeKey&&!selected.signalLost&&ksuDistanceNm(selected)<=100&&
     Number.isFinite(Number(selected.lat))&&Number.isFinite(Number(selected.lon))&&
     !map.getBounds().pad(-0.06).contains([Number(selected.lat),Number(selected.lon)]);
   if(!best&&!glimpse&&!focusedOffscreen&&smartMapTarget?.key!=='normal'&&
@@ -1774,13 +1774,18 @@ function fitMap(list,s){
   // Keep the aircraft shown in the detail panel visible too. If it is outside
   // the current focus bounds, zoom OUT to include both it and the local view.
   // Never override the two-minute pause after manual map interactions.
-  const focused=selectedVesselTypeKey?'':selected&&ksuDistanceNm(selected)<=50&&list.find(p=>
+  const focused=selectedVesselTypeKey?'':selected&&ksuDistanceNm(selected)<=100&&list.find(p=>
     planeKey(p)===planeKey(selected)&&!p.signalLost&&
     Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
   const glimpseTarget=Boolean(target?.key?.startsWith('glimt:'));
   const focusedPoint=focused&&(!glimpseTarget||smartPlaneIdentity(focused)===target.key.slice(6))
     ?[Number(focused.lat),Number(focused.lon)]:null;
-  if(focusedPoint&&!bounds.contains(focusedPoint))bounds.extend(focusedPoint);
+  // A displayed aircraft up to 100 NM away must remain in view with KSU.
+  // Include KSU explicitly even when a secondary automatic target is active.
+  if(focusedPoint){
+    if(!bounds.contains([63.1118,7.8245]))bounds.extend([63.1118,7.8245]);
+    if(!bounds.contains(focusedPoint))bounds.extend(focusedPoint);
+  }
   const wantedZoom=Math.min(maxZoom,map.getBoundsZoom(bounds,false,L.point(padding[0]*2,padding[1]*2)));
   const inside=map.getBounds().pad(-0.08);
   const focusedOutside=Boolean(focusedPoint&&!inside.contains(focusedPoint));
