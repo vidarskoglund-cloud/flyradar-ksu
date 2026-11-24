@@ -49,7 +49,7 @@ function loadSavedRoutes(){
     if(!Array.isArray(stored))return;
     const now=Date.now();
     for(const item of stored){
-      if(!item||typeof item.key!=='string'||!item.route||typeof item.route!=='object')continue;
+      if(!item||typeof item.key!=='string'||!item.route||typeof item.route!=='object'||routeText(item.route)==='Rute ikke tilgjengelig')continue;
       if(!Number.isFinite(item.savedAt)||item.savedAt>now||now-item.savedAt>ROUTE_TTL_MS)continue;
       if(!item.key.startsWith(routeDay(now)+'|'))continue;
       routeCache.set(item.key,item.route);
@@ -58,7 +58,7 @@ function loadSavedRoutes(){
   }catch(e){console.warn('Kunne ikke lese lagrede flyruter:',e);}
 }
 function saveConfirmedRoute(p,route){
-  if(!route||typeof route!=='object')return;
+  if(!route||typeof route!=='object'||routeText(route)==='Rute ikke tilgjengelig')return;
   const key=flightRouteKey(p);
   if(!key)return;
   routeCache.set(key,route);
@@ -2036,7 +2036,7 @@ async function enrichRoute(p){
   p.routeLookupSource='';
   try{
     const u=new URL('https://flyradar-ksu.vidar-skoglund.workers.dev/route');
-    u.searchParams.set('callsign',key);
+    u.searchParams.set('callsign',callsign);
     u.searchParams.set('lat',p.lat);
     u.searchParams.set('lon',p.lon);
     if(Number.isFinite(Number(p.alt)))u.searchParams.set('alt',Number(p.alt));
@@ -2044,7 +2044,8 @@ async function enrichRoute(p){
     const resp=await fetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const j=await resp.json();
-    const r=j?.route||null;
+    const candidate=j?.route||null;
+    const r=routeText(candidate)!=='Rute ikke tilgjengelig'?candidate:null;
     if(r)rememberAircraftRoute(p,r);
     p.routeData=r;
     p.routeLookupSource=j?.source||'';
@@ -2129,7 +2130,8 @@ async function runFreeRoutePilot25(list,now=Date.now()){
    const data=await resp.json();
    // Do not silently accept a future Worker deployment that permits paid pilot traffic.
    if(data?.diagnostics?.flightaware_attempted===true)throw new Error('Pilot paid fallback unexpectedly attempted');
-   const route=data?.route||null;
+   const candidate=data?.route||null;
+   const route=routeText(candidate)!=='Rute ikke tilgjengelig'?candidate:null;
    p.routeLookupState=route?'found':'not-found';
    p.routeLookupSource=data?.source||'';
    p.routeLookupDiagnostics=data?.diagnostics||null;
