@@ -2892,15 +2892,41 @@ function avinorMatchPlausible(p,f,exact=false){
 
 // Verified operational callsign association. Only use against today's
 // matching Avinor KSU flight, never as an unconditional flight route.
-const VERIFIED_KSU_CALLSIGNS=Object.freeze({WIF9VK:'WF568'});
+// Observed operational callsigns, scoped to the matching Avinor movement.
+// WIF5AD (LN-WDI) was observed taxiing before WF571 KSU->BGO on 24.11.2026.
+// Arrival WIF5DY/WF570 is a separate flight and must not be carried forward.
+const VERIFIED_KSU_CALLSIGNS=Object.freeze({
+ WIF9VK:{flight:'WF568',direction:'A',airport:'BGO'},
+ WIF5AD:{flight:'WF571',direction:'D',airport:'BGO',registration:'LN-WDI'}
+});
 function verifiedKsuCallsignMatch(p,f){
  const call=compactFlightId(p?.flight);
- if(VERIFIED_KSU_CALLSIGNS[call]!==compactFlightId(f?.flight_id))return false;
- if(f.arr_dep!=='A'||String(f.airport||'').toUpperCase()!=='BGO')return false;
+ const verified=VERIFIED_KSU_CALLSIGNS[call];
+ if(!verified||verified.flight!==compactFlightId(f?.flight_id))return false;
+ if(f.arr_dep!==verified.direction||String(f.airport||'').toUpperCase()!==verified.airport)return false;
  const scheduled=Date.parse(f.schedule_time||'');
  if(!Number.isFinite(scheduled)||Math.abs(scheduled-Date.now())>150*60000)return false;
+ if(verified.registration&&p?.reg&&
+    String(p.reg).trim().toUpperCase()!==verified.registration)return false;
  if(ksuDistanceNm(p)>55||!plausibleKsuRouteCorridor(p,f))return false;
  if(!avinorMatchPlausible(p,f,true))return false;
+ // Reject any contradictory confirmed route; no airport or flight is inferred.
+ if(verified.direction==='D'){
+   if(p?.routeData){
+     const aps=Array.isArray(p.routeData._airports)?p.routeData._airports:[];
+     const codes=String(p.routeData.airport_codes||'').toUpperCase();
+     const routeCodes=codes.split(/[-_]/);
+     if(routeCodes.length===2&&
+        (routeCodes[0]!=='KSU'||routeCodes[1]!==verified.airport))return false;
+     if(aps.length>=2){
+       const apCode=a=>String(a?.iata||a?.icao||a?.code||'').toUpperCase();
+       const from=apCode(aps[0]),to=apCode(aps[aps.length-1]);
+       if((from&&from!=='KSU'&&from!=='ENKB')||
+          (to&&to!==verified.airport&&to!=='ENBR'))return false;
+     }
+   }
+   return true;
+ }
  const dest=confirmedRouteDestination(p);
  return !dest||dest.code==='KSU';
 }
