@@ -2965,6 +2965,21 @@ function avinorMatchPlausible(p,f,exact=false){
   return true;
 }
 
+// Verified operational callsign association. Only use against today's
+// matching Avinor KSU flight, never as an unconditional flight route.
+const VERIFIED_KSU_CALLSIGNS=Object.freeze({WIF9VK:'WF568'});
+function verifiedKsuCallsignMatch(p,f){
+ const call=compactFlightId(p?.flight);
+ if(VERIFIED_KSU_CALLSIGNS[call]!==compactFlightId(f?.flight_id))return false;
+ if(f.arr_dep!=='A'||String(f.airport||'').toUpperCase()!=='BGO')return false;
+ const scheduled=Date.parse(f.schedule_time||'');
+ if(!Number.isFinite(scheduled)||Math.abs(scheduled-Date.now())>150*60000)return false;
+ if(ksuDistanceNm(p)>55||!plausibleKsuRouteCorridor(p,f))return false;
+ if(!avinorMatchPlausible(p,f,true))return false;
+ const dest=confirmedRouteDestination(p);
+ return !dest||dest.code==='KSU';
+}
+
 function findKsuFlight(p){
   if(!p?.flight||!avinorFlights.length)return null;
   const aliases=flightAliases(p.flight);
@@ -2979,6 +2994,8 @@ function findKsuFlight(p){
     const t=Date.parse(f.schedule_time||'');
     return !Number.isFinite(t)||Math.abs(t-now)<=8*60*60*1000;
   });
+  const verified=avinorFlights.find(f=>verifiedKsuCallsignMatch(p,f));
+  if(verified)exact.push(verified);
   if(exact.length){
     exact.sort((a,b)=>{
       const ta=Date.parse(a.schedule_time||''),tb=Date.parse(b.schedule_time||'');
@@ -3000,7 +3017,7 @@ function attachAvinorMatches(){
     // En bekreftet flyrute som ikke omfatter KSU skal aldri vises som KSU-avgang.
     const f=p.ksuFlight;
     if(f){
-      const exact=[...flightAliases(p.flight)].some(x=>flightAliases(f.flight_id).has(x));
+      const exact=[...flightAliases(p.flight)].some(x=>flightAliases(f.flight_id).has(x)) || verifiedKsuCallsignMatch(p,f);
       const linkedRoute=p.routeData &&
         routeContainsAirport(p.routeData,'KSU') &&
         routeContainsAirport(p.routeData,f.airport);
@@ -3024,7 +3041,7 @@ function attachAvinorMatches(){
     const routeDest=confirmedRouteDestination(p);
     const existing=p.ksuFlight||null;
     const exactExisting=existing
-      ? [...flightAliases(p.flight)].some(x=>flightAliases(existing.flight_id).has(x))
+      ? ([...flightAliases(p.flight)].some(x=>flightAliases(existing.flight_id).has(x)) || verifiedKsuCallsignMatch(p,existing))
       : false;
 
     // Hvis bekreftet rutedata sier en annen destinasjon enn KSU, skal en
@@ -3037,7 +3054,7 @@ function attachAvinorMatches(){
 
     const matched=p.ksuFlight;
     if(matched && routeDest && routeDest.code!=='KSU'){
-      const exact=[...flightAliases(p.flight)].some(x=>flightAliases(matched.flight_id).has(x));
+      const exact=[...flightAliases(p.flight)].some(x=>flightAliases(matched.flight_id).has(x)) || verifiedKsuCallsignMatch(p,matched);
       if(!exact)p.ksuFlight=null;
     }
 
@@ -3564,6 +3581,7 @@ function render(autoFit=false){
         <div>
           <div class="aircraft-title">
             <span class="call">${shown.flight||shown.reg||shown.hex||'Ukjent'}</span>
+             ${shown.ksuFlight?.flight_id && compactFlightId(shown.ksuFlight.flight_id)!==compactFlightId(shown.flight)?`<span class="type-pill">${shown.ksuFlight.flight_id}</span>`:''}
             ${shown.type?`<span class="type-pill">${shown.type}</span>`:''}
           </div>
           <div class="operator">${shown.operator||service||shown.desc||''}</div>
