@@ -32,6 +32,13 @@
 - `.github/workflows/pages.yml`: Pages-bygg og Avinor-data. Nettsted: https://vidarskoglund-cloud.github.io/flyradar-ksu/
 - `tests/`: regresjonstester, inkludert kartfokus. Tester kan ikke erstatte kontroll av publisert side med levende trafikk.
 
+## Besøksstatistikk – separat fra sporing
+
+- PR #86 klargjør Cloudflare Web Analytics for `vidarskoglund-cloud.github.io`, kun på radarsiden.
+- `analytics/config.js` inneholder foreløpig **ingen** nettstedstoken; tellerne er dermed ikke aktive. Administrator må registrere nettsiden hos Cloudflare og legge inn offentlig site-tag, ikke privat API-token.
+- `analytics/beacon.js` respekterer lokal utelating før beacon lastes, og `admin.html` tilbyr per-nettleser av/på for å utelate egne besøk. Administratorpanelet samler ikke trafikkstatistikk selv.
+- Ingen ekstra forespørsler til Workers, fly- eller AIS-API-er. Se `docs/BESOKSSTATISTIKK.md`.
+
 ## Arbeids- og sikkerhetsregler
 
 1. Behold én aktiv ADS-B-posisjonskilde og dagens AIS, Avinor og varslingsfunksjoner.

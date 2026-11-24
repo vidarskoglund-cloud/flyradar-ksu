@@ -41,6 +41,12 @@ Kristiansund Trafikkradar viser fly/helikopter og fartøy ved Kvernberget, Krist
 - PR #83: WIF5AD (LN-WDI) kobles til Avinors WF571 KSU→BGO ved bekreftet avgang, riktig tid og flyregistrering. Tidligere innflyging WIF5DY/WF570 beholdes separat; gammel ankomstkobling fjernes når ny operativ avgang identifiseres. Åtte isolerte funksjonskontroller bestått; live-kontroll gjenstår.
 - Bruker meldte at nettsiden fungerte etter PR #77. PR #78–79 må testes mot ekte kommende BGO/OSL-fly, inkludert taksing og flyrute; full GitHub Actions-kjøring er ikke bekreftet.
 
+## Besøksstatistikk – oppsett 24.11.2026
+
+- PR #86: Klargjort Cloudflare Web Analytics for GitHub Pages med utelating av eierbesøk per nettleser i administrasjonssiden. Ingen endringer i fly/AIS/Worker.
+- **Ikke aktiv:** Cloudflare-nettstedstoken er ennå tom i `analytics/config.js`; ingen besøkstall samles inn før den legges inn.
+- Oppsett og test: [Besøksstatistikk](docs/BESOKSSTATISTIKK.md). Må ikke forveksles med lokal driftshistorikk i admin.
+
 ## Neste arbeid
 
 1. Fullfør test- og driftskontroll i #18, herunder publisert Pages, separat Worker, Tailscale/lokal server, AIS og manuell kartzoom.
