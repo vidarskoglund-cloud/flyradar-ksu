@@ -1,12 +1,19 @@
 (function(){
 'use strict';
-const CACHE='kristiansund-vessel-photos-v10', pending=new Map();
+const CACHE='kristiansund-vessel-photos-v11', pending=new Map();
 const photoErrors=new Map();
 // Source-verified Commons file titles, bound to a specific AIS identity.
 // A title is only a lookup hint: each image still passes the license and identity checks.
 const VERIFIED_FILE_HINTS={
  '257982900:ANGVIK':['File:Sundbåten angvik.JPG','File:SundbåtenAngvik2018.jpg']
 };
+// The matching Commons files explicitly show the named Sundbaten Angvik.
+// Use an exact AIS identity + filename match, never a generic vessel photo.
+function curatedAngvik(v,title){
+ const key=String(v.mmsi||'').trim()+':'+String(v.name||'').trim().toUpperCase();
+ const normalized='File:'+String(title||'').replace(/^File:/i,'').replace(/_/g,' ');
+ return key==='257982900:ANGVIK'&&VERIFIED_FILE_HINTS[key].some(f=>f.toLowerCase()===normalized.toLowerCase());
+}
 function photoStatus(key){return photoErrors.get(key)||'';}
 function vesselPhotoKey(v){return [String(v.mmsi||''),String(v.imo||''),String(v.name||'').toUpperCase()].join(':');}
 function get(key){
@@ -63,6 +70,7 @@ function pick(v,pages){
   const descriptionName=words.length&&hasWords(description,words);
   const sameImo=imo.length===7&&hasWords(filename+' '+categories+' '+description,[imo]);
   const sameMmsi=mmsi.length===9&&hasWords(filename+' '+categories+' '+description,[mmsi]);
+   const knownAngvik=curatedAngvik(v,page.title);
   // A ship's name alone (e.g. a fjord name) may describe a landscape.
   // Require a second maritime signal from filename, category or description.
   const maritime=/\b(ship|ships|vessel|vessels|ferry|ferger|ferge|ferja|cargo|tanker|boat|boats|pilot|losbat|losbat|losbåt|pilotboat|tugboat|tug|fishing|fiskebat|cruise|mv|ms|mf|skip|skipsfoto|supply|offshore)\b/i
@@ -72,10 +80,10 @@ function pick(v,pages){
   // "Tustna" is also a place name. A photo of a small local boat
   // must not be presented as the TUSTNA ferry just because it mentions the place.
   if(strictlyIdentifiedFerry(v)&&!sameImo&&!sameMmsi)continue;
-  if(!sameImo&&!sameMmsi&&!supportedName)continue;
+  if(!sameImo&&!sameMmsi&&!supportedName&&!knownAngvik)continue;
   const lic=String(meta.LicenseUrl?.value||'');
-  options.push({score:(sameImo?100:0)+(sameMmsi?90:0)+(titleName?20:0)+(categoryName?16:0)+(descriptionName?8:0)+(maritime?5:0),photo:{
-   src,source,license,confirmedId:sameImo||sameMmsi,
+  options.push({score:(knownAngvik?110:0)+(sameImo?100:0)+(sameMmsi?90:0)+(titleName?20:0)+(categoryName?16:0)+(descriptionName?8:0)+(maritime?5:0),photo:{
+   src,source,license,confirmedId:sameImo||sameMmsi||knownAngvik,
    licenseUrl:/^https:\/\/(creativecommons\.org|commons\.wikimedia\.org)\//.test(lic)?lic:source,
    credit:plain(meta.Artist?.value||meta.Credit?.value||info.user||'Se bildekilde')}});
  }
