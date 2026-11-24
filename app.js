@@ -967,9 +967,6 @@ function bearingBetween(lat1,lon1,lat2,lon2){
   const x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
   return (Math.atan2(y,x)*180/Math.PI+360)%360;
 }
-function angleDiff(a,b){
-  return Math.abs((((a-b)+540)%360)-180);
-}
 function confirmedRouteDestination(p){
   const aps=Array.isArray(p?.routeData?._airports)?p.routeData._airports:[];
   if(aps.length<2 || routeText(p.routeData)==='Rute ikke tilgjengelig')return null;
@@ -1557,12 +1554,6 @@ const IDLE_NEARBY_AIRPORTS=[
  {code:'AES',label:'Ålesund Vigra',lat:62.5625,lon:6.1197},
  {code:'TRD',label:'Trondheim Værnes',lat:63.4578,lon:10.9240}
 ];
-function idleAirportDistanceNm(lat1,lon1,lat2,lon2){
- const radian=n=>n*Math.PI/180;
- const dlat=radian(lat2-lat1),dlon=radian(lon2-lon1);
- const a=Math.sin(dlat/2)**2+Math.cos(radian(lat1))*Math.cos(radian(lat2))*Math.sin(dlon/2)**2;
- return 3440.065*2*Math.asin(Math.min(1,Math.sqrt(a)));
-}
 function idleInboundKsu(p){
  const f=p.ksuFlight;
  if(!f||f.arr_dep!=='A'||!['OSL','BGO'].includes(String(f.airport||'').toUpperCase()))return false;
