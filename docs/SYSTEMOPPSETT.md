@@ -18,6 +18,7 @@
 
 - `app.js`: kart, automatisk fokus, fly- og fartøyvisning, ruter, varsel- og oppdateringslogikk. Stor fil – resten deles gradvis opp i issue #19.
 - `map/traffic-notice-utils.js`: trafikkmeldingsformattering og klassifisering, trukket ut i PR #64.
+- `map/focus-geometry.js`: heading-avvik og nautiske mil for automatisk kartfokus, skilt ut i PR #70 uten endring i beregningene.
 - `aircraft/track-history.js`: 30 minutters lokal sporhistorikk, samme lagringsnøkkel og størrelsesgrenser, trukket ut i PR #66.
 - `aircraft/route-cache.js`: lokal rutecache, dagsnøkkel, lagring og utløp etter 24 timer, trukket ut i PR #68. Oppstart kalles fra `app.js` etter at rutefunksjonene er lastet.
 - `.github/workflows/map-smoke.yml`: målrettede kart- og sporingstester, opprettet i PR #65 og utvidet i PR #66.
@@ -42,6 +43,6 @@
 ## Oppdeling – status 24.11.2026
 
 - **Brukerobservert:** Nettstedet ble meldt fungerende før PR #66. Dette er ikke en separat test av siste utrulling.
-- **Kodekontroll:** PR #64, #66 og #68 er slått sammen i `main`. Syntaks, avhengighetsrekkefølge og simulerte rutecache-scenarier er kontrollert.
+- **Kodekontroll:** PR #64, #66, #68 og #70 er slått sammen i `main`. Syntaks, avhengighetsrekkefølge, rutecache og isolerte kartgeometriberegninger er kontrollert.
 - **Ikke verifisert:** Full GitHub Actions-kjøring etter siste merge og ny live-kontroll av flysporenes lagring/gjenoppretting.
-- **Neste:** Bekreft map-smoke-workflow og sporhistorikk på publisert nettside før større flyrute- eller kartmoduler flyttes.
+- **Neste:** Bekreft map-smoke-workflow og observer automatisk kartfokus med reell trafikk før større prioriterings- eller visningsmoduler flyttes.
