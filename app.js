@@ -1973,35 +1973,87 @@ function queueAutomaticKsuRouteLookup(list,now=Date.now()){
 // real airport coordinates. Return to local focus without moving a manually used map.
 const overflightShown=new Set();
 let overflightIntroUntil=0;
-function showOverflightRouteIntro(p){
+// City coordinates are visual approximations only; route identity still
+// comes exclusively from FlightAware. The free geocoder never triggers paid API.
+const overflightCityLookups=new Map();
+const overflightIntroPending=new Set();
+async function overflightRoutePoint(airport){
+  const exact=airportCoords(airport);
+  if(exact)return {point:exact,approximate:false,label:airportLabel(airport)};
+  const city=String(airport?.city||'').trim();
+  if(!city)return null;
+  const country=String(airport.country_code||airport.country||'').trim().toUpperCase();
+  const key=city.toLowerCase()+'|'+country;
+  if(!overflightCityLookups.has(key)){
+    const lookup=(async()=>{
+      try{
+        const url=new URL('https://geocoding-api.open-meteo.com/v1/search');
+        url.searchParams.set('name',city);
+        url.searchParams.set('count','10');
+        url.searchParams.set('language','en');
+        url.searchParams.set('format','json');
+        const response=await fetch(url,{cache:'force-cache',signal:AbortSignal.timeout(4500)});
+        if(!response.ok)return null;
+        return routeCityCandidate(airport,await response.json());
+      }catch(_){return null;}
+    })();
+    overflightCityLookups.set(key,lookup);
+  }
+  const point=await overflightCityLookups.get(key);
+  return point?{point,approximate:true,label:city}:null;
+}
+async function showOverflightRouteIntro(p){
   const key=flightRouteKey(p);
-  if(!key||overflightShown.has(key)||!isHighOverflight(p)||
-     p.routeLookupSource!=="flightaware"||Date.now()<manualMapUntil)return;
+  if(!key||overflightShown.has(key)||overflightIntroPending.has(key)||
+     !isHighOverflight(p)||p.routeLookupSource!=="flightaware"||
+     Date.now()<manualMapUntil)return;
   const airports=p.routeData?._airports;
   if(!Array.isArray(airports)||airports.length<2)return;
-  const from=airportCoords(airports[0]),to=airportCoords(airports[airports.length-1]);
-  if(!from||!to)return; // Never approximate international airports.
-  overflightShown.add(key);
-  const flightKey=planeKey(p);
-  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const introAt=Date.now();
-  overflightIntroUntil=introAt+(reduced?0:6000);
-  const options={padding:[55,55],maxZoom:6,animate:!reduced,duration:1.8};
-  autoMapTransition=true;
-  map.once('moveend',()=>{autoMapTransition=false;});
-  map.fitBounds(L.latLngBounds([from,[p.lat,p.lon],to]),options);
-  if(reduced){overflightIntroUntil=0;return;}
-  setTimeout(()=>{
-    if(overflightIntroUntil!==introAt+6000)return;
-    overflightIntroUntil=0;
-    if(Date.now()<manualMapUntil||!selected||planeKey(selected)!==flightKey)return;
-    const latest=planes.find(item=>planeKey(item)===flightKey&&!item.signalLost)||p;
+  overflightIntroPending.add(key);
+  try{
+    const [fromResult,toResult]=await Promise.all([
+      overflightRoutePoint(airports[0]),overflightRoutePoint(airports[airports.length-1])
+    ]);
+    if(!fromResult||!toResult)return;
+    if(Date.now()<manualMapUntil||!selected||planeKey(selected)!==planeKey(p)||
+       !isHighOverflight(p))return;
+    overflightShown.add(key);
+    const from=fromResult.point,to=toResult.point;
+    const flightKey=planeKey(p);
+    // Vis omtrentlige byområder tydelig; aldri presenter dem som flyplass-GPS.
+    for(const [result,airport,kind] of [[fromResult,airports[0],'departure'],
+       [toResult,airports[airports.length-1],'arrival']]){
+      if(!result.approximate)continue;
+      const cityName=result.label;
+      const code=airport.iata||airport.icao||airport.code||'BY';
+      const label='Omtrentlig byområde: '+cityName;
+      L.marker(result.point,{icon:airportIcon(code,cityName,kind),zIndexOffset:730})
+       .bindTooltip(label,{direction:'top'}).addTo(routeLayer);
+      L.polyline([result.point,[p.lat,p.lon]],{
+        weight:2,opacity:.65,dashArray:'6 8',interactive:false
+      }).addTo(routeLayer);
+    }
+    const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const introAt=Date.now();
+    overflightIntroUntil=introAt+(reduced?0:6000);
+    const options={padding:[55,55],maxZoom:6,animate:!reduced,duration:1.8};
     autoMapTransition=true;
     map.once('moveend',()=>{autoMapTransition=false;});
-    map.flyToBounds(L.latLngBounds([[63.1118,7.8245],[latest.lat,latest.lon]]),
-      {padding:[65,65],maxZoom:10,animate:true,duration:2.1});
-  },5500);
+    map.fitBounds(L.latLngBounds([from,[p.lat,p.lon],to]),options);
+    if(reduced){overflightIntroUntil=0;return;}
+    setTimeout(()=>{
+      if(overflightIntroUntil!==introAt+6000)return;
+      overflightIntroUntil=0;
+      if(Date.now()<manualMapUntil||!selected||planeKey(selected)!==flightKey)return;
+      const latest=planes.find(item=>planeKey(item)===flightKey&&!item.signalLost)||p;
+      autoMapTransition=true;
+      map.once('moveend',()=>{autoMapTransition=false;});
+      map.flyToBounds(L.latLngBounds([[63.1118,7.8245],[latest.lat,latest.lon]]),
+        {padding:[65,65],maxZoom:10,animate:true,duration:2.1});
+    },5500);
+  }finally{overflightIntroPending.delete(key);}
 }
+
 async function enrichRoute(p){
   if(!p||!p.flight)return;
   const callsign=p.flight.trim();
