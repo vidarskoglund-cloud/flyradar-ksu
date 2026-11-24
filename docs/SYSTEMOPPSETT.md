@@ -24,6 +24,8 @@
 - `map/focus-motion-decision.js`: beslutning om når automatisk zoombilde skal bevege seg, med uendret terskel for synlighet, zoomavvik og bevegelsessperre (PR #76). 4 000 scenarier uten differanser.
 - `aircraft/track-history.js`: 30 minutters lokal sporhistorikk, samme lagringsnøkkel og størrelsesgrenser, trukket ut i PR #66.
 - `aircraft/route-cache.js`: lokal rutecache, dagsnøkkel, lagring og utløp etter 24 timer, trukket ut i PR #68. Oppstart kalles fra `app.js` etter at rutefunksjonene er lastet.
+- `aircraft/auto-route-eligibility.js`: automatisk rutekontroll kun for bekreftede KSU-fly eller tydelige innflyginger (PR #78). 20 sekunders avstand mellom automatiske forsøk per nettleser, maks ett automatisk forsøk per fly/dag i gjeldende økt. Workerens sentrale FlightAware-budsjett på 4,50 USD beholdt.
+- Tidlig fjernsporing (PR #79): adsb.fi v2-kallesignal og v3-radiusdata brukes ved BGO/OSL og KSU; betalt rutekontroll begrenset til maks to nye kandidater per ankomst/oppdagelsesrunde, én per kallesignal/dag i nettleserøkten. Ikke identifiser fly som KSU-rute uten bekreftet opprinnelses- og destinasjonsflyplass.
 - `.github/workflows/map-smoke.yml`: målrettede kart- og sporingstester, opprettet i PR #65 og utvidet i PR #66.
 - `worker/src/index.js`: Cloudflare Worker, blant annet AIS, rutetjenester, API-tilgang og status. Utrullet Worker-versjon må verifiseres separat fra GitHub-koden.
 - `.github/workflows/pages.yml`: Pages-bygg og Avinor-data. Nettsted: https://vidarskoglund-cloud.github.io/flyradar-ksu/
@@ -45,7 +47,7 @@
 
 ## Oppdeling – status 24.11.2026
 
-- **Brukerobservert:** Nettstedet ble meldt fungerende før PR #66. Dette er ikke en separat test av siste utrulling.
-- **Kodekontroll:** PR #64, #66, #68, #70, #72, #74 og #76 er slått sammen i `main`. Syntaks, avhengighetsrekkefølge, rutecache, kartgeometri og flyfokus-prioritet er kontrollert isolert.
+- **Brukerobservert:** Nettstedet ble meldt fungerende etter PR #77. Dette er ikke en separat test av PR #78–79.
+- **Kodekontroll:** PR #64, #66, #68, #70, #72, #74, #76, #78 og #79 er slått sammen i `main`. Syntaks, avhengighetsrekkefølge, rutecache, kartgeometri og flyfokus-prioritet er kontrollert isolert.
 - **Ikke verifisert:** Full GitHub Actions-kjøring etter siste merge og ny live-kontroll av flysporenes lagring/gjenoppretting.
-- **Neste:** Bekreft map-smoke-workflow og observer automatisk kartfokus for fly, fartøy og manuell panorering med reell trafikk før større kart- eller visningsmoduler flyttes.
+- **Neste:** Bekreft map-smoke-workflow, at BGO/OSL-avgangsfly oppdages mens de takser, og at WIF5DY-lignende kallesignal får korrekt rute etter bekreftet oppslag. Kontroller at betalt forbruk fortsatt ligger under 4,50 USD per måned.
