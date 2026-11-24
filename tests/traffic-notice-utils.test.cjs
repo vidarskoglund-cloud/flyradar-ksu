@@ -22,7 +22,7 @@ test('road works and invalid dates retain established formatting',()=>{
 });
 test('load helpers before app.js and avoid duplicate function declarations',()=>{
   const helper=page.indexOf('map/traffic-notice-utils.js?v=1');
-  const main=page.indexOf('app.js?v=210');
+  const main=page.indexOf('app.js?v=211');
   assert.ok(helper>=0 && main>helper);
   for(const fn of ['safeTrafficText','trafficKind','formatDatexDate']){
     assert.doesNotMatch(app,new RegExp('function '+fn+'\\s*\\('));
