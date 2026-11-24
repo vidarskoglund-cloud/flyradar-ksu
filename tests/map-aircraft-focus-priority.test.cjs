@@ -37,7 +37,7 @@ test('special service receives local boost without overriding stronger KSU evide
 });
 test('priority module loads before app and legacy rank sequence has been removed',()=>{
  const helper=html.indexOf('map/aircraft-focus-priority.js?v=1');
- const main=html.indexOf('app.js?v=218');
+ const main=html.indexOf('app.js?v=219');
  assert.ok(helper>=0 && helper<main);
  assert.match(app,/rankAircraftMapFocus\(\{/);
  assert.doesNotMatch(app,/if\(groundLike&&!stationary\)rank=6/);
