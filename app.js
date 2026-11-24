@@ -2878,10 +2878,10 @@ function renderAvinor(){
   };
   if(el)el.innerHTML=rows.map((row,index)=>rowHtml(row,index,false)).join('')||
     '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
-  // Fullscreen prioritizes just two upcoming relevant flights to preserve
-  // space for speedboat, road, police and weather. Normal desktop keeps four.
-  const fullscreen=window.matchMedia('(min-width:900px) and (display-mode:fullscreen)').matches;
-  const sideRows=fullscreen?rows.slice(0,2):rows;
+  // Two relevant flights in the PC sidebar, also in ordinary browser mode.
+  // The separate mobile schedule retains its full list.
+  const desktopSidebar=window.matchMedia('(min-width:900px)').matches;
+  const sideRows=desktopSidebar?rows.slice(0,2):rows;
   if(side)side.innerHTML=sideRows.map((row,index)=>rowHtml(row,index,true)).join('')||
     '<div class="schedule-empty">Ingen kommende flyvninger.</div>';
 }
