@@ -20,6 +20,7 @@
 - `map/traffic-notice-utils.js`: trafikkmeldingsformattering og klassifisering, trukket ut i PR #64.
 - `map/focus-geometry.js`: heading-avvik og nautiske mil for automatisk kartfokus, skilt ut i PR #70 uten endring i beregningene.
 - `map/aircraft-focus-priority.js`: isolert poengberegning for KSU-fly, lokaltrafikk og spesialfly (PR #72). Original poengrekkefølge og avstandsgrenser beholdt; 416 kombinasjoner uten differanser i kontroll.
+- `map/focus-target.js`: valg mellom automatisk lokalfokus, rutinemessig havnetrafikk og korte glimt av fjerntrafikk, samt 30 sekunders fokuslås (PR #74). 1 920 scenarier uten endring i resultat.
 - `aircraft/track-history.js`: 30 minutters lokal sporhistorikk, samme lagringsnøkkel og størrelsesgrenser, trukket ut i PR #66.
 - `aircraft/route-cache.js`: lokal rutecache, dagsnøkkel, lagring og utløp etter 24 timer, trukket ut i PR #68. Oppstart kalles fra `app.js` etter at rutefunksjonene er lastet.
 - `.github/workflows/map-smoke.yml`: målrettede kart- og sporingstester, opprettet i PR #65 og utvidet i PR #66.
@@ -44,6 +45,6 @@
 ## Oppdeling – status 24.11.2026
 
 - **Brukerobservert:** Nettstedet ble meldt fungerende før PR #66. Dette er ikke en separat test av siste utrulling.
-- **Kodekontroll:** PR #64, #66, #68, #70 og #72 er slått sammen i `main`. Syntaks, avhengighetsrekkefølge, rutecache, kartgeometri og flyfokus-prioritet er kontrollert isolert.
+- **Kodekontroll:** PR #64, #66, #68, #70, #72 og #74 er slått sammen i `main`. Syntaks, avhengighetsrekkefølge, rutecache, kartgeometri og flyfokus-prioritet er kontrollert isolert.
 - **Ikke verifisert:** Full GitHub Actions-kjøring etter siste merge og ny live-kontroll av flysporenes lagring/gjenoppretting.
 - **Neste:** Bekreft map-smoke-workflow og observer automatisk kartfokus for fly, fartøy og manuell panorering med reell trafikk før større kart- eller visningsmoduler flyttes.
