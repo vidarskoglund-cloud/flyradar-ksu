@@ -82,6 +82,36 @@ function normalizeVesselFeature(feature) {
   return { lat, lon, shipType, mmsi, name, speed, course, heading, destination, msgtime, imo, length, width };
 }
 
+// Vessel identities verified in docs/PRIORITERT-TRAFIKK.md, 24 Nov 2026.
+// Planned vessel transfers are NOT confirmed active service.
+const KYSTEKSPRESSEN_VESSELS = Object.freeze({
+  "258416000": {name:"EKSPRESSEN", imo:"9481829", status:"observed_2026",route:"800"},
+  "259604000": {name:"FJORDPRINSESSEN", imo:"9196735", status:"observed_2026",route:"800"},
+  "257151900": {name:"VINGTOR", imo:"9616814", status:"planned_dec_2026",route:"800"},
+  "257781000": {name:"NJORD", imo:"9631539", status:"planned_dec_2026",route:"800"},
+  "257605000": {name:"FRØYA", imo:"9616826", status:"planned_dec_2026",route:"805"},
+});
+function kystekspressenIdentity(v) {
+  const mmsi=String(v?.mmsi??"").trim();
+  const name=String(v?.name??"").trim().toUpperCase();
+  if(mmsi)return KYSTEKSPRESSEN_VESSELS[mmsi]||null;
+  return Object.values(KYSTEKSPRESSEN_VESSELS).find(x=>x.status==="observed_2026"&&x.name===name)||null;
+}
+function recentAisFix(msgtime,now=Date.now()){
+  if(!msgtime)return false;
+  const ms=Date.parse(String(msgtime));
+  return Number.isFinite(ms)&&ms<=now+120000&&now-ms<=20*60*1000;
+}
+function includeVesselInRadar(v,now=Date.now()){
+  const speed=Number(v.speed),d=Number(v.distanceNm);
+  if(!Number.isFinite(d))return false;
+  if(Number.isFinite(speed)&&speed>=1)
+    return d<=25||(Boolean(v.category)&&d<=110);
+  const identified=kystekspressenIdentity(v);
+  return Boolean(identified&&identified.status==="observed_2026"&&
+    d<=110&&recentAisFix(v.msgtime,now));
+}
+
 function relevantPassengerVessel(v) {
   const t = Number(v?.shipType);
   if (Number.isFinite(t) && ((t >= 40 && t <= 49) || (t >= 60 && t <= 69))) return true;
@@ -1254,10 +1284,12 @@ export default {
           const fastNamed = /(TRONDHEIMSFJORD|TER NINGEN|TERNINGEN|TYRHAUG|FJORDPRINSESSEN|FJORDDRONNINGEN)/.test(name);
           const fastRoute = Number(v.shipType) >= 40 && Number(v.shipType) <= 49 &&
             /(TRONDHEIM|KRISTIANSUND|BREKSTAD|EDOY|EDØY)/.test(dest);
-          const category = coastal ? "hurtigrute" : fastNamed ? "hurtigbat" : fastRoute ? "mulig_hurtigbat" : "";
-          return { ...v, distanceNm: distanceNmFromKsu, category };
-        }).filter(v => Number.isFinite(v.speed) && v.speed >= 1 &&
-          (v.distanceNm <= 25 || (v.category && v.distanceNm <= 110)))
+          const known=kystekspressenIdentity(v);
+          const observed=known?.status==="observed_2026";
+          const category=coastal?"hurtigrute":observed?"hurtigbat":fastNamed?"hurtigbat":fastRoute?"mulig_hurtigbat":"";
+          return {...v,distanceNm:distanceNmFromKsu,category,
+            kystekspressen:known?{name:known.name,route:known.route,status:known.status}:null};
+        }).filter(v=>includeVesselInRadar(v))
           .sort((a,b) => a.distanceNm - b.distanceNm);
         const diagnostic = {
           upstream_type: Array.isArray(data) ? "array" : String(data?.type || typeof data),
