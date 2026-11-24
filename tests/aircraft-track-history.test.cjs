@@ -44,7 +44,7 @@ test('persist limits track history size and uses existing storage key',()=>{
 });
 test('module loads before app.js without duplicate persistence definitions',()=>{
   assert.ok(html.indexOf('aircraft/track-history.js?v=1')>=0);
-  assert.ok(html.indexOf('aircraft/track-history.js?v=1')<html.indexOf('app.js?v=220'));
+  assert.ok(html.indexOf('aircraft/track-history.js?v=1')<html.indexOf('app.js?v=221'));
   assert.doesNotMatch(app,/function restoreTrackHistory\s*\(/);
   assert.match(source,/function restoreTrackHistory\s*\(/);
 });
