@@ -48,6 +48,27 @@
 5. For **lokal server**: bruk dokumentert tjeneste- og oppstartsprosedyre; ikke anta at GitHub-tilbakeføring endrer lokal server.
 6. Dokumenter faktisk resultat og åpne avvik i issue #18.
 
+## Neste produksjonskontroll – Kystekspressen PR #92
+
+**Status:** GitHub `main` inneholder PR #92, men aktiv Cloudflare Worker-kode og AIS-produksjonsmålinger er ikke bekreftet. Ny kildekode i `worker/src/index.js` er **ikke** i seg selv en Worker-publisering. Kontrollmiljøet fikk ingen forbindelse til `/health` eller `/vessels` (DNS-/tilgangsfeil), som ikke beviser nedetid for andre brukere.
+
+### Trygg kontroll i Cloudflare
+
+1. Åpne **Workers & Pages → flyradar-ksu → Deployments**. Noter tidspunktet for siste aktive deploy og aktuell versjonsidentifikator. Lagre/identifiser siste fungerende deploy for rollback.
+2. Åpne **Observability → Metrics/Logs** for **flyradar-ksu** (ikke kontosammendraget). Se spesielt CPU time, CPU limit exceeded, antall feil og eventuelle /vessels-feil siste døgn. Den tidligere kontoadvarselen dokumenterte minst 100 CPU-limit-brudd på tvers av Workers, ikke hvilken Worker som forårsaket dem.
+3. Kontroller hvilke bundne ressurser og secrets som brukes. `worker/wrangler.jsonc` inneholder `TRACK_STORE`, `crons` og `keep_vars`; aldri erstatt bare en liten kodesnutt over en ukjent aktiv Worker-versjon.
+4. Sammenlign **hele** aktiv Worker-kode med GitHub `main:worker/src/index.js` før publisering. Dersom den aktive Workeren inneholder uregistrerte produksjonsendringer, dokumenter disse og slå dem først sammen på egen branch i GitHub.
+5. Bare når versjon, rollback og CPU-status er bekreftet: deploy den *komplette*, testede Worker-pakken fra riktig prosjektkonfigurasjon. Ikke overskriv secrets eller Durable Object-binding. GitHub-repositoriet har `worker/wrangler.jsonc` og `worker/package.json` med `wrangler deploy`; utfør dette bare fra et autorisert miljø med riktig Cloudflare-konto.
+6. Test `/health` og `/vessels`, sammenlign svar og respons-/CPU-tid før/etter. Kontroller minst følgende AIS-scenarier uten å generere unødig last:
+   - EKSPRESSEN, MMSI `258416000`: kategorisert hurtigbåt; ved fersk AIS-posisjon under 1 knop kan den vises i inntil 110 NM fra KSU
+   - FJORDPRINSESSEN, MMSI `259604000`: samme regel
+   - VINGTOR/NJORD/FRØYA: bare status `planned_dec_2026` i registeret; **ikke** automatisk behandlet som bekreftet rute 800-fartøy eller beholdt ved kai
+   - Ukjente båter ved kai: fremdeles filtrert bort når de holder under 1 knop
+   - Stillestående fartøy får ikke automatisk kartfokus
+7. Kontroller på nettstedet at flysporingen og andre båter fortsatt vises, og følg med på Worker CPU/feilrate. Ved regresjon: **Rollback** til identifisert fungerende Worker-deploy, og noter resultatet i [#89](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/89).
+
+**Gjeldende begrensninger:** Ingen Cloudflare-konto-/dashboardtilgang gjennom denne chatten, og ingen bekreftet live-svar fra Worker. Ingen Worker-deploy er utført her. Ikke merk testen eller publiseringen som fullført uten reelle målinger.
+
 ## Verifikasjonslogg
 
 | Dato | Miljø | Kontroll | Resultat | Kilde/bevis |
