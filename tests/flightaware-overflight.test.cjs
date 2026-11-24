@@ -31,7 +31,7 @@ test('overflight is prioritized for FlightAware, still hard-capped monthly',()=>
  assert.match(worker,/flightAwareRoute\(env,callsign,true\)/);
 });
 test('map-wide overview requires real airport positions and is shown only once',()=>{
- assert.match(app,/if\(!from\|\|!to\)return; \/\/ Never approximate international airports/);
+ assert.match(app,/if\(!fromResult\|\|!toResult\)return/);
  assert.match(app,/overflightShown\.add\(key\)/);
  assert.match(app,/typeof overflightIntroUntil!=='undefined'&&now<overflightIntroUntil/);
  assert.match(app,/prefers-reduced-motion: reduce/);

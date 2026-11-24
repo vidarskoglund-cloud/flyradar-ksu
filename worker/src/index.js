@@ -461,6 +461,7 @@ function faAirport(ap) {
     icao,
     name: ap.name || "",
     city: ap.city || "",
+    country_code: ap.country_code || ap.country_iso_code || (/^[A-Za-z]{2}$/.test(String(ap.country || "")) ? ap.country : ""),
     // Coordinates are optional in AeroAPI airport objects; never infer them.
     ...(Number.isFinite(Number(ap.latitude)) && Number.isFinite(Number(ap.longitude))
       ? { lat: Number(ap.latitude), lon: Number(ap.longitude) } : {}),
