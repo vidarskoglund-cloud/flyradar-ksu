@@ -1932,6 +1932,20 @@ function canLookupRoute(p,now=Date.now()){
   const rank={ '':0,pilot25:0,local:1,zone25:1,active50:2,overflight:3,ksu:4 };
   return rank[routeLookupScope(p)]>rank[last.scope] || now-last.at>=5*60*1000;
 }
+// Only the aircraft currently shown in the information panel qualifies.
+// One automatic overflight attempt per callsign/day per page session.
+const autoOverflightLookups=new Set();
+let lastOverflightLookupAt=0;
+function queueOverflightRouteLookup(now=Date.now()){
+  const p=selected;
+  if(!isHighOverflight(p)||p.routeData||!canLookupRoute(p,now)||
+     now-lastOverflightLookupAt<20000)return;
+  const key=flightRouteKey(p);
+  if(!key||autoOverflightLookups.has(key))return;
+  autoOverflightLookups.add(key);
+  lastOverflightLookupAt=now;
+  void enrichRoute(p);
+}
 // At most one automatic paid-eligible attempt per callsign/day per page session.
 // Shared paid budget is enforced server-side by the existing Worker.
 const automaticKsuRouteAttempted=new Set();
@@ -3407,6 +3421,7 @@ async function refresh(){
     render(true);
     // The explicit 25 NM pilot runs one FREE lookup per flight/day, no paid fallback.
     queueAutomaticKsuRouteLookup(planes);
+    queueOverflightRouteLookup();
     void runFreeRoutePilot25(planes);
   }catch(e){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
