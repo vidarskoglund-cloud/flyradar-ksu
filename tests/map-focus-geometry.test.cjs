@@ -28,7 +28,7 @@ test('invalid geometric inputs remain distinguishable from valid distances',()=>
 });
 test('focus helpers load before app and are declared only once',()=>{
  const helper=html.indexOf('map/focus-geometry.js?v=1');
- const main=html.indexOf('app.js?v=216');
+ const main=html.indexOf('app.js?v=217');
  assert.ok(helper>=0&&helper<main);
  assert.doesNotMatch(app,/function angleDiff\s*\(/);
  assert.doesNotMatch(app,/function idleAirportDistanceNm\s*\(/);
