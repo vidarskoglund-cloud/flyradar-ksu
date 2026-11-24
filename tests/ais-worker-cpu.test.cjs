@@ -17,6 +17,7 @@ function makeHarness(data,{upstreamStatus=200,failCachePut=false}={}){
    async put(key,response){counts.cacheWrite++;if(failCachePut)throw Error('cache backend unavailable');memory.set(key.url,response.clone())}};
  const sandbox={Date,Number,String,Object,Array,Math,JSON,Boolean,Request,Response,AbortSignal,URL,Map,
   caches:{default:cache},setTimeout,Promise,console:{warn:()=>{}},
+  corsHeaders:()=>({'Content-Type':'application/json; charset=utf-8'}),
   fetch:async()=>{counts.fetch++;return new Response(JSON.stringify(data),{status:upstreamStatus})}};
  vm.createContext(sandbox);
  vm.runInContext(prefix,sandbox);
@@ -74,7 +75,7 @@ test('cache write failure does not break a successful AIS response',async()=>{
 });
 test('existing API schema, cache lifetime and Worker budgets are unchanged',()=>{
  assert.match(handler,/max-age=20, s-maxage=30/);
- assert.match(handler,/\.filter\(/); // diagnostic sample filtering is independent of vessel selection
+ assert.match(handler,/for \(const feature of rows\)/);
  assert.match(src,/FLIGHTAWARE_MONTHLY_BUDGET_USD = 4\.50/);
  assert.match(src,/if \(ctx\?\.waitUntil\)/);
  assert.equal((src.match(/url\.pathname === "\/vessels"/g)||[]).length,1);
