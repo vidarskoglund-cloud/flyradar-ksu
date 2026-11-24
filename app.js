@@ -2682,12 +2682,23 @@ function renderVessels(){
  syncVesselSelectionMarkers();
  renderVesselGuides();
 }
+let lastSuccessfulAisAt=0;
+let lastAisRefreshError='';
 async function loadVessels(){
   try{
-    const r=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/vessels',{cache:'no-store',credentials:'omit'});
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),22000);
+    let r;
+    try{
+      r=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/vessels',
+        {cache:'no-store',credentials:'omit',signal:controller.signal});
+    }finally{clearTimeout(timer);}
     if(!r.ok)throw new Error('HTTP '+r.status);
     const j=await r.json();
-    vessels=Array.isArray(j?.vessels)?j.vessels:[];
+    if(!j?.ok||!Array.isArray(j.vessels))throw new Error('AIS returnerte ugyldig datasett');
+    vessels=j.vessels;
+    lastSuccessfulAisAt=Date.now();
+    lastAisRefreshError='';
     updateVesselMotionHistory(vessels);
     renderVessels();
     autoSelectHarborVessel();
@@ -2698,8 +2709,20 @@ async function loadVessels(){
       ?vessels.length+' fartøy i bevegelse · AIS fra Kystverket'
       :'Ingen fartøy i bevegelse registrert innen 25 NM';
   }catch(e){
-    // Keep the last confirmed AIS position on transient errors; no motion extrapolation.
+    console.warn('AIS fra Kystverket mislyktes:',e);
+    lastAisRefreshError=String(e?.message||e);
+    const age=Date.now()-lastSuccessfulAisAt;
+    const recent=lastSuccessfulAisAt>0&&age<=10*60*1000&&vessels.length>0;
+    const el=document.getElementById('vessel-live-status');
+    // An interrupted fetch is not evidence that vessels have disappeared.
+    // Keep the last map snapshot briefly, but freeze all vessel animation.
     vesselAnimation.clear();
+    if(recent){
+      const mins=Math.max(1,Math.ceil(age/60000));
+      if(el)el.textContent='AIS midlertidig utilgjengelig · viser siste posisjoner ('+mins+' min gamle)';
+      return;
+    }
+    // Too old: clear positions instead of silently presenting stale tracking.
     vessels=[];
     vesselLayer.clearLayers();
     vesselGuideLayer.clearLayers();
@@ -2710,7 +2733,6 @@ async function loadVessels(){
       if($('cards'))$('cards').hidden=false;
       updateTypeCard(selected);
     }
-    const el=document.getElementById('vessel-live-status');
     if(el)el.textContent='AIS-data er ikke tilgjengelige akkurat nå';
   }
 }
