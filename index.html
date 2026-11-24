@@ -1218,6 +1218,49 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  body:not(.display-on) header h1{font-size:15px}
 }
 
+/* Mobile browser: police events are independent of the aircraft/vessel card.
+   Preserve original sidebar flow on desktop and installed/fullscreen modes. */
+.mobile-target-card{display:contents}
+@media(max-width:700px) and (display-mode:browser){
+ body:not(.display-on) .nearest-panel{
+   padding:0;margin-top:10px;border:0;background:transparent;
+   box-shadow:none;border-radius:0;overflow:visible
+ }
+ body:not(.display-on) .nearest-panel .mobile-target-card{
+   display:block;background:#0f1d30;border:1px solid #284059;
+   border-radius:13px;padding:12px
+ }
+ body:not(.display-on) .nearest-panel .mobile-target-card h2{
+   font-size:14px;line-height:1.3;color:#d2e7f5;margin:0 0 7px
+ }
+ body:not(.display-on) .nearest-panel .police-side.always-visible{
+   display:block;margin-top:10px;background:#0f1d30;
+   border:1px solid #284059;border-radius:13px;padding:12px
+ }
+ body:not(.display-on) .nearest-panel .police-side h3{
+   display:flex;align-items:flex-start;justify-content:space-between;
+   gap:8px;flex-wrap:wrap;font-size:14px;line-height:1.3;
+   margin:0 0 8px;color:#d2e7f5
+ }
+ body:not(.display-on) .nearest-panel .police-side h3 small{
+   font-size:10px;color:#9ab3c8;font-weight:400
+ }
+ body:not(.display-on) .nearest-panel .police-row{
+   display:flex;align-items:baseline;gap:8px;padding:9px 0;
+   border-top:1px solid #24394e;font-size:12px
+ }
+ body:not(.display-on) .nearest-panel .police-row-title{
+   min-width:0;overflow:visible;white-space:normal;line-height:1.35
+ }
+ body:not(.display-on) .nearest-panel .police-row-time{
+   flex:0 0 auto;font-size:11px
+ }
+ body:not(.display-on) .nearest-panel .police-note,
+ body:not(.display-on) .nearest-panel .police-empty{
+   display:block;font-size:11px;line-height:1.45;color:#9ab3c8
+ }
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
@@ -1243,7 +1286,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div><b id="fs-updated">–</b><span>oppdatert</span></div>
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
-<section class="schedule nearest-panel"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div><section class="fs-schedule sidebar-fold always-visible"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></section>
+<section class="schedule nearest-panel"><div class="mobile-target-card"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div></div><section class="fs-schedule sidebar-fold always-visible"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></section>
 <section class="speedboat-side sidebar-fold always-visible"><h3>Hurtigbåt · Kristiansund</h3><div id="speedboat-list-side" aria-live="polite"><div class="schedule-empty">Henter rutetider fra Entur…</div></div>
 <small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></section>
 <section class="road-status-side always-visible">
