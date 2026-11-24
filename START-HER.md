@@ -9,6 +9,7 @@ Kristiansund Trafikkradar viser fly/helikopter og fartøy ved Kvernberget, Krist
 
 - [Publisert nettside](https://vidarskoglund-cloud.github.io/flyradar-ksu/)
 - [Systemoppsett – gjeldende kilde- og intervalloversikt](docs/SYSTEMOPPSETT.md)
+- [Driftskontroll – test og tilbakeføring](docs/DRIFTSKONTROLL.md)
 - [Utviklingsplan](docs/ROADMAP.md)
 - [Endringshistorikk – tidligere fullstendig START HER](docs/ENDRINGSHISTORIKK.md)
 - [#18 Stabilisering og driftssikkerhet](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/18)

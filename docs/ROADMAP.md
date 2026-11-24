@@ -1,6 +1,6 @@
 # Flyradar KSU – utviklingsplan
 
-**Sist gjennomgått:** 22. november 2026  
+**Sist gjennomgått:** 24. november 2026  
 **Status:** Plan og prioriteringer; ikke en liste over ferdigtestede funksjoner.
 
 ## Formål
@@ -13,7 +13,7 @@ Videreutvikle Flyradar KSU fra et kart for fly rundt Kristiansund/Kvernberget ti
 
 | Tema | Implementert / observert | Begrensning / kontrollbehov |
 | --- | --- | --- |
-| Fly/helikopter | ADS-B fra adsb.fi via lokal PC / Tailscale; nettsiden henter omtrent hvert 15. sekund | Avhengig av Windows-server, internett og mottakerdekning; test automatisk omstart |
+| Fly/helikopter | Én aktiv ADS-B-posisjonskilde (adsb.fi); `app.js` venter 5 sekunder etter fullført oppslag før neste | Avhengig av Windows-server, internett og mottakerdekning; test automatisk omstart |
 | Båter | AIS fra Kystverket via Cloudflare Worker; frontend oppdaterer hvert 30. sekund | Faktisk AIS-posisjonsoppdatering kan være tregere |
 | Kartfokus | KSU-innflyging, landing/taksing og lokale fly; bevegelige fartøy ved Kristiansund havn | Må testes ved faktiske samtidige hendelser og manuell zoom |
 | Sporhistorikk | Flyspor lagres lokalt i nettleseren, planlagt tidsvindu 30 minutter | Lokal lagring er per nettleser/enhet; må verifiseres etter refresh og signaltap |
@@ -25,7 +25,7 @@ Videreutvikle Flyradar KSU fra et kart for fly rundt Kristiansund/Kvernberget ti
 ### Viktige eksisterende valg
 
 - **KSU:** 63.1118, 7.8245; Kristiansund havn er sekundært fokusområde.
-- **Oppdatering:** ADS-B omtrent 15 sekunder fra frontend og lokal server; AIS-forsøk omtrent 30 sekunder.
+- **Oppdatering (kodekontroll 24.11.2026):** Flyoppslag starter 5 sekunder etter forrige fullførte oppslag (`nextRefreshMs()`); AIS forsøkes hvert 30. sekund. Avinor hentes hvert 10. minutt. Dette er ikke en live-måling av faktisk leveransefrekvens. Eldre 15/60-sekundersverdier er historiske.
 - **Kilder:** Kun én ADS-B-kilde for posisjoner. Ikke introduser nye kilder uten vurdering.
 - **Zoom:** Manuell styring skal overstyre automatikk en periode. KSU-landinger skal kunne følges tett.
 - **Båtfokus:** Bare fartøy med faktisk posisjonsendring og tilstrekkelig hastighet. Fly med relevant KSU-aktivitet har forrang.
