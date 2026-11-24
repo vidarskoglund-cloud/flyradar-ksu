@@ -1285,6 +1285,114 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .vessel-popup-photo-link{display:block}
 .vessel-popup-photo{display:block;width:100%;max-height:130px;object-fit:cover;border-radius:6px}
 .vessel-popup-photo-credit{display:block;margin-top:3px;color:#5d6974;font-size:9px;overflow-wrap:anywhere}
+
+/* Touch-screen radar mode: browser-safe immersive layout with an exit control.
+   Uses dvh and safe-area insets; does not depend on iOS Fullscreen API. */
+#mobile-radar-toggle{display:none}
+@media (pointer:coarse){
+ #mobile-radar-toggle{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  position:absolute;top:10px;right:10px;z-index:1100;
+  height:39px;min-height:39px;padding:0 12px;
+  border:1px solid #84e4f6;border-radius:9px;
+  background:#09263be8;color:#effaff;font:700 12px system-ui;
+  box-shadow:0 2px 10px #0009;cursor:pointer;
+ }
+ body.radar-immersive #mobile-radar-toggle{
+  position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);
+  right:calc(env(safe-area-inset-right,0px) + 8px);
+  z-index:10020;background:#102f45f5;
+ }
+ body.radar-immersive{
+  position:fixed!important;inset:0;width:100%;height:100dvh;
+  min-height:0;overflow:hidden!important;background:#08111f;
+ }
+ body.radar-immersive header,body.radar-immersive footer,
+ body.radar-immersive .local-rule,body.radar-immersive #stats,
+ body.radar-immersive #vessel-live-status,body.radar-immersive #hero,
+ body.radar-immersive .fullscreen-strip,body.radar-immersive .mobile-quick-nav,
+ body.radar-immersive main>.schedule:not(.nearest-panel),
+ body.radar-immersive main>.settings-panel{display:none!important}
+ body.radar-immersive main{
+  display:grid!important;position:fixed;inset:0;
+  width:100%!important;max-width:none!important;
+  height:100dvh!important;min-height:0!important;
+  margin:0!important;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)!important;
+  grid-template-areas:"map" "aircraft"!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:minmax(0,1fr) minmax(135px,29dvh)!important;
+  align-items:stretch!important;gap:0!important;
+  overflow:hidden!important;
+ }
+ body.radar-immersive #map{
+  grid-area:map!important;position:relative;
+  height:100%!important;min-height:0!important;max-height:none!important;
+  width:100%!important;border-radius:0!important;border:0!important;
+ }
+ body.radar-immersive .nearest-panel{
+  grid-area:aircraft!important;display:block!important;position:relative;
+  width:100%!important;height:100%!important;max-height:100%!important;
+  min-height:0!important;min-width:0!important;
+  margin:0!important;padding:8px 12px!important;
+  border:0!important;border-top:1px solid #34576f!important;border-radius:0!important;
+  background:#0d1d30!important;overflow-y:auto!important;overscroll-behavior:contain;
+ }
+ body.radar-immersive .nearest-panel .mobile-target-card{
+  display:block!important;margin:0!important;padding:0!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+ }
+ body.radar-immersive .nearest-panel h2{
+  margin:0 0 5px!important;font-size:13px!important;letter-spacing:0!important;text-transform:none!important;
+ }
+ body.radar-immersive .nearest-panel .aircraft-title .call{font-size:18px!important}
+ body.radar-immersive .nearest-panel .type-photo-wrap,
+ body.radar-immersive .nearest-panel .type-illustration,
+ body.radar-immersive .nearest-panel #vessel-photo-fallback svg{height:65px!important;max-height:65px!important}
+ body.radar-immersive .nearest-panel .type-info{margin-top:4px!important}
+ body.radar-immersive .nearest-panel .type-info-inner{padding:0 5px 5px!important}
+ body.radar-immersive .nearest-panel .aircraft-metrics{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+ body.radar-immersive .nearest-panel .aircraft-metrics>div{padding:4px!important}
+ body.radar-immersive .nearest-panel .aircraft-metrics b{font-size:12px!important}
+ body.radar-immersive .nearest-panel .fs-schedule,
+ body.radar-immersive .nearest-panel .speedboat-side,
+ body.radar-immersive .nearest-panel .road-status-side,
+ body.radar-immersive .nearest-panel .police-side,
+ body.radar-immersive .nearest-panel .weather-side{display:none!important}
+ body.radar-immersive #proximity-alert{top:56px;right:9px;left:9px;font-size:11px;padding:7px}
+}
+@media (pointer:coarse) and (orientation:landscape){
+ body.radar-immersive main{
+  grid-template-areas:"map aircraft"!important;
+  grid-template-columns:minmax(0,7fr) minmax(220px,3fr)!important;
+  grid-template-rows:minmax(0,1fr)!important;
+ }
+ body.radar-immersive .nearest-panel{
+  border-top:0!important;border-left:1px solid #34576f!important;
+  padding:calc(env(safe-area-inset-top,0px) + 5px) 9px 8px!important;
+ }
+ body.radar-immersive .nearest-panel .mobile-target-card{padding-top:42px!important}
+ body.radar-immersive .nearest-panel .fs-schedule,
+ body.radar-immersive .nearest-panel .speedboat-side,
+ body.radar-immersive .nearest-panel .road-status-side,
+ body.radar-immersive .nearest-panel .police-side,
+ body.radar-immersive .nearest-panel .weather-side{
+  display:block!important;margin-top:8px!important;padding-top:5px!important;
+  border-top:1px solid #29445d!important;
+ }
+ body.radar-immersive .nearest-panel .fs-schedule{display:flex!important;flex-direction:column!important;max-height:none!important}
+ body.radar-immersive .nearest-panel #avinor-list-side{display:block!important;overflow:visible!important}
+ body.radar-immersive .nearest-panel .always-visible h3{font-size:11px!important;margin:0 0 5px!important}
+ body.radar-immersive .nearest-panel .type-photo-wrap,
+ body.radar-immersive .nearest-panel .type-illustration{height:58px!important;max-height:58px!important}
+}
+@media (pointer:coarse) and (orientation:portrait) and (min-width:700px){
+ body.radar-immersive main{grid-template-rows:minmax(0,1fr) minmax(170px,26dvh)!important}
+}
+@media (pointer:coarse) and (orientation:landscape) and (max-height:470px){
+ body.radar-immersive .nearest-panel .type-info{display:none!important}
+ body.radar-immersive .nearest-panel .aircraft-metrics>div{padding:3px!important}
+}
+
 </style>
 </head>
 <body>
@@ -1297,7 +1405,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <nav class="mobile-quick-nav" aria-label="Hopp til informasjon"><a href="#map">Kart</a><a href="#aircraft-panel-title">Fly og fartøy</a><a href="#mobile-departures">Rutetider</a><a href="#mobile-road">Trafikk og vær</a></nav>
 <section id="hero" class="hero"><div class="top"><div><div id="hcall" class="call">Ingen fly</div><div id="hmeta" class="muted">–</div><div id="hroute" class="route">Rute ikke tilgjengelig</div></div><div id="hdist" class="dist">–</div></div>
 <div class="grid"><div><span>HØYDE</span><b id="halt">–</b></div><div><span>FART</span><b id="hspd">–</b></div><div><span>KURS</span><b id="htrk">–</b></div><div><span>VERTIKAL</span><b id="hvr">–</b></div></div></section>
-<div id="map"><div id="proximity-alert" role="status" aria-live="polite" aria-atomic="true" hidden></div></div>
+<div id="map"><button id="mobile-radar-toggle" type="button" aria-pressed="false">Fullskjerm</button><div id="proximity-alert" role="status" aria-live="polite" aria-atomic="true" hidden></div></div>
 <div class="fullscreen-strip">
   <div class="fs-brand"><b>Kristiansund Trafikkradar</b><span id="fs-status">–</span></div>
   <div><b id="fs-count">0</b><span>innen 50 NM</span></div>
@@ -1361,5 +1469,32 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="app.js?v=209"></script>
 <script src="police-status.js?v=1"></script>
 <script src="traffic-headline.js?v=2"></script>
+
+
+<script>
+/* Mobile/tablet radar mode. Safari does not expose the native Fullscreen API
+   for ordinary iPhone webpages, so the immersive layout fills the viewport. */
+(function(){
+ const button=document.getElementById('mobile-radar-toggle');
+ if(!button)return;
+ const state=()=>document.body.classList.contains('radar-immersive');
+ function resizeMap(){
+  try{window.map?.invalidateSize?.({pan:false});}catch(_e){}
+  // The map variable is lexical in app.js: a resize event also triggers Leaflet layout.
+  window.dispatchEvent(new Event('resize'));
+ }
+ function apply(enabled){
+  document.body.classList.toggle('radar-immersive',enabled);
+  button.textContent=enabled?'Avslutt fullskjerm':'Fullskjerm';
+  button.setAttribute('aria-pressed',String(enabled));
+  button.setAttribute('aria-label',enabled?'Avslutt radarmodus':'Vis radar i fullskjerm');
+  if(enabled)document.activeElement?.blur?.();
+  requestAnimationFrame(()=>{resizeMap();setTimeout(resizeMap,200);});
+ }
+ button.addEventListener('click',()=>apply(!state()));
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state())apply(false)});
+ window.addEventListener('orientationchange',()=>setTimeout(resizeMap,250));
+})();
+</script>
 
 </body></html>
