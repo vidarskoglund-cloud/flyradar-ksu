@@ -69,6 +69,16 @@
 
 **Gjeldende begrensninger:** Ingen Cloudflare-konto-/dashboardtilgang gjennom denne chatten, og ingen bekreftet live-svar fra Worker. Ingen Worker-deploy er utført her. Ikke merk testen eller publiseringen som fullført uten reelle målinger.
 
+## AIS CPU-optimalisering – PR #94 (24.11.2026)
+
+**Observerte feil før endring:** Cloudflare Observability logget flere `GET /vessels` med `Worker exceeded CPU time limit` 24.11.2026 kl. 20:23–20:25 CET. En tidligere Worker-oversikt viste 23,4 % feilrate; dette er ikke bevist som samlet AIS-feilprosent.
+
+**Kodeendring:** `/vessels` går gjennom AIS-responsen én gang, regner avstand én gang per gyldig fartøy, og kategoriserer bare fartøy inntil 110 NM. Suksessfulle AIS-svar kan gjenbrukes med Cloudflare edge cache (30 sekunders s-maxage). Feilsvar lagres ikke. Kystekspressen og kaiunntak, kildene, fly/kart og frontend AIS-intervallet på 30 sekunder er uendret.
+
+**Verifisert:** Målrettet `Map regression smoke tests` på PR #94 har bestått (GitHub run 45471257380). Separat `Map focus regression tests` har eldre feil i testoppsettet som ikke er løst i denne oppgaven.
+
+**Produksjonsforbehold:** Cloudflare viste tidligere flere GitHub-merkede `Build/main` deployments, så push til `main` kan utløse automatisk Worker-utrulling i denne kontoen. Ikke anta at kildekode-merge er kun dokumentasjon. Bekreft aktiv versjon i Cloudflare Deployment etter merge, kontroller `/health` og `/vessels`, og sammenlign CPU-limit-feilrate/antall forespørsler før/etter. Gå tilbake til siste fungerende deployment hvis AIS-feilene øker. Unngå ekstra gjentatte kall for testing.
+
 ## Verifikasjonslogg
 
 | Dato | Miljø | Kontroll | Resultat | Kilde/bevis |

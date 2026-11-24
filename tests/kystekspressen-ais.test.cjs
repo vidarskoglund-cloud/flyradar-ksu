@@ -46,6 +46,6 @@ test('moving-vessel distance and category filtering remains unchanged',()=>{
 });
 test('AIS filtering uses one upstream retrieval with no additional polling',()=>{
  assert.equal((worker.match(/url\.pathname === "\/vessels"/g)||[]).length,1);
- assert.match(worker,/\.filter\(v=>includeVesselInRadar\(v\)\)/);
+ assert.match(worker,/if \(includeVesselInRadar\(row\)\) vessels\.push\(row\)/);
  assert.doesNotMatch(worker.slice(start,end),/fetch\(|setInterval\(|setTimeout\(/);
 });
