@@ -41,7 +41,7 @@ test('other vessels keep the original triangle marker and icon size',()=>{
 test('feature style is separate from generic markers and labels do not rotate',()=>{
  assert.match(html,/\.vessel-wrap-featured \.fast-ferry-label/);
  assert.match(html,/pointer-events:none/);
- assert.match(html,/app\.js\?v=222/);
+ assert.match(html,/app\.js\?v=223/);
  assert.match(app,/querySelector\('\.vessel-marker'\)/);
 });
 
