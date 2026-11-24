@@ -436,6 +436,9 @@ function faAirport(ap) {
     icao,
     name: ap.name || "",
     city: ap.city || "",
+    // Coordinates are optional in AeroAPI airport objects; never infer them.
+    ...(Number.isFinite(Number(ap.latitude)) && Number.isFinite(Number(ap.longitude))
+      ? { lat: Number(ap.latitude), lon: Number(ap.longitude) } : {}),
   };
 }
 
@@ -1358,7 +1361,15 @@ export default {
       const lon = Number(url.searchParams.get("lon"));
       const alt = Number(url.searchParams.get("alt"));
       const faScope = (url.searchParams.get("fa_scope") || "").toLowerCase();
-      const allowFlightAware =
+      const speed = Number(url.searchParams.get("speed"));
+      // High-altitude, fast transit; exclude local approaches in the browser.
+      // Server independently enforces altitude, speed and 50 NM radius.
+      const overflight = faScope === "overflight" &&
+        Number.isFinite(lat) && Number.isFinite(lon) &&
+        distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50 &&
+        Number.isFinite(alt) && alt >= 25000 &&
+        Number.isFinite(speed) && speed >= 300;
+      const allowFlightAware = overflight ||
         faScope === "ksu" ||
         (faScope === "active50" && Number.isFinite(lat) && Number.isFinite(lon) &&
           distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50) ||
@@ -1381,6 +1392,19 @@ export default {
       let flightAwareAttempted = false;
       let flightAwareResult = "not-tried";
 
+      // For a verified transit, ask FlightAware first (within the existing
+      // server-side monthly budget), then the free source if necessary.
+      if (overflight) {
+        flightAwareAttempted = true;
+        try {
+          const faRoute = await flightAwareRoute(env, callsign);
+          if (routeUsable(faRoute)) {
+            route = faRoute; source = "flightaware"; flightAwareResult = "found";
+          } else flightAwareResult = "no-route";
+        } catch (_) { flightAwareResult = "error"; }
+      }
+
+      if (!routeUsable(route)) {
       try {
         adsbLolAttempted = true;
         const body = {
@@ -1421,7 +1445,8 @@ export default {
           : "network-or-upstream";
       }
 
-      if (!routeUsable(route) && allowFlightAware) {
+      }
+      if (!routeUsable(route) && allowFlightAware && !overflight) {
         flightAwareAttempted = true;
         try {
           const faRoute = await flightAwareRoute(env, callsign);
@@ -1442,6 +1467,7 @@ export default {
         callsign,
         source,
         flightaware_allowed: allowFlightAware,
+        overflight,
         diagnostics: {
           adsb_lol_attempted: adsbLolAttempted,
           adsb_lol_result: adsbLolResult,
