@@ -1116,6 +1116,31 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  .nearest-panel .speedboat-row{padding:2px 0!important}
 }
 
+/* Readability refinement for tall fullscreen displays. Compact rules above
+   still apply on shorter screens so the weather section remains visible. */
+@media(min-width:900px) and (min-height:1000px) and (display-mode:fullscreen){
+ .nearest-panel{padding:9px 11px!important}
+ .nearest-panel h2,.nearest-panel .always-visible h3,.nearest-panel .fs-schedule h3{font-size:12px}
+ .nearest-panel .type-photo-wrap,
+ .nearest-panel .type-illustration,
+ .nearest-panel .type-info-inner .type-photo-wrap,
+ .nearest-panel .type-info-inner .type-illustration{height:105px!important;max-height:105px!important}
+ .nearest-panel .type-photo{max-height:105px!important}
+ .nearest-panel #vessel-photo-fallback svg{max-height:105px!important}
+ .nearest-panel .vessel-detail{padding:7px 8px;gap:5px}
+ .nearest-panel .vessel-detail-fields{gap:4px 8px}
+ .nearest-panel .fs-schedule,
+ .nearest-panel .speedboat-side,
+ .nearest-panel .road-status-side,
+ .nearest-panel .police-side,
+ .nearest-panel .weather-side{margin-top:8px!important;padding-top:5px!important}
+ .nearest-panel .schedule-row{padding:4px 0!important}
+ .nearest-panel .speedboat-row{padding:5px 0!important}
+ .nearest-panel .road-event>summary{padding:4px 0}
+ .nearest-panel .police-row,.nearest-panel .weather-block{padding:4px 0}
+ .nearest-panel .weather-widget{font-size:12px;line-height:1.3}
+}
+
 /* A confirmed/qualified Commons vessel photo inside the AIS map popup. */
 .leaflet-popup-content .vessel-popup-photo-slot{margin-top:7px;max-width:238px;font-size:10px;line-height:1.25}
 .vessel-popup-photo-link{display:block}
