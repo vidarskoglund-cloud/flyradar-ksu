@@ -6,8 +6,10 @@ on:
       - "app.js"
       - "index.html"
       - "map/**"
+      - "aircraft/**"
       - "tests/focused-aircraft-auto-map.test.cjs"
       - "tests/traffic-notice-utils.test.cjs"
+      - "tests/aircraft-track-history.test.cjs"
       - ".github/workflows/map-smoke.yml"
   push:
     branches: [main]
@@ -15,8 +17,10 @@ on:
       - "app.js"
       - "index.html"
       - "map/**"
+      - "aircraft/**"
       - "tests/focused-aircraft-auto-map.test.cjs"
       - "tests/traffic-notice-utils.test.cjs"
+      - "tests/aircraft-track-history.test.cjs"
       - ".github/workflows/map-smoke.yml"
   workflow_dispatch:
 
@@ -35,5 +39,6 @@ jobs:
         run: |
           node --check app.js
           node --check map/traffic-notice-utils.js
+          node --check aircraft/track-history.js
       - name: Test focused aircraft and map traffic notices
-        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs
+        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs
