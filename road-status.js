@@ -145,6 +145,23 @@ function paint(){
     el.append(eventLine(event,id+'|local|'+index+'|'+clean(event.place),shortPlace(event.place)));
    }
   }
+  // On fullscreen monitors, keep the two highest-priority notices visible.
+  // Additional notices remain available on demand, without hiding them
+  // from the normal desktop or changing the DATEX map overlay.
+  const compact=id==='road-status-side'&&
+   window.matchMedia('(min-width:900px) and (display-mode:fullscreen)').matches;
+  if(compact){
+   const items=[...el.querySelectorAll(':scope > .road-event')];
+   if(items.length>2){
+    const more=document.createElement('details');
+    more.className='road-fullscreen-more';
+    const title=document.createElement('summary');
+    title.textContent='Vis '+(items.length-2)+' flere trafikkmeldinger';
+    more.append(title);
+    for(const item of items.slice(2))more.append(item);
+    el.append(more);
+   }
+  }
  }
  for(const summary of document.querySelectorAll('#datex-panel-update')){
   summary.textContent=lastError?(snapshot?'DATEX · sist mottatt':'DATEX utilgjengelig'):
