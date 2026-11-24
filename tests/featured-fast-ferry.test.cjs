@@ -5,7 +5,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const app=fs.readFileSync(path.join(__dirname,'../app.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
-const start=app.indexOf('function featuredFastFerry(v){');
+const start=app.indexOf('const FEATURED_FAST_FERRIES=');
 const end=app.indexOf('function vesselKind(v){',start);
 assert.ok(start>=0&&end>start);
 const context=vm.createContext({
@@ -41,6 +41,16 @@ test('other vessels keep the original triangle marker and icon size',()=>{
 test('feature style is separate from generic markers and labels do not rotate',()=>{
  assert.match(html,/\.vessel-wrap-featured \.fast-ferry-label/);
  assert.match(html,/pointer-events:none/);
- assert.match(html,/app\.js\?v=220/);
+ assert.match(html,/app\.js\?v=221/);
  assert.match(app,/querySelector\('\.vessel-marker'\)/);
+});
+
+test('FJORDPRINSESSEN has a distinct named icon without promoting planned vessels',()=>{
+ assert.equal(context.featuredFastFerry({name:'FJORDPRINSESSEN',mmsi:'259604000'}),true);
+ assert.equal(context.featuredFastFerry({name:'FJORDPRINSESSEN',mmsi:'999999999'}),false);
+ for(const [name,mmsi] of [['VINGTOR','257151900'],['NJORD','257781000'],['FRØYA','257605000']])
+  assert.equal(context.featuredFastFerry({name,mmsi}),false);
+ const icon=context.vesselIcon({name:'FJORDPRINSESSEN',mmsi:'259604000',heading:62});
+ assert.match(icon.html,/fast-ferry-label">FJORDPRINSESSEN/);
+ assert.match(icon.html,/rotate\(62deg\)/);
 });

@@ -108,3 +108,17 @@ En kjent identitet skal **ikke** automatisk bety høy kartfokusprioritet.
 5. Dokumenter fartøybytter som tidslinje, ikke overskriv eldre flåtehistorikk.
 
 **Status for fase A:** Fem relevante fartøysidentiteter med MMSI, IMO og kallesignal er kildekontrollert. *Komplett aktiv flåte, reservebåter og status for desemberendringen er ennå ikke verifisert.*
+
+## Implementasjonsstatus – målrettet AIS-støtte for Kystekspressen (24.11.2026)
+
+**Kildekode på egen gren:** `worker/src/index.js` inneholder et første register med fem dokumenterte MMSI-er, mens `app.js` gir EKSPRESSEN og FJORDPRINSESSEN samme tydelige ikon og eget fartøynavn. Dette beviser *ikke* at de er de eneste aktive fartøyene, eller at de har aktuelle avganger i dag.
+
+**Kai-visning:** Workers filtreringsfunksjon `includeVesselInRadar()` har en begrenset unntaksregel for de to 2026-observerte rute-800-identitetene. Den krever (a) AIS-posisjon med gyldig tidsstempel fra siste 20 minutter, (b) innenfor 110 NM fra KSU, (c) gjenkjent MMSI eller navn uten en motstridende MMSI. Generiske og planlagte fartøy blir fremdeles filtrert bort ved under 1 knop. **Ingen ekstra AIS-oppslag** er lagt til.
+
+**Fokus:** `movingHarborVessel()` er uendret; stillestående fartøy kan vises men tar ikke automatisk kartfokus. KSU-fly og manuell overstyring beholder eksisterende prioritet.
+
+**Dekningsforbehold:** Worker henter uendret fra Kystverkets eksisterende AIS-endepunkt. Vi kan ikke garantere kai-visning eller hele strekningen hvis AIS-tidsstempelet/området ikke finnes i leverandørsvaret. Nettsidens `app.js` og Workers kildekode er to ulike produksjonskomponenter: **GitHub-merge deployer ikke Cloudflare Worker**. Denne kaifunksjonen er derfor ikke i produksjon før Worker er publisert separat og `/vessels` verifisert. Tidligere Cloudflare CPU-advarsel må undersøkes før eventuell utvidelse av geografisk uttrekk.
+
+**Tester:** `tests/kystekspressen-ais.test.cjs` og `tests/featured-fast-ferry.test.cjs` gir regresjonsdekning for MMSI-kollisjoner, fersk/stale AIS, fart-/avstandsgrense, fremheving og adskilt planlagt vs. observert. Isolert beslutningstabell på 12 scenarier ble kontrollert. Full GitHub Actions-kjøring og live AIS-test krever separat verifisering.
+
+**Neste:** Kontroller faktisk avgang, live AIS-dekning ved Trondheim/Brekstad/Kristiansund, CPU-feilrate og Worker-versjon. Deploy bare etter sammenligning med aktiv Worker-kode, med rollback til gjeldende deploy.
