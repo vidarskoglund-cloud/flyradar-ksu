@@ -38,13 +38,21 @@ let trafficNoticeLayer=L.layerGroup().addTo(map);
 let currentTrafficNotices=[];
 function renderTrafficNotices(){
   trafficNoticeLayer.clearLayers();
-  // Prevent road pins from cluttering national overview/aircraft tracking.
-  // Roadwork icons need street-level zoom; wider views would overlap.
-  if(map.getZoom()<12)return;
+  // Mobile views often remain at regional zoom. Keep local road notices
+  // visible there without changing the user's automatic map focus.
+  const mobile=window.matchMedia('(max-width:700px)').matches;
+  const minZoom=mobile?9:12;
+  if(map.getZoom()<minZoom)return;
+  const bounds=map.getBounds();
+  let visibleNotices=0;
+  const maxMobileNotices=8;
   for(const event of currentTrafficNotices){
     const lat=Number(event.lat),lon=Number(event.lon);
     if(!Number.isFinite(lat)||!Number.isFinite(lon)||
        lat<62.9||lat>63.35||lon<7.35||lon>8.6)continue;
+    if(!bounds.contains([lat,lon]))continue;
+    if(mobile&&visibleNotices>=maxMobileNotices)break;
+    visibleNotices++;
     const kind=trafficKind(event);
     const symbol=kind==='closed'?'⛔':kind==='work'?'⚠':'i';
     const label=kind==='closed'?'Stengning':kind==='work'?'Vegarbeid':'Trafikkmelding';
@@ -85,7 +93,7 @@ window.KsuTrafficMap={
     renderTrafficNotices();
   }
 };
-map.on('zoomend',renderTrafficNotices);
+map.on('zoomend moveend',renderTrafficNotices);
 
 // Politiloggen is an approximate area overlay, not a live emergency location.
 // Only vetted locality names are eligible; never geocode police message text.

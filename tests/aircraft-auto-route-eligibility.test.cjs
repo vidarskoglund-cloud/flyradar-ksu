@@ -34,5 +34,5 @@ test('automatic lookup is bounded and reuses worker guarded fallback',()=>{
  assert.match(app,/void enrichRoute\(candidate\)/);
  assert.match(app,/queueAutomaticKsuRouteLookup\(planes\)/);
  assert.ok(app.indexOf('queueAutomaticKsuRouteLookup(planes)')<app.indexOf('void runFreeRoutePilot25(planes)'));
- assert.ok(html.indexOf('aircraft/auto-route-eligibility.js?v=1')<html.indexOf('app.js?v=221'));
+ assert.ok(html.indexOf('aircraft/auto-route-eligibility.js?v=1')<html.indexOf('app.js?v=222'));
 });

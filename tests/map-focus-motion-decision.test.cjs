@@ -28,7 +28,7 @@ test('offscreen selected aircraft bypasses cooldown; no target can reframe',()=>
 });
 test('load decision before app and retain real map movement in app',()=>{
  assert.ok(html.indexOf('map/focus-motion-decision.js?v=1')>=0);
- assert.ok(html.indexOf('map/focus-motion-decision.js?v=1')<html.indexOf('app.js?v=221'));
+ assert.ok(html.indexOf('map/focus-motion-decision.js?v=1')<html.indexOf('app.js?v=222'));
  assert.match(app,/shouldMoveMapFocus\(\{/);
  assert.match(app,/map\.flyToBounds\(bounds,opts\)/);
  assert.match(app,/map\.fitBounds\(bounds,opts\)/);
