@@ -17,8 +17,8 @@ function simulate({token='1234567890abcdef1234567890abcdef',excluded=false,query
  vm.runInContext(beacon,ctx);
  return {storage,appended};
 }
-test('beacon is disabled until Cloudflare site token has been configured',()=>{
- assert.match(config,/FLYRADAR_ANALYTICS_TOKEN=''/);
+test('beacon requires a valid Cloudflare site token',()=>{
+ assert.match(config,/FLYRADAR_ANALYTICS_TOKEN='44e638769027455a94d389564cfff8ea'/);
  assert.equal(simulate({token:''}).appended.length,0);
  assert.equal(simulate({token:'INVALID'}).appended.length,0);
 });
@@ -26,6 +26,7 @@ test('a valid token loads the beacon only on production Pages',()=>{
  const result=simulate();
  assert.equal(result.appended.length,1);
  assert.equal(result.appended[0].src,'https://static.cloudflareinsights.com/beacon.min.js');
+ assert.equal(result.appended[0].type,'module');
  assert.equal(JSON.parse(result.appended[0].dataset.cfBeacon).spa,false);
  assert.equal(simulate({host:'localhost'}).appended.length,0);
 });
@@ -39,7 +40,7 @@ test('owner exclusion blocks the beacon before any network request',()=>{
 });
 test('analytics does not call Worker or change fly/AIS processing',()=>{
  assert.doesNotMatch(beacon,/workers\.dev|fetch\(|\/aircraft|\/vessels|\/route/);
- assert.ok(index.indexOf('analytics/config.js?v=1')<index.indexOf('analytics/beacon.js?v=1'));
+ assert.ok(index.indexOf('analytics/config.js?v=2')<index.indexOf('analytics/beacon.js?v=2'));
  assert.ok(admin.includes('analytics/owner-control.js?v=1'));
  assert.ok(!admin.includes('analytics/beacon.js?v=1'));
  assert.ok(admin.includes('id="analytics-own-toggle"'));
