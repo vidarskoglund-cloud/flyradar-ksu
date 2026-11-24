@@ -16,7 +16,10 @@
 
 ## Arkitektur
 
-- `app.js`: kart, automatisk fokus, fly- og fartøyvisning, sporing, ruter, lokal lagring, varsel- og oppdateringslogikk. Stor fil – planlagt gradvis oppdeling i issue #19.
+- `app.js`: kart, automatisk fokus, fly- og fartøyvisning, ruter, varsel- og oppdateringslogikk. Stor fil – resten deles gradvis opp i issue #19.
+- `map/traffic-notice-utils.js`: trafikkmeldingsformattering og klassifisering, trukket ut i PR #64.
+- `aircraft/track-history.js`: 30 minutters lokal sporhistorikk, samme lagringsnøkkel og størrelsesgrenser, trukket ut i PR #66.
+- `.github/workflows/map-smoke.yml`: målrettede kart- og sporingstester, opprettet i PR #65 og utvidet i PR #66.
 - `worker/src/index.js`: Cloudflare Worker, blant annet AIS, rutetjenester, API-tilgang og status. Utrullet Worker-versjon må verifiseres separat fra GitHub-koden.
 - `.github/workflows/pages.yml`: Pages-bygg og Avinor-data. Nettsted: https://vidarskoglund-cloud.github.io/flyradar-ksu/
 - `tests/`: regresjonstester, inkludert kartfokus. Tester kan ikke erstatte kontroll av publisert side med levende trafikk.
@@ -34,3 +37,10 @@
 - Issue [#18](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/18): faktisk trafikk, Windows/Tailscale, kart, AIS, varsler, feiltilfeller og rollback.
 - Issue [#19](https://github.com/vidarskoglund-cloud/flyradar-ksu/issues/19): gradvis kodeoppdeling, med adferdstester før og etter.
 - GitHub Pages og Cloudflare Worker må kontrolleres hver for seg etter relevante kodeendringer.
+
+## Oppdeling – status 24.11.2026
+
+- **Brukerobservert:** Nettstedet ble meldt fungerende før PR #66. Dette er ikke en separat test av siste utrulling.
+- **Kodekontroll:** PR #64 og #66 er slått sammen i `main`. Syntaks og avhengighetsrekkefølge kontrollert i arbeidsøkten.
+- **Ikke verifisert:** Full GitHub Actions-kjøring etter siste merge og ny live-kontroll av flysporenes lagring/gjenoppretting.
+- **Neste:** Bekreft map-smoke-workflow og sporhistorikk på publisert nettside før større flyrute- eller kartmoduler flyttes.
