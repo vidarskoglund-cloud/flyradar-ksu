@@ -45,6 +45,7 @@ function setup({offscreen=true,manual=false,lost=false,distanceNm=51.5}={}){
   planeKey:p=>p.hex,areaBounds:()=>new Bounds([[63,7.6],[63.2,8]]),
   window:{matchMedia:()=>({matches:true})},autoMapTransition:false
  });
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../map/focus-target.js'),'utf8'),ctx);
  vm.runInContext(code,ctx);
  return {ctx,chosen,changes};
 }
