@@ -8,7 +8,7 @@ const start=src.indexOf('function fitMap(list,s){');
 const end=src.indexOf('// Brukerens zoom og panorering',start);
 assert.ok(start>0&&end>start);
 const code=src.slice(start,end);
-function setup({offscreen=true,manual=false,lost=false}={}){
+function setup({offscreen=true,manual=false,lost=false,distanceNm=51.5}={}){
  const now=Date.now();
  const chosen={hex:'a1',lat:offscreen?64.5:63.11,lon:offscreen?10:7.8,signalLost:lost};
  const changes={extended:[],fit:[],fly:[]};
@@ -35,6 +35,7 @@ function setup({offscreen=true,manual=false,lost=false}={}){
   Date,Number,Math,L:{latLngBounds:p=>new Bounds(p),point:(a,b)=>[a,b]},
   map,mapAreas:{city:{lat:63.11,lon:7.8}},
   planes:[chosen],selected:chosen,selectedVesselTypeKey:'',
+  ksuDistanceNm:()=>distanceNm,render:()=>{},manualVesselSelectionUntil:now+60000,
   manualMapUntil:manual?now+60000:0,
   smartMapTarget:{key:'normal',rank:0},smartMapChangedAt:0,
   smartMapLastTrafficAt:0,smartMapLastMoveAt:0,
@@ -47,7 +48,7 @@ function setup({offscreen=true,manual=false,lost=false}={}){
  vm.runInContext(code,ctx);
  return {ctx,chosen,changes};
 }
-test('an off-screen focused aircraft extends automatic framing to show its location',()=>{
+test('a selected aircraft 51.5 NM from KSU remains in the automatic map framing',()=>{
  const {ctx,chosen,changes}=setup();
  ctx.fitMap([chosen],{});
  assert.equal(changes.extended.length,1);
@@ -60,6 +61,11 @@ test('does not widen bounds for aircraft already on screen or without current si
   ctx.fitMap([chosen],{});
   assert.equal(changes.extended.length,0);
  }
+});
+test('aircraft beyond the 100 NM focus limit do not widen the local map',()=>{
+ const {ctx,chosen,changes}=setup({distanceNm:100.1});
+ ctx.fitMap([chosen],{});
+ assert.equal(changes.extended.length,0);
 });
 test('manual zoom or pan pauses automatic reframing for two minutes',()=>{
  const {ctx,chosen,changes}=setup({manual:true});
