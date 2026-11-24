@@ -34,6 +34,7 @@ Kristiansund Trafikkradar viser fly/helikopter og fartøy ved Kvernberget, Krist
 - PR #68: rutecache flyttet til `aircraft/route-cache.js`, med lagring, validering, utløp og regresjonstester; live-kontroll etter sammenslåing gjenstår.
 - PR #70: rene geometrihjelpere for kartfokus flyttet til `map/focus-geometry.js` med egne tester. Selve kartprioriteringen er uendret.
 - PR #72: poengberegningen for automatisk flyfokus skilt ut til `map/aircraft-focus-priority.js`. 416 kombinasjoner sammenlignet mot gammel logikk, uten avvik. AIS- og kartstyring er ikke endret.
+- PR #74: valg av automatisk kartmål og 30-sekunders sperre skilt ut til `map/focus-target.js`. 1 920 sammenligninger mot tidligere kode uten avvik. Selve zoomen, manuell styring og AIS-prioritet er uendret.
 - Bruker rapporterte at nettsiden fungerte før PR #72. Utrulling og full GitHub Actions-kjøring etter PR #72 er ikke bekreftet her.
 
 ## Neste arbeid
