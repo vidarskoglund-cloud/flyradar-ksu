@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "app.js"
+      - "worker/src/index.js"
+      - "tests/worker-route-diagnostics.test.cjs"
       - "index.html"
       - "map/**"
       - "aircraft/**"
@@ -22,6 +24,8 @@ on:
     branches: [main]
     paths:
       - "app.js"
+      - "worker/src/index.js"
+      - "tests/worker-route-diagnostics.test.cjs"
       - "index.html"
       - "map/**"
       - "aircraft/**"
@@ -61,4 +65,4 @@ jobs:
           node --check aircraft/route-cache.js
           node --check aircraft/auto-route-eligibility.js
       - name: Test focused aircraft and map traffic notices
-        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/aircraft-auto-route-eligibility.test.cjs tests/remote-ksu-origin-tracking.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs
+        run: node --test tests/focused-aircraft-auto-map.test.cjs tests/traffic-notice-utils.test.cjs tests/aircraft-track-history.test.cjs tests/aircraft-route-cache.test.cjs tests/aircraft-auto-route-eligibility.test.cjs tests/remote-ksu-origin-tracking.test.cjs tests/map-focus-geometry.test.cjs tests/map-aircraft-focus-priority.test.cjs tests/map-focus-target.test.cjs tests/map-focus-motion-decision.test.cjs tests/worker-route-diagnostics.test.cjs
