@@ -2362,12 +2362,13 @@ function featuredFastFerry(v){return Boolean(featuredFastFerryName(v));}
 function vesselIcon(v){
   const tr=vesselHeading(v);
   const selected=vesselKey(v)===selectedVesselTypeKey?' selected':'';
+  const focused=selected?' is-focused':'';
   const fastFerryName=featuredFastFerryName(v);
   if(fastFerryName){
     // The vessel rotates with its AIS heading; the name remains horizontal.
     const ship='<svg viewBox="0 0 52 52" width="30" height="30" aria-hidden="true" focusable="false"><path d="M26 3 L37 19 L35 37 L26 46 L17 37 L15 19 Z" fill="#00bcd4" stroke="#fff" stroke-width="2.7" stroke-linejoin="round"/><path d="M26 14 L31 24 L29 34 L23 34 L21 24 Z" fill="#083149" stroke="#e8fcff" stroke-width="1.3"/><path d="M26 4 V13" stroke="#e8fcff" stroke-width="2"/></svg>';
     return L.divIcon({
-      className:'vessel-wrap vessel-wrap-featured',
+      className:'vessel-wrap vessel-wrap-featured'+focused,
       html:`<div class="vessel-marker fast-ferry${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="fast-ferry-label">${fastFerryName}</span>`,
       iconSize:[40,40],iconAnchor:[20,20]
     });
@@ -2379,7 +2380,7 @@ function vesselIcon(v){
     const label=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const ship='<svg viewBox="0 0 52 52" width="33" height="33" aria-hidden="true" focusable="false"><path d="M26 2 L34 13 L38 35 L26 47 L14 35 L18 13 Z" fill="#f7b955" stroke="#fff2cf" stroke-width="2.4" stroke-linejoin="round"/><path d="M20 17 H32 L34 31 H18 Z" fill="#36465b" stroke="#fff2cf" stroke-width="1.4"/><path d="M23 8 H29 V15 H23 Z" fill="#ffe2aa"/></svg>';
     return L.divIcon({
-      className:'vessel-wrap vessel-wrap-featured vessel-wrap-coastal',
+      className:'vessel-wrap vessel-wrap-featured vessel-wrap-coastal'+focused,
       html:`<div class="vessel-marker coastal-ship${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="coastal-ship-label">${label}</span>`,
       iconSize:[40,40],iconAnchor:[20,20]
     });
@@ -2395,9 +2396,11 @@ function vesselIcon(v){
     ? '<path class="hull" d="M16 1.5 L23 9.5 L23.5 24.5 L20 30 H12 L8.5 24.5 L9 9.5 Z"/><rect class="cabin" x="11.8" y="12" width="8.4" height="12" rx="1.7"/><path class="bow" d="M13 9 L16 5.3 L19 9 Z"/>'
     : '<path class="hull" d="M16 1 L22 10 L22 23.5 L19.2 29 H12.8 L10 23.5 L10 10 Z"/><path class="cabin" d="M12.5 13 H19.5 V23 H12.5 Z"/><path class="bow" d="M13.4 10 L16 6 L18.6 10 Z"/>';
   const ship='<svg class="vessel-shape" viewBox="0 0 32 32" aria-hidden="true" focusable="false">'+hull+'</svg>';
+  const rawName=String(v?.name||('MMSI '+(v?.mmsi||'ukjent'))).trim();
+  const safeName=rawName.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return L.divIcon({
-    className:'vessel-wrap vessel-wrap-'+kind,
-    html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div>`,
+    className:'vessel-wrap vessel-wrap-'+kind+focused,
+    html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="vessel-focus-label" aria-hidden="true">${safeName}</span>`,
     iconSize:[32,32],iconAnchor:[16,16]
   });
 }
@@ -2766,8 +2769,13 @@ function autoSelectHarborVessel(now=Date.now()){
 }
 function syncVesselSelectionMarkers(){
  for(const [key,marker] of vesselMarkers){
-   const el=marker.getElement()?.querySelector('.vessel-marker');
-   if(el)el.classList.toggle('selected',key===selectedVesselTypeKey);
+   const focused=key===selectedVesselTypeKey;
+   const root=marker.getElement();
+   const el=root?.querySelector('.vessel-marker');
+   if(el)el.classList.toggle('selected',focused);
+   if(root)root.classList.toggle('is-focused',focused);
+   // Raise the selected AIS vessel above neighboring markers and ship tracks.
+   marker.setZIndexOffset?.(focused?1200:500);
  }
 }
 function renderVesselGuides(){
@@ -2810,6 +2818,8 @@ function renderVessels(){
    // Reuse the DOM marker instead of deleting it at every AIS refresh.
    scheduleVesselMotion(marker,key,v);
    marker.setTooltipContent('Fartøy: '+escapeVesselText(name));
+   const focusLabel=marker.getElement()?.querySelector('.vessel-focus-label');
+   if(focusLabel)focusLabel.textContent=name;
    // Preserve an open popup (and its loaded photo) during 30-second AIS refreshes.
    if(!marker.isPopupOpen())marker.setPopupContent(vesselDetail(v));
    continue;
