@@ -344,6 +344,12 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .plane-wrap.is-selected.heli-rescue .plane-marker.helicopter{color:#f4ad40}
 .plane-wrap.is-selected.heli-military .plane-marker.helicopter{color:#7f9e85}
 .plane-wrap.is-selected.heli-emergency .plane-marker.helicopter{color:#ff5b5b}
+/* Air ambulance medical identity, independent from heading rotation. */
+.plane-wrap.medical-aircraft,.plane-wrap.heli-ambulance{overflow:visible!important}
+.plane-wrap.medical-aircraft .plane-marker,.plane-wrap.heli-ambulance .plane-marker.helicopter{color:#40d9a0}
+.plane-wrap .medical-marker-badge{position:absolute;right:-5px;top:-7px;width:17px;height:17px;display:flex;align-items:center;justify-content:center;background:#116b53;border:1.5px solid #e9fff8;border-radius:4px;box-shadow:0 1px 5px #001c15;pointer-events:none;z-index:2}
+.plane-wrap .medical-marker-badge svg{width:12px;height:12px;fill:#fff;stroke:none}
+.plane-wrap.is-selected.medical-aircraft .plane-marker,.plane-wrap.is-selected.heli-ambulance .plane-marker.helicopter{color:#40d9a0}
 /* Explicit SVG sizing and fill also work in mobile Safari. */
 .plane-marker{width:34px;height:34px;color:#7b91a5;filter:drop-shadow(0 1px 1px #061321);text-shadow:none}
 .plane-marker svg{display:block;width:22px;height:22px;fill:currentColor;stroke:#0b2030;stroke-width:1;stroke-linejoin:round}
