@@ -71,7 +71,7 @@ test('verified air ambulance airplane receives a medical marker',()=>{
  for(const p of [{flight:'BNOV',type:'BE20',track:245},{flight:'MED123',role:'ambulance',type:'BE20',track:90}]){
   const icon=state.planeIcon(p);
   assert.match(icon.className,/medical-aircraft/);
-  assert.match(icon.html,/medical-marker-badge/);
+  assert.match(icon.html,/medical-insignia/);
   assert.match(icon.html,/Luftambulansefly/);
   assert.doesNotMatch(icon.html,/airline-marker-label/);
  }
@@ -80,16 +80,27 @@ test('medical helicopter has rotors and distinct badge; emergency overrides it',
  const heli=state.planeIcon({type:'S92',role:'ambulance',track:180});
  assert.match(heli.className,/heli-ambulance/);
  assert.match(heli.html,/heli-rotor/);
- assert.match(heli.html,/medical-marker-badge/);
+ assert.match(heli.html,/medical-insignia/);
  assert.match(heli.html,/rotate\(180deg\)/);
  const emergency=state.planeIcon({type:'S92',role:'ambulance',squawk:'7700'});
  assert.match(emergency.className,/heli-emergency/);
- assert.doesNotMatch(emergency.html,/medical-marker-badge/);
+ assert.doesNotMatch(emergency.html,/medical-insignia/);
 });
 test('medical CSS and other traffic icons remain separate',()=>{
+ assert.doesNotMatch(html,/medical-marker-badge/);
  assert.match(html,/\.plane-wrap\.medical-aircraft/);
  assert.match(html,/\.plane-wrap\.heli-ambulance/);
  assert.match(state.planeIcon({flight:'SAS123',type:'A320'}).className,/airline-sas/);
  assert.match(state.planeIcon({type:'S92',role:'rescue'}).className,/heli-rescue/);
  assert.match(state.planeIcon({type:'S92',flight:'HKS123'}).className,/heli-offshore/);
+});
+
+test('medical cross is integrated inside aircraft SVG and not a detached map marker',()=>{
+ for(const p of [{flight:'BNOV',type:'BE20'},{type:'S92',role:'ambulance'}]){
+  const icon=state.planeIcon(p);
+  assert.match(icon.html,/<g class="medical-insignia">/);
+  assert.match(icon.html,/<\/g><\/svg>\s*<\/div>/);
+  assert.doesNotMatch(icon.html,/<span class="medical-marker-badge"/);
+  assert.equal(icon.iconSize[0],34);
+ }
 });
