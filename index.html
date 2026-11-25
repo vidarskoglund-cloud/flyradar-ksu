@@ -1455,6 +1455,19 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 @media(prefers-reduced-motion:reduce){
  .plane-wrap .plane-marker svg .medical-blue-beacons circle{animation:none!important;opacity:1!important;filter:none}
 }
+/* Larger rotorcraft silhouette and distinct verified military aircraft. */
+.plane-wrap .plane-marker.helicopter svg{width:33px;height:33px;overflow:visible}
+.plane-wrap .plane-marker.helicopter .heli-skids{stroke:#d8e7ed}
+.plane-wrap .plane-marker.helicopter .heli-body{fill:currentColor;stroke:#0b2030;stroke-width:1.2}
+.plane-wrap .plane-marker.helicopter .heli-rotor{fill:#d5e4eb;stroke:#173246;stroke-width:1}
+.plane-wrap .plane-marker.helicopter .heli-tail-rotor{stroke:#e4eff4}
+.plane-wrap .plane-marker.helicopter .heli-windshield{fill:#17384a;stroke:#b9d1db;stroke-width:.8}
+.plane-wrap.military-fighter .plane-marker,.plane-wrap.military-fixed .plane-marker,
+.plane-wrap.military-heli .plane-marker.helicopter{color:#86aa91}
+.plane-wrap.is-selected.military-fighter .plane-marker,.plane-wrap.is-selected.military-fixed .plane-marker,
+.plane-wrap.is-selected.military-heli .plane-marker.helicopter{color:#86aa91}
+.plane-wrap .plane-marker svg .military-insignia circle{fill:#183d2a;stroke:#e5ffed;stroke-width:1}
+.plane-wrap .plane-marker svg .military-insignia path{fill:#f1fff5;stroke:none}
 </style>
 </head>
 <body>
