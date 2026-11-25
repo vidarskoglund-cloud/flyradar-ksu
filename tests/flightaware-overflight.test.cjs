@@ -30,12 +30,18 @@ test('overflight is prioritized for FlightAware, still hard-capped monthly',()=>
  assert.match(worker,/overflight-route-cache/);
  assert.match(worker,/flightAwareRoute\(env,callsign,true\)/);
 });
-test('map-wide overview requires real airport positions and is shown only once',()=>{
+test('confirmed overflight route is displayed once, holds briefly and returns locally',()=>{
  assert.match(app,/if\(!fromResult\|\|!toResult\)return/);
  assert.match(app,/overflightShown\.add\(key\)/);
- assert.match(app,/typeof overflightIntroUntil!=='undefined'&&now<overflightIntroUntil/);
+ assert.match(app,/now<overflightIntroUntil/);
+ assert.match(app,/OVERFLIGHT_ROUTE_HOLD_MS=12000/);
+ assert.match(app,/overflightLocalReturnUntil=Date\.now\(\)\+25000/);
+ assert.match(app,/areaBounds\(mapAreas\.city\.lat,mapAreas\.city\.lon,22\)/);
+ assert.match(app,/higherPriorityOverflightTraffic\(planes\)/);
+ assert.match(app,/if\(isHighOverflight\(shown\)&&shown\.routeData\)void showOverflightRouteIntro\(shown\)/);
  assert.match(app,/prefers-reduced-motion: reduce/);
- assert.match(app,/planeKey\(selected\)!==flightKey/);
+ assert.match(app,/planeKey\(selected\)!==planeKey\(p\)/);
+ assert.doesNotMatch(app,/p\.routeLookupSource!=="flightaware"/);
 });
 test('automatic paid lookup is scoped to the selected plane',()=>{
  assert.match(app,/const p=selected;\s*if\(!isHighOverflight\(p\)/);
