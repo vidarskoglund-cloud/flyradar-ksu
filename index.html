@@ -1479,6 +1479,10 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .vessel-wrap-passenger .vessel-shape .hull{fill:#ffd17a}
 .vessel-wrap .vessel-marker.selected .vessel-shape .hull{stroke:#ffffff;stroke-width:2.1}
 .vessel-wrap .vessel-marker.selected{filter:drop-shadow(0 0 4px #22d3ee) drop-shadow(0 0 7px #22d3ee)}
+/* Five user-supplied, registration-verified helicopter photos in one JPEG strip. */
+.user-aircraft-photo-wrap{height:132px;overflow:hidden;border-radius:9px}
+.user-aircraft-photo-strip{width:100%;height:100%;background-repeat:no-repeat;background-size:500% 100%;background-position:0 50%;background-color:#172d38}
+.user-aircraft-photo-credit{display:block;margin-top:4px}
 </style>
 </head>
 <body>
@@ -1547,7 +1551,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="aircraft-photos.js?v=5"></script>
+<script src="aircraft-photos.js?v=6"></script>
 <script src="vessel-photos.js?v=13"></script>
 <script src="speedboat-schedule.js?v=5"></script>
 <script src="road-status.js?v=15"></script>
