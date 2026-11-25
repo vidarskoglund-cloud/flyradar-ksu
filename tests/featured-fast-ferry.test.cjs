@@ -30,7 +30,7 @@ test('featured marker has visible name, ship silhouette and retains heading rota
  assert.match(icon.html,/rotate\(254deg\)/);
  assert.match(icon.html,/<svg/);
  assert.match(icon.html,/fast-ferry selected/);
- assert.equal(icon.iconAnchor[0],26);
+ assert.equal(icon.iconAnchor[0],20);
 });
 test('other vessels keep the original triangle marker and icon size',()=>{
  const icon=context.vesselIcon({name:'NORDKAPP',mmsi:'123',course:89});
@@ -61,7 +61,7 @@ test('Hurtigruten/Havila get a warm-gold named marker from AIS category',()=>{
  assert.match(icon.html,/coastal-ship-label">MS NORDLYS/);
  assert.match(icon.html,/rotate\(145deg\)/);
  assert.match(icon.html,/<svg/);
- assert.equal(icon.iconSize[0],52);
+ assert.equal(icon.iconSize[0],40);
  assert.match(html,/\.vessel-wrap-coastal \.coastal-ship-label/);
 });
 test('coastal category is necessary and the AIS name is escaped in label',()=>{
@@ -75,4 +75,16 @@ test('featured fast ferry styling remains distinct from coastal ship',()=>{
  const ferry=context.vesselIcon({name:'EKSPRESSEN',mmsi:'258416000',category:'hurtigbat',heading:254});
  assert.match(ferry.html,/fast-ferry-label/);
  assert.doesNotMatch(ferry.html,/coastal-ship-label/);
+});
+
+test('both featured vessel types use balanced 40px markers with smaller glow',()=>{
+ for(const v of [{name:'EKSPRESSEN',mmsi:'258416000',heading:90},{name:'MS NORDLYS',category:'hurtigrute',heading:90}]){
+  const icon=context.vesselIcon(v);
+  assert.equal(icon.iconSize[0],40);
+  assert.equal(icon.iconAnchor[0],20);
+  assert.match(icon.html,/rotate\\(90deg\\)/);
+ }
+ assert.match(html,/\\.vessel-marker.fast-ferry\\{width:40px;height:40px/);
+ assert.match(html,/\\.vessel-marker.coastal-ship\\{width:40px;height:40px/);
+ assert.match(html,/width:36px;height:36px/);
 });
