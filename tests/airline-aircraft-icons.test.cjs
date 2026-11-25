@@ -8,7 +8,7 @@ const start=app.indexOf('const AIRLINE_ICON_STYLES=');
 const end=app.indexOf('function planeKey(p)',start);
 assert.ok(start>=0&&end>start);
 const state=new Function('L','getTrackDeg','isHelicopter','localRelevant','specialFlightCategory',
- app.slice(start,end)+';return {planeIcon,aircraftAirlineIcon,helicopterIconCategory};')(
+ app.slice(start,end)+';return {planeIcon,aircraftAirlineIcon,helicopterIconCategory,militaryIconCategory};')(
  {divIcon:options=>options},
  p=>Number(p.track??0),
  p=>p.type==='S92',
@@ -119,4 +119,27 @@ test('air ambulances carry alternating blue strobes inside the aircraft SVG',()=
  assert.match(html,/@keyframes medical-strobe-left/);
  assert.match(html,/@keyframes medical-strobe-right/);
  assert.match(html, /prefers-reduced-motion:reduce/);
+});
+
+test('verified military aircraft use transport, fighter and helicopter shapes',()=>{
+ for(const [p,cls] of [
+  [{type:'F35',role:'military'},'military-fighter'],
+  [{type:'C130',role:'military'},'military-fixed'],
+  [{type:'P8',role:'military'},'military-fixed'],
+  [{type:'S92',role:'military'},'military-heli']
+ ]){
+  const icon=state.planeIcon(p);
+  assert.match(icon.className,new RegExp(cls));
+  assert.match(icon.html,/military-insignia/);
+ }
+ assert.match(state.planeIcon({type:'F35',role:'military'}).html,/fighter-body/);
+ assert.doesNotMatch(state.planeIcon({type:'F35'}).className,/military-fighter/);
+});
+test('new helicopter rotor is recognizable and emergency overrides military',()=>{
+ const heli=state.planeIcon({type:'S92',role:'military'});
+ for(const component of ['heli-skids','heli-rotor','heli-tail-rotor','heli-windshield'])
+   assert.match(heli.html,new RegExp(component));
+ const emergency=state.planeIcon({type:'S92',role:'military',squawk:'7700'});
+ assert.match(emergency.className,/heli-emergency/);
+ assert.doesNotMatch(emergency.html,/military-insignia/);
 });
