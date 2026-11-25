@@ -1445,6 +1445,16 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .plane-wrap.heli-ambulance .plane-marker.helicopter{color:#36d6a0}
 .plane-wrap .plane-marker svg .medical-insignia circle{fill:#08765e;stroke:#eafff8;stroke-width:1}
 .plane-wrap .plane-marker svg .medical-insignia path{fill:#fff;stroke:none}
+/* Alternating blue emergency-style strobes inside medical aircraft/heli SVG.
+   Animation does not change aircraft position, heading or Leaflet markers. */
+.plane-wrap .plane-marker svg .medical-blue-beacons circle{fill:#49c9ff;stroke:#eefbff;stroke-width:.8;filter:drop-shadow(0 0 2.2px #0aaaff)}
+.plane-wrap .plane-marker svg .medical-blue-beacons .beacon-left{animation:medical-strobe-left 1.15s steps(1,end) infinite}
+.plane-wrap .plane-marker svg .medical-blue-beacons .beacon-right{animation:medical-strobe-right 1.15s steps(1,end) infinite}
+@keyframes medical-strobe-left{0%,18%,60%,100%{opacity:1}19%,59%{opacity:.12}}
+@keyframes medical-strobe-right{0%,49%,78%,100%{opacity:.12}50%,77%{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ .plane-wrap .plane-marker svg .medical-blue-beacons circle{animation:none!important;opacity:1!important;filter:none}
+}
 </style>
 </head>
 <body>
