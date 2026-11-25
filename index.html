@@ -331,6 +331,19 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .plane-wrap.airline-known .plane-marker:not(.ksu-stale){color:var(--airline-color)}
 .plane-wrap.airline-known .airline-marker-label{position:absolute;left:50%;top:-12px;transform:translateX(-50%);min-width:22px;text-align:center;pointer-events:none;font:800 9px/12px system-ui,sans-serif;letter-spacing:.025em;color:#fff;background:var(--airline-bg);border:1px solid var(--airline-color);border-radius:4px;padding:0 3px;box-shadow:0 1px 4px #000a;white-space:nowrap}
 .plane-wrap.is-selected.airline-known .plane-marker{color:#6ee7ff}
+/* Helicopter category colors; existing airplane and vessel styles unchanged. */
+.plane-wrap .plane-marker.helicopter svg{width:30px;height:30px;stroke-linejoin:round}
+.plane-wrap .plane-marker.helicopter .heli-rotor{fill:#dce8f0;stroke:#10283b;stroke-width:.65}
+.plane-wrap .plane-marker.helicopter .heli-body{fill:currentColor;stroke:#10283b;stroke-width:1}
+.plane-wrap.heli-general .plane-marker.helicopter{color:#a0afbd}
+.plane-wrap.heli-offshore .plane-marker.helicopter{color:#399ee8}
+.plane-wrap.heli-rescue .plane-marker.helicopter{color:#f4ad40}
+.plane-wrap.heli-military .plane-marker.helicopter{color:#7f9e85}
+.plane-wrap.heli-emergency .plane-marker.helicopter{color:#ff5b5b;filter:drop-shadow(0 0 5px #f44b)}
+.plane-wrap.is-selected.heli-offshore .plane-marker.helicopter{color:#399ee8}
+.plane-wrap.is-selected.heli-rescue .plane-marker.helicopter{color:#f4ad40}
+.plane-wrap.is-selected.heli-military .plane-marker.helicopter{color:#7f9e85}
+.plane-wrap.is-selected.heli-emergency .plane-marker.helicopter{color:#ff5b5b}
 /* Explicit SVG sizing and fill also work in mobile Safari. */
 .plane-marker{width:34px;height:34px;color:#7b91a5;filter:drop-shadow(0 1px 1px #061321);text-shadow:none}
 .plane-marker svg{display:block;width:22px;height:22px;fill:currentColor;stroke:#0b2030;stroke-width:1;stroke-linejoin:round}
