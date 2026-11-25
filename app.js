@@ -2384,10 +2384,21 @@ function vesselIcon(v){
       iconSize:[40,40],iconAnchor:[20,20]
     });
   }
+  // AIS vessel type provides a genuine category; unknown types remain generic.
+  const type=Number(v?.shipType);
+  const kind=type>=40&&type<=49?'fast':
+    type>=60&&type<=69?'passenger':'standard';
+  // All shapes point north, as AIS heading rotates the complete marker.
+  const hull=kind==='fast'
+    ? '<path class="hull" d="M16 1 L22.5 12.2 L22.4 23.5 L16 30 L9.6 23.5 L9.5 12.2 Z"/><path class="cabin" d="M16 7 L20 15 L19.3 23 H12.7 L12 15 Z"/><path class="bow" d="M16 3 L18 8 L14 8 Z"/>'
+    :kind==='passenger'
+    ? '<path class="hull" d="M16 1.5 L23 9.5 L23.5 24.5 L20 30 H12 L8.5 24.5 L9 9.5 Z"/><rect class="cabin" x="11.8" y="12" width="8.4" height="12" rx="1.7"/><path class="bow" d="M13 9 L16 5.3 L19 9 Z"/>'
+    : '<path class="hull" d="M16 1 L22 10 L22 23.5 L19.2 29 H12.8 L10 23.5 L10 10 Z"/><path class="cabin" d="M12.5 13 H19.5 V23 H12.5 Z"/><path class="bow" d="M13.4 10 L16 6 L18.6 10 Z"/>';
+  const ship='<svg class="vessel-shape" viewBox="0 0 32 32" aria-hidden="true" focusable="false">'+hull+'</svg>';
   return L.divIcon({
-    className:'vessel-wrap',
-    html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">▲</div>`,
-    iconSize:[26,26],iconAnchor:[13,13]
+    className:'vessel-wrap vessel-wrap-'+kind,
+    html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div>`,
+    iconSize:[32,32],iconAnchor:[16,16]
   });
 }
 function vesselKind(v){
