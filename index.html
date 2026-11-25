@@ -1468,6 +1468,17 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .plane-wrap.is-selected.military-heli .plane-marker.helicopter{color:#86aa91}
 .plane-wrap .plane-marker svg .military-insignia circle{fill:#183d2a;stroke:#e5ffed;stroke-width:1}
 .plane-wrap .plane-marker svg .military-insignia path{fill:#f1fff5;stroke:none}
+/* AIS vessel silhouettes: bow, hull and deck remain readable at map scale. */
+.vessel-wrap-standard .vessel-marker,.vessel-wrap-fast .vessel-marker,
+.vessel-wrap-passenger .vessel-marker{width:32px;height:32px;font-size:0;line-height:1;filter:drop-shadow(0 1px 2px #001f35)}
+.vessel-wrap .vessel-shape{display:block;width:30px;height:30px;overflow:visible}
+.vessel-wrap .vessel-shape .hull{fill:#f7c957;stroke:#102d3d;stroke-width:1.6;stroke-linejoin:round}
+.vessel-wrap .vessel-shape .cabin{fill:#245d76;stroke:#f6fcff;stroke-width:1}
+.vessel-wrap .vessel-shape .bow{fill:#fff3c7}
+.vessel-wrap-fast .vessel-shape .hull{fill:#50e0ef}
+.vessel-wrap-passenger .vessel-shape .hull{fill:#ffd17a}
+.vessel-wrap .vessel-marker.selected .vessel-shape .hull{stroke:#ffffff;stroke-width:2.1}
+.vessel-wrap .vessel-marker.selected{filter:drop-shadow(0 0 4px #22d3ee) drop-shadow(0 0 7px #22d3ee)}
 </style>
 </head>
 <body>
@@ -1550,7 +1561,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-target.js?v=1"></script>
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
-<script src="app.js?v=226"></script>
+<script src="app.js?v=227"></script>
 <script src="police-status.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
 
