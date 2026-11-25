@@ -94,6 +94,7 @@ test('LN-OQU user photos require exact registration or ICAO hex, never flight nu
  assert.match(planeSource,/renderLnOquPhotos\(identity\)/);
  assert.match(planeSource,/index=\(index\+1\)%5/);
  assert.match(planeSource,/setInterval\(\(\)=>/);
+ const page=src('index.html');
  assert.match(page,/aircraft-photos\.js\?v=6/);
  assert.match(page,/\.user-aircraft-photo-strip/);
 });
