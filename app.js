@@ -877,6 +877,7 @@ function helicopterIconCategory(p){
 function planeIcon(p){
   const tr=getTrackDeg(p)??0;
   const heli=isHelicopter(p);
+  const category=heli?helicopterIconCategory(p):null;
   const airline=aircraftAirlineIcon(p);
   const shape=heli
      ? '<path class="heli-rotor" d="M3 12 Q16 10 29 12 L29 14.5 Q16 17 3 14.5 Z"/><path class="heli-body" d="M16 5 C20.2 5 21.8 9.6 20.5 14.5 L18.5 18.5 L17.3 26 H14.7 L13.5 18.5 L11.5 14.5 C10.2 9.6 11.8 5 16 5 Z"/><path d="M16 24 V29 M10.5 28 H21.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 10 Q16 8 19 10 M13 17 H19" fill="none" stroke="#10283b" stroke-width="1.2" stroke-linecap="round"/>'
