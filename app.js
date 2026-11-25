@@ -889,10 +889,15 @@ function planeIcon(p){
   const medical=(ambulance||category?.id==='ambulance')
     ? '<g class="medical-insignia"><circle cx="16" cy="15.5" r="5.4"/><path d="M15 12.2h2v2.3h2.3v2h-2.3v2.3h-2v-2.3h-2.3v-2H15z"/></g>'
     : '';
+  // Two alternating blue beacons integrated into the same aircraft SVG.
+  // They are visual accents, not additional Leaflet map markers.
+  const beacons=(ambulance||category?.id==='ambulance')
+    ? '<g class="medical-blue-beacons"><circle class="beacon-left" cx="7" cy="16" r="2.2"/><circle class="beacon-right" cx="25" cy="16" r="2.2"/></g>'
+    : '';
   return L.divIcon({
     className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:'')+(ambulance?' medical-aircraft':''),
     html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:(ambulance?'Luftambulansefly':'Fly'))}">
-      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}</svg>
+      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}</svg>
     </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
