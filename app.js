@@ -2308,11 +2308,11 @@ function vesselIcon(v){
   const fastFerryName=featuredFastFerryName(v);
   if(fastFerryName){
     // The vessel rotates with its AIS heading; the name remains horizontal.
-    const ship='<svg viewBox="0 0 52 52" width="38" height="38" aria-hidden="true" focusable="false"><path d="M26 3 L37 19 L35 37 L26 46 L17 37 L15 19 Z" fill="#00bcd4" stroke="#fff" stroke-width="2.7" stroke-linejoin="round"/><path d="M26 14 L31 24 L29 34 L23 34 L21 24 Z" fill="#083149" stroke="#e8fcff" stroke-width="1.3"/><path d="M26 4 V13" stroke="#e8fcff" stroke-width="2"/></svg>';
+    const ship='<svg viewBox="0 0 52 52" width="30" height="30" aria-hidden="true" focusable="false"><path d="M26 3 L37 19 L35 37 L26 46 L17 37 L15 19 Z" fill="#00bcd4" stroke="#fff" stroke-width="2.7" stroke-linejoin="round"/><path d="M26 14 L31 24 L29 34 L23 34 L21 24 Z" fill="#083149" stroke="#e8fcff" stroke-width="1.3"/><path d="M26 4 V13" stroke="#e8fcff" stroke-width="2"/></svg>';
     return L.divIcon({
       className:'vessel-wrap vessel-wrap-featured',
       html:`<div class="vessel-marker fast-ferry${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="fast-ferry-label">${fastFerryName}</span>`,
-      iconSize:[52,52],iconAnchor:[26,26]
+      iconSize:[40,40],iconAnchor:[20,20]
     });
   }
   if(v?.category==='hurtigrute'){
@@ -2320,11 +2320,11 @@ function vesselIcon(v){
     // Use the observed AIS name; escape it before putting it in the marker HTML.
     const name=String(v.name||('MMSI '+(v.mmsi||'ukjent'))).trim();
     const label=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const ship='<svg viewBox="0 0 52 52" width="42" height="42" aria-hidden="true" focusable="false"><path d="M26 2 L34 13 L38 35 L26 47 L14 35 L18 13 Z" fill="#f7b955" stroke="#fff2cf" stroke-width="2.4" stroke-linejoin="round"/><path d="M20 17 H32 L34 31 H18 Z" fill="#36465b" stroke="#fff2cf" stroke-width="1.4"/><path d="M23 8 H29 V15 H23 Z" fill="#ffe2aa"/></svg>';
+    const ship='<svg viewBox="0 0 52 52" width="33" height="33" aria-hidden="true" focusable="false"><path d="M26 2 L34 13 L38 35 L26 47 L14 35 L18 13 Z" fill="#f7b955" stroke="#fff2cf" stroke-width="2.4" stroke-linejoin="round"/><path d="M20 17 H32 L34 31 H18 Z" fill="#36465b" stroke="#fff2cf" stroke-width="1.4"/><path d="M23 8 H29 V15 H23 Z" fill="#ffe2aa"/></svg>';
     return L.divIcon({
       className:'vessel-wrap vessel-wrap-featured vessel-wrap-coastal',
       html:`<div class="vessel-marker coastal-ship${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="coastal-ship-label">${label}</span>`,
-      iconSize:[52,52],iconAnchor:[26,26]
+      iconSize:[40,40],iconAnchor:[20,20]
     });
   }
   return L.divIcon({
