@@ -23,9 +23,14 @@ test('vessel detail displays a primary name and compact speed and course',()=>{
  assert.doesNotMatch(card,/WIF459/);
 });
 test('selected ship marker has a distinct highlight and refresh sync',()=>{
- assert.match(app,/vessel-marker\$\{vesselKey\(v\)===selectedVesselTypeKey/);
+ assert.match(app,/const selected=vesselKey\(v\)===selectedVesselTypeKey/);
  assert.match(app,/function syncVesselSelectionMarkers/);
- assert.match(app,/el\.classList\.toggle\('selected',key===selectedVesselTypeKey\)/);
+ assert.match(app,/el\.classList\.toggle\('selected',focused\)/);
+ assert.match(app,/root\.classList\.toggle\('is-focused',focused\)/);
+ assert.match(app,/setZIndexOffset\?\.\(focused\?1200:500\)/);
+ assert.match(app,/class="vessel-focus-label"/);
+ assert.match(html,/\.vessel-wrap\.is-focused::after/);
+ assert.match(html,/\.vessel-wrap\.is-focused \.vessel-focus-label/);
  assert.match(html,/\.vessel-marker\.selected/);
 });
 test('AIS updates preserve mounted image element instead of redrawing',()=>{
@@ -44,4 +49,13 @@ test('ship photo uses fallback until loaded and explains no reliable match',()=>
  assert.match(photo,/img\.onload=\(\)=>/);
  assert.match(photo,/fallback\.hidden=true/);
  assert.match(photo,/kristiansund-vessel-photos-v4/);
+});
+
+test('selected ship focus marker persists on AIS updates and stays course independent',()=>{
+ assert.match(app,/const focusLabel=marker\.getElement\(\)\?\.querySelector\('\.vessel-focus-label'\)/);
+ assert.match(app,/if\(focusLabel\)focusLabel\.textContent=name/);
+ assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
+ assert.match(html,/\.vessel-wrap-featured\.is-focused::after/);
+ assert.match(html,/\.vessel-wrap-featured\.is-focused \.fast-ferry-label/);
+ assert.match(html,/app\.js\?v=228/);
 });
