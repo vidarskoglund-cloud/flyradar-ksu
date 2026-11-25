@@ -82,9 +82,9 @@ test('both featured vessel types use balanced 40px markers with smaller glow',()
   const icon=context.vesselIcon(v);
   assert.equal(icon.iconSize[0],40);
   assert.equal(icon.iconAnchor[0],20);
-  assert.match(icon.html,/rotate\\(90deg\\)/);
+  assert.match(icon.html,/rotate\(90deg\)/);
  }
- assert.match(html,/\\.vessel-marker.fast-ferry\\{width:40px;height:40px/);
- assert.match(html,/\\.vessel-marker.coastal-ship\\{width:40px;height:40px/);
+ assert.match(html,/\.vessel-marker.fast-ferry\{width:40px;height:40px/);
+ assert.match(html,/\.vessel-marker.coastal-ship\{width:40px;height:40px/);
  assert.match(html,/width:36px;height:36px/);
 });
