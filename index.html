@@ -323,6 +323,14 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   .hero .grid{grid-template-columns:repeat(2,1fr)}
 }
 
+/* Lightweight airline identity; direction and selection effects remain unchanged. */
+.plane-wrap.airline-known{overflow:visible!important;--airline-color:#7b91a5;--airline-bg:#10253a}
+.plane-wrap.airline-wideroe{--airline-color:#50d59a;--airline-bg:#0e3b30}
+.plane-wrap.airline-sas{--airline-color:#76abfa;--airline-bg:#15345b}
+.plane-wrap.airline-norwegian{--airline-color:#ff817c;--airline-bg:#562326}
+.plane-wrap.airline-known .plane-marker:not(.ksu-stale){color:var(--airline-color)}
+.plane-wrap.airline-known .airline-marker-label{position:absolute;left:50%;top:-12px;transform:translateX(-50%);min-width:22px;text-align:center;pointer-events:none;font:800 9px/12px system-ui,sans-serif;letter-spacing:.025em;color:#fff;background:var(--airline-bg);border:1px solid var(--airline-color);border-radius:4px;padding:0 3px;box-shadow:0 1px 4px #000a;white-space:nowrap}
+.plane-wrap.is-selected.airline-known .plane-marker{color:#6ee7ff}
 /* Explicit SVG sizing and fill also work in mobile Safari. */
 .plane-marker{width:34px;height:34px;color:#7b91a5;filter:drop-shadow(0 1px 1px #061321);text-shadow:none}
 .plane-marker svg{display:block;width:22px;height:22px;fill:currentColor;stroke:#0b2030;stroke-width:1;stroke-linejoin:round}
@@ -1494,7 +1502,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-target.js?v=1"></script>
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
-<script src="app.js?v=224"></script>
+<script src="app.js?v=225"></script>
 <script src="police-status.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
 

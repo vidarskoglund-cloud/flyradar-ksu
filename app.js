@@ -847,17 +847,32 @@ function isHelicopter(p){
   return types.has(type) || /helicopter|helikopter|rotorcraft/.test(desc) ||
     (/^HK[SM]/i.test(String(p?.flight||'')) && /helicopter|helikopter|offshore|chc/.test(operator+' '+desc));
 }
+// Visual airline hints use the ICAO callsign prefix, not paid route lookups.
+// Never classify helicopters or assume a missing/unrecognized prefix identifies an operator.
+const AIRLINE_ICON_STYLES=Object.freeze({
+ WIF:Object.freeze({code:'WF',name:'Widerøe',css:'airline-wideroe'}),
+ SAS:Object.freeze({code:'SK',name:'SAS',css:'airline-sas'}),
+ NOZ:Object.freeze({code:'DY',name:'Norwegian',css:'airline-norwegian'}),
+ NAX:Object.freeze({code:'DY',name:'Norwegian',css:'airline-norwegian'})
+});
+function aircraftAirlineIcon(p){
+ if(isHelicopter(p))return null;
+ const flight=String(p?.flight||'').trim().toUpperCase();
+ const match=/^([A-Z]{3})(?=[0-9])/.exec(flight);
+ return match?AIRLINE_ICON_STYLES[match[1]]||null:null;
+}
 function planeIcon(p){
   const tr=getTrackDeg(p)??0;
   const heli=isHelicopter(p);
+  const airline=aircraftAirlineIcon(p);
   const shape=heli
     ? '<path d="M14 2 H18 V11 H25 V13 H18 V15 H21 L24 18 V21 L20 20 L18 26 H23 V28 H9 V26 H14 L12 20 L8 21 V18 L11 15 H14 V13 H7 V11 H14 Z"/><path d="M4 12 H28 M16 2 V6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
     : '<path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>';
   return L.divIcon({
-    className:'plane-wrap',
-    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${heli?'Helikopter':'Fly'}">
+    className:'plane-wrap'+(airline?' airline-known '+airline.css:''),
+    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(heli?'Helikopter':'Fly')}">
       <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}</svg>
-    </div>`,
+    </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
 }
