@@ -59,10 +59,10 @@ test('Hurtigruten/Havila get a warm-gold named marker from AIS category',()=>{
  const icon=context.vesselIcon({name:'MS NORDLYS',mmsi:'257100001',category:'hurtigrute',course:145});
  assert.match(icon.className,/vessel-wrap-coastal/);
  assert.match(icon.html,/coastal-ship-label">MS NORDLYS/);
- assert.match(icon.html,/rotate\\(145deg\\)/);
+ assert.match(icon.html,/rotate\(145deg\)/);
  assert.match(icon.html,/<svg/);
  assert.equal(icon.iconSize[0],52);
- assert.match(html,/\\.vessel-wrap-coastal \\.coastal-ship-label/);
+ assert.match(html,/\.vessel-wrap-coastal \.coastal-ship-label/);
 });
 test('coastal category is necessary and the AIS name is escaped in label',()=>{
  const ordinary=context.vesselIcon({name:'MS NORDLYS',mmsi:'257100001',category:'other',course:145});
