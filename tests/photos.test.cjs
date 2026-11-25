@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 const src=(name)=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
 const planeSource=src('aircraft-photos.js'),shipSource=src('vessel-photos.js');
+const html=src('index.html');
 function candidate(source,begin,end,funcName){
  const a=source.indexOf(begin),b=source.indexOf(end,a);
  assert.ok(a>=0&&b>a);
