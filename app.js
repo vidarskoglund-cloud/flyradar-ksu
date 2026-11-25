@@ -867,7 +867,8 @@ function helicopterIconCategory(p){
  if((e&&!['none','no emergency','0'].includes(e))||['7700','7600','7500'].includes(sq))
    return {id:'emergency',label:sq==='7600'?'Helikopter · radiosvikt':sq==='7500'?'Helikopter · ulovlig innblanding':'Helikopter · nødstatus'};
  const role=specialFlightCategory(p);
- if(role&&['rescue','ambulance','coastguard'].includes(role.id))return {id:'rescue',label:role.label};
+ if(role?.id==='ambulance')return {id:'ambulance',label:'Luftambulansehelikopter'};
+ if(role&&['rescue','coastguard'].includes(role.id))return {id:'rescue',label:role.label};
  if(role?.id==='military')return {id:'military',label:'Militærhelikopter'};
  const op=String(p?.operator||'').toLowerCase(),flight=String(p?.flight||'').trim().toUpperCase();
  if(/\b(?:offshore|chc helicopter|bristow norway|bristow helicopters)\b/.test(op)||/^HK[SM][0-9A-Z]*$/.test(flight))
@@ -878,15 +879,16 @@ function planeIcon(p){
   const tr=getTrackDeg(p)??0;
   const heli=isHelicopter(p);
   const category=heli?helicopterIconCategory(p):null;
-  const airline=aircraftAirlineIcon(p);
+  const ambulance=!heli&&specialFlightCategory(p)?.id==='ambulance';
+  const airline=ambulance?null:aircraftAirlineIcon(p);
   const shape=heli
      ? '<path class="heli-rotor" d="M3 12 Q16 10 29 12 L29 14.5 Q16 17 3 14.5 Z"/><path class="heli-body" d="M16 5 C20.2 5 21.8 9.6 20.5 14.5 L18.5 18.5 L17.3 26 H14.7 L13.5 18.5 L11.5 14.5 C10.2 9.6 11.8 5 16 5 Z"/><path d="M16 24 V29 M10.5 28 H21.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 10 Q16 8 19 10 M13 17 H19" fill="none" stroke="#10283b" stroke-width="1.2" stroke-linecap="round"/>'
     : '<path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>';
   return L.divIcon({
-    className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:''),
-    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:'Fly')}">
+    className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:'')+(ambulance?' medical-aircraft':''),
+    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:(ambulance?'Luftambulansefly':'Fly'))}">
       <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}</svg>
-    </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
+    </div>${(ambulance||category?.id==='ambulance')?'<span class="medical-marker-badge" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M8 3h4v5h5v4h-5v5H8v-5H3V8h5z"/></svg></span>':''}${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
 }
