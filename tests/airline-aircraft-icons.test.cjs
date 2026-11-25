@@ -7,12 +7,13 @@ const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const start=app.indexOf('const AIRLINE_ICON_STYLES=');
 const end=app.indexOf('function planeKey(p)',start);
 assert.ok(start>=0&&end>start);
-const state=new Function('L','getTrackDeg','isHelicopter','localRelevant',
- app.slice(start,end)+';return {planeIcon,aircraftAirlineIcon};')(
+const state=new Function('L','getTrackDeg','isHelicopter','localRelevant','specialFlightCategory',
+ app.slice(start,end)+';return {planeIcon,aircraftAirlineIcon,helicopterIconCategory};')(
  {divIcon:options=>options},
  p=>Number(p.track??0),
  p=>p.type==='S92',
- ()=>false
+ ()=>false,
+ p=>p.role?{id:p.role,label:p.role}:null
 );
 test('known airline ICAO callsigns receive matching map-only badges',()=>{
  for(const [flight,cls,label] of [
@@ -37,7 +38,7 @@ test('unknown, incomplete and misleading callsigns retain generic aircraft style
 });
 test('helicopters cannot be branded as fixed-wing airline aircraft',()=>{
  const icon=state.planeIcon({flight:'WIF5AD',track:74,type:'S92'});
- assert.equal(icon.className,'plane-wrap');
+ assert.match(icon.className,/heli-general/);
  assert.match(icon.html,/helicopter/);
 });
 test('brand labels remain horizontal while aircraft itself rotates',()=>{
@@ -50,4 +51,18 @@ test('brand labels remain horizontal while aircraft itself rotates',()=>{
 });
 test('classification does not introduce paid API or network lookups',()=>{
  assert.doesNotMatch(app.slice(start,end),/fetch\(|workers\.dev|FlightAware|\/route/);
+});
+
+test('helicopter category precedence and rotor silhouette',()=>{
+ for(const [p,category] of [
+  [{type:'S92',flight:'HKS123'},'offshore'],
+  [{type:'S92',flight:'HKS123',role:'rescue'},'rescue'],
+  [{type:'S92',flight:'HKS123',role:'military'},'military'],
+  [{type:'S92',flight:'HKS123',role:'rescue',squawk:'7700'},'emergency'],
+  [{type:'S92',flight:'N123AB'},'general']
+ ]){
+  const icon=state.planeIcon(p);
+  assert.match(icon.className,new RegExp('heli-'+category));
+  assert.match(icon.html,/heli-rotor/);
+ }
 });
