@@ -861,16 +861,29 @@ function aircraftAirlineIcon(p){
  const match=/^([A-Z]{3})(?=[0-9])/.exec(flight);
  return match?AIRLINE_ICON_STYLES[match[1]]||null:null;
 }
+function helicopterIconCategory(p){
+ if(!isHelicopter(p))return null;
+ const e=String(p?.emergency||'').toLowerCase(),sq=String(p?.squawk||'').trim();
+ if((e&&!['none','no emergency','0'].includes(e))||['7700','7600','7500'].includes(sq))
+   return {id:'emergency',label:sq==='7600'?'Helikopter · radiosvikt':sq==='7500'?'Helikopter · ulovlig innblanding':'Helikopter · nødstatus'};
+ const role=specialFlightCategory(p);
+ if(role&&['rescue','ambulance','coastguard'].includes(role.id))return {id:'rescue',label:role.label};
+ if(role?.id==='military')return {id:'military',label:'Militærhelikopter'};
+ const op=String(p?.operator||'').toLowerCase(),flight=String(p?.flight||'').trim().toUpperCase();
+ if(/\b(?:offshore|chc helicopter|bristow norway|bristow helicopters)\b/.test(op)||/^HK[SM][0-9A-Z]*$/.test(flight))
+   return {id:'offshore',label:'Offshorehelikopter'};
+ return {id:'general',label:'Helikopter'};
+}
 function planeIcon(p){
   const tr=getTrackDeg(p)??0;
   const heli=isHelicopter(p);
   const airline=aircraftAirlineIcon(p);
   const shape=heli
-    ? '<path d="M14 2 H18 V11 H25 V13 H18 V15 H21 L24 18 V21 L20 20 L18 26 H23 V28 H9 V26 H14 L12 20 L8 21 V18 L11 15 H14 V13 H7 V11 H14 Z"/><path d="M4 12 H28 M16 2 V6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>'
+     ? '<path class="heli-rotor" d="M3 12 Q16 10 29 12 L29 14.5 Q16 17 3 14.5 Z"/><path class="heli-body" d="M16 5 C20.2 5 21.8 9.6 20.5 14.5 L18.5 18.5 L17.3 26 H14.7 L13.5 18.5 L11.5 14.5 C10.2 9.6 11.8 5 16 5 Z"/><path d="M16 24 V29 M10.5 28 H21.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 10 Q16 8 19 10 M13 17 H19" fill="none" stroke="#10283b" stroke-width="1.2" stroke-linecap="round"/>'
     : '<path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>';
   return L.divIcon({
-    className:'plane-wrap'+(airline?' airline-known '+airline.css:''),
-    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(heli?'Helikopter':'Fly')}">
+    className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:''),
+    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:'Fly')}">
       <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}</svg>
     </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
