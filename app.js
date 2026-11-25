@@ -1661,7 +1661,13 @@ function idleAircraftGlimpse(list,now){
 }
 function fitMap(list,s){
   const now=Date.now();
-  if(now<manualMapUntil||(typeof overflightIntroUntil!=='undefined'&&now<overflightIntroUntil))return;
+  if(now<manualMapUntil)return;
+  // A confirmed KSU arrival, SAR/emergency/military flight or other higher
+  // priority operation may interrupt the temporary long-distance route view.
+  if(now<overflightIntroUntil){
+    if(!smartMapCandidate(list).some(x=>x.rank>=3.5))return;
+    overflightIntroUntil=0;
+  }
   const candidates=smartMapCandidate(list);
   const best=candidates[0]||null;
   // Local aircraft and important vessel operations take priority. During
@@ -1705,7 +1711,7 @@ function fitMap(list,s){
   // Keep the aircraft shown in the detail panel visible too. If it is outside
   // the current focus bounds, zoom OUT to include both it and the local view.
   // Never override the two-minute pause after manual map interactions.
-  const focused=selectedVesselTypeKey?'':selected&&ksuDistanceNm(selected)<=100&&list.find(p=>
+  const focused=selectedVesselTypeKey||now<overflightLocalReturnUntil?'':selected&&ksuDistanceNm(selected)<=100&&list.find(p=>
     planeKey(p)===planeKey(selected)&&!p.signalLost&&
     Number.isFinite(Number(p.lat))&&Number.isFinite(Number(p.lon)));
   const glimpseTarget=Boolean(target?.key?.startsWith('glimt:'));
@@ -2002,6 +2008,11 @@ function queueAutomaticKsuRouteLookup(list,now=Date.now()){
 // real airport coordinates. Return to local focus without moving a manually used map.
 const overflightShown=new Set();
 let overflightIntroUntil=0;
+let overflightLocalReturnUntil=0;
+const OVERFLIGHT_ROUTE_HOLD_MS=12000;
+function higherPriorityOverflightTraffic(list){
+  return smartMapCandidate(list).some(x=>x.rank>=3.5);
+}
 // City coordinates are visual approximations only; route identity still
 // comes exclusively from FlightAware. The free geocoder never triggers paid API.
 const overflightCityLookups=new Map();
@@ -2034,8 +2045,9 @@ async function overflightRoutePoint(airport){
 async function showOverflightRouteIntro(p){
   const key=flightRouteKey(p);
   if(!key||overflightShown.has(key)||overflightIntroPending.has(key)||
-     !isHighOverflight(p)||p.routeLookupSource!=="flightaware"||
-     Date.now()<manualMapUntil)return;
+     !isHighOverflight(p)||routeText(p.routeData)==='Rute ikke tilgjengelig'||
+     Date.now()<manualMapUntil||Date.now()<overflightIntroUntil||
+     higherPriorityOverflightTraffic(planes))return;
   const airports=p.routeData?._airports;
   if(!Array.isArray(airports)||airports.length<2)return;
   overflightIntroPending.add(key);
@@ -2045,7 +2057,7 @@ async function showOverflightRouteIntro(p){
     ]);
     if(!fromResult||!toResult)return;
     if(Date.now()<manualMapUntil||!selected||planeKey(selected)!==planeKey(p)||
-       !isHighOverflight(p))return;
+       !isHighOverflight(p)||higherPriorityOverflightTraffic(planes))return;
     overflightShown.add(key);
     const from=fromResult.point,to=toResult.point;
     const flightKey=planeKey(p);
@@ -2064,22 +2076,26 @@ async function showOverflightRouteIntro(p){
     }
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const introAt=Date.now();
-    overflightIntroUntil=introAt+(reduced?0:6000);
+    overflightIntroUntil=introAt+OVERFLIGHT_ROUTE_HOLD_MS;
     const options={padding:[55,55],maxZoom:6,animate:!reduced,duration:1.8};
     autoMapTransition=true;
     map.once('moveend',()=>{autoMapTransition=false;});
     map.fitBounds(L.latLngBounds([from,[p.lat,p.lon],to]),options);
-    if(reduced){overflightIntroUntil=0;return;}
     setTimeout(()=>{
-      if(overflightIntroUntil!==introAt+6000)return;
+      if(overflightIntroUntil!==introAt+OVERFLIGHT_ROUTE_HOLD_MS)return;
       overflightIntroUntil=0;
-      if(Date.now()<manualMapUntil||!selected||planeKey(selected)!==flightKey)return;
-      const latest=planes.find(item=>planeKey(item)===flightKey&&!item.signalLost)||p;
+      if(Date.now()<manualMapUntil)return;
+      // Return to Kristiansund rather than keeping the distant overflight
+      // inside the automatic 100 NM selected-aircraft framing.
+      overflightLocalReturnUntil=Date.now()+25000;
       autoMapTransition=true;
       map.once('moveend',()=>{autoMapTransition=false;});
-      map.flyToBounds(L.latLngBounds([[63.1118,7.8245],[latest.lat,latest.lon]]),
-        {padding:[65,65],maxZoom:10,animate:true,duration:2.1});
-    },5500);
+      const localBounds=areaBounds(mapAreas.city.lat,mapAreas.city.lon,22);
+      const back={padding:[28,28],maxZoom:10,animate:!reduced,duration:2.1};
+      if(reduced)map.fitBounds(localBounds,back);
+      else map.flyToBounds(localBounds,back);
+      smartMapLastMoveAt=Date.now();
+    },OVERFLIGHT_ROUTE_HOLD_MS-500);
   }finally{overflightIntroPending.delete(key);}
 }
 
@@ -3747,6 +3763,9 @@ function render(autoFit=false){
     </div>`;
     select(shown,false);
     updateTypeCard(shown);
+    // Confirmed routes are already available in the detail card; do not
+    // require another paid lookup merely to show their map overview.
+    if(isHighOverflight(shown)&&shown.routeData)void showOverflightRouteIntro(shown);
   }else{
     selected=null;
     if($('aircraft-panel-title'))$('aircraft-panel-title').textContent='Fly i området';
