@@ -41,7 +41,7 @@ test('other vessels keep the original triangle marker and icon size',()=>{
 test('feature style is separate from generic markers and labels do not rotate',()=>{
  assert.match(html,/\.vessel-wrap-featured \.fast-ferry-label/);
  assert.match(html,/pointer-events:none/);
- assert.match(html,/app\.js\?v=223/);
+ assert.match(html,/app\.js\?v=224/);
  assert.match(app,/querySelector\('\.vessel-marker'\)/);
 });
 
@@ -53,4 +53,26 @@ test('FJORDPRINSESSEN has a distinct named icon without promoting planned vessel
  const icon=context.vesselIcon({name:'FJORDPRINSESSEN',mmsi:'259604000',heading:62});
  assert.match(icon.html,/fast-ferry-label">FJORDPRINSESSEN/);
  assert.match(icon.html,/rotate\(62deg\)/);
+});
+
+test('Hurtigruten/Havila get a warm-gold named marker from AIS category',()=>{
+ const icon=context.vesselIcon({name:'MS NORDLYS',mmsi:'257100001',category:'hurtigrute',course:145});
+ assert.match(icon.className,/vessel-wrap-coastal/);
+ assert.match(icon.html,/coastal-ship-label">MS NORDLYS/);
+ assert.match(icon.html,/rotate\(145deg\)/);
+ assert.match(icon.html,/<svg/);
+ assert.equal(icon.iconSize[0],52);
+ assert.match(html,/\.vessel-wrap-coastal \.coastal-ship-label/);
+});
+test('coastal category is necessary and the AIS name is escaped in label',()=>{
+ const ordinary=context.vesselIcon({name:'MS NORDLYS',mmsi:'257100001',category:'other',course:145});
+ assert.equal(ordinary.className,'vessel-wrap');
+ const unknown=context.vesselIcon({name:'MS <NORD> & SONS',category:'hurtigrute',heading:0});
+ assert.match(unknown.html,/MS &lt;NORD&gt; &amp; SONS/);
+ assert.doesNotMatch(unknown.html,/MS <NORD>/);
+});
+test('featured fast ferry styling remains distinct from coastal ship',()=>{
+ const ferry=context.vesselIcon({name:'EKSPRESSEN',mmsi:'258416000',category:'hurtigbat',heading:254});
+ assert.match(ferry.html,/fast-ferry-label/);
+ assert.doesNotMatch(ferry.html,/coastal-ship-label/);
 });

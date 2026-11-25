@@ -2300,6 +2300,18 @@ function vesselIcon(v){
       iconSize:[52,52],iconAnchor:[26,26]
     });
   }
+  if(v?.category==='hurtigrute'){
+    // The AIS feed groups Hurtigruten and Havila under this category.
+    // Use the observed AIS name; escape it before putting it in the marker HTML.
+    const name=String(v.name||('MMSI '+(v.mmsi||'ukjent'))).trim();
+    const label=name.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const ship='<svg viewBox="0 0 52 52" width="42" height="42" aria-hidden="true" focusable="false"><path d="M26 2 L34 13 L38 35 L26 47 L14 35 L18 13 Z" fill="#f7b955" stroke="#fff2cf" stroke-width="2.4" stroke-linejoin="round"/><path d="M20 17 H32 L34 31 H18 Z" fill="#36465b" stroke="#fff2cf" stroke-width="1.4"/><path d="M23 8 H29 V15 H23 Z" fill="#ffe2aa"/></svg>';
+    return L.divIcon({
+      className:'vessel-wrap vessel-wrap-featured vessel-wrap-coastal',
+      html:`<div class="vessel-marker coastal-ship${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="coastal-ship-label">${label}</span>`,
+      iconSize:[52,52],iconAnchor:[26,26]
+    });
+  }
   return L.divIcon({
     className:'vessel-wrap',
     html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">▲</div>`,
