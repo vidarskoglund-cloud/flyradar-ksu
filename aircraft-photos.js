@@ -1,5 +1,73 @@
 (function(){
 'use strict';
+
+/* User-confirmed aircraft identity: photographed at Kristiansund, 25 Nov 2026.
+   Never key these photos to flight HKS463: callsigns can move between airframes.
+   Image files are intentionally separate from code and may be uploaded later. */
+const LOCAL_AIRCRAFT_GALLERIES=Object.freeze({
+ '478057':{reg:'LN-OQU',files:[
+  'images/aircraft/LN-OQU/IMG_1315.webp',
+  'images/aircraft/LN-OQU/IMG_1316.webp',
+  'images/aircraft/LN-OQU/IMG_1317.webp',
+  'images/aircraft/LN-OQU/IMG_1318.webp',
+  'images/aircraft/LN-OQU/IMG_1320.webp'
+ ]}
+});
+const localAircraftSlideTimers=new WeakMap();
+function exactLocalAircraftGallery(plane){
+ const hex=String(plane?.hex||plane?.icao24||plane?.icao||'').trim().toLowerCase().replace(/^~/,'');
+ const reg=String(plane?.reg||'').trim().toUpperCase();
+ const gallery=LOCAL_AIRCRAFT_GALLERIES['478057'];
+ // Prefer ICAO-hex; deny inconsistent identities instead of mismatching photos.
+ if(hex && hex!=='478057')return null;
+ if(reg && reg!=='LN-OQU')return null;
+ return hex==='478057'||reg==='LN-OQU'?gallery:null;
+}
+function showLocalAircraftGallery(plane,identity){
+ const gallery=exactLocalAircraftGallery(plane);
+ if(!gallery)return false;
+ const slot=document.getElementById('aircraft-photo-slot');
+ if(!slot)return false;
+ const images=gallery.files;
+ const wrap=document.createElement('div');wrap.className='type-photo-wrap aircraft-local-gallery';
+ const img=document.createElement('img');
+ img.className='type-photo';img.decoding='async';img.loading='eager';
+ img.alt='LN-OQU · fotografert ved Kristiansund 25. november 2026';
+ const credit=document.createElement('small');credit.className='type-credit';
+ credit.textContent='Foto: lokalt fotografert · LN-OQU (ICAO 478057) · 25.11.2026';
+ wrap.append(img);
+ let index=0,hasLoaded=false,stopped=false,timer=null;
+ const active=()=>document.getElementById('type-info')?.dataset.photoIdentity===identity;
+ function stop(){stopped=true;if(timer)clearInterval(timer);timer=null;}
+ function next(){
+  if(stopped||!active()){stop();return;}
+  index=(index+1)%images.length;
+  img.src=images[index];
+ }
+ img.addEventListener('load',()=>{
+  if(!active()||stopped){stop();return;}
+  if(!hasLoaded){
+   hasLoaded=true;
+   slot.replaceChildren(wrap,credit);
+   timer=setInterval(next,5500);
+   localAircraftSlideTimers.set(slot,stop);
+  }
+ });
+ img.addEventListener('error',()=>{
+  if(!hasLoaded){stop();return;} // Preserve standard photo fallback if local files have not been published.
+  if(!active()){stop();return;}
+  // Skip a missing picture but do not loop forever when the gallery is incomplete.
+  const attempts=Number(img.dataset.failures||0)+1;
+  img.dataset.failures=String(attempts);
+  if(attempts>=images.length){stop();return;}
+  next();
+ });
+ // Avoid stale timer on a card refresh.
+ localAircraftSlideTimers.get(slot)?.();
+ img.src=images[0];
+ return true;
+}
+
 // Extra image lookups only for the aircraft shown in the detail panel.
 // Do not infer that a type photo depicts the specific registered aircraft.
 const CACHE='kristiansund-aircraft-photos-v5',pending=new Map();
@@ -213,6 +281,7 @@ function renderLnOquPhotos(identity){
  return true;
 }
 window.loadSelectedAircraftPhoto=async function(plane,identity){
+ const localGalleryRequested=showLocalAircraftGallery(plane,identity);
  if(localAircraftPhotoTimer){clearInterval(localAircraftPhotoTimer);localAircraftPhotoTimer=null;}
  if(isLnOquAircraft(plane)&&renderLnOquPhotos(identity))return;
  const reg=String(plane?.reg||'').trim().toUpperCase();
@@ -222,6 +291,8 @@ window.loadSelectedAircraftPhoto=async function(plane,identity){
  // aircraft type photos. No name-only image is presented as an exact match.
  const photo=(hasReg?await lookup(reg):null)||(await lookupType(code));
  if(!photo||document.getElementById('type-info')?.dataset.photoIdentity!==identity)return;
+ // Allow locally photographed exact airframe images to take precedence.
+ if(localGalleryRequested&&document.querySelector('#aircraft-photo-slot .aircraft-local-gallery'))return;
  const slot=document.getElementById('aircraft-photo-slot');
  if(!slot)return;
  const img=document.createElement('img');
