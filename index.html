@@ -1487,6 +1487,31 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 /* Locally photographed exact-airframe slideshow. */
 .aircraft-local-gallery{position:relative;overflow:hidden}
 .aircraft-local-gallery .type-photo{width:100%;height:100%;object-fit:cover;object-position:50% 50%;display:block}
+
+/* Focused AIS vessel: fixed screen-space ring + unrotated name, including mobile. */
+.vessel-wrap{overflow:visible!important}
+.vessel-wrap.is-focused{z-index:inherit;overflow:visible!important}
+.vessel-wrap.is-focused::after{
+ content:'';position:absolute;left:50%;top:50%;width:42px;height:42px;
+ transform:translate(-50%,-50%);box-sizing:border-box;pointer-events:none;
+ border:3px solid #00f0ef;border-radius:50%;
+ background:#00d7ff1c;box-shadow:0 0 0 3px #001524d9,0 0 13px 4px #2bfaffb5;
+ animation:vessel-focus-pulse 2.2s ease-in-out infinite
+}
+.vessel-wrap-featured.is-focused::after{width:49px;height:49px}
+.vessel-wrap.is-focused .vessel-marker{filter:drop-shadow(0 0 5px #00ffff) drop-shadow(0 0 8px #00bcdb)}
+.vessel-wrap .vessel-focus-label{display:none;position:absolute;z-index:3;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);pointer-events:none;
+ padding:4px 8px;background:#041d2df5;color:#f4ffff;border:2px solid #15eff4;border-radius:7px;
+ font-weight:800;font-size:12px;line-height:16px;white-space:nowrap;text-shadow:0 1px 2px #001;box-shadow:0 3px 9px #000b}
+.vessel-wrap.is-focused .vessel-focus-label{display:block}
+.vessel-wrap.is-focused .vessel-focus-label::after{content:'';position:absolute;left:50%;top:100%;height:12px;border-left:2px solid #15eff4}
+.vessel-wrap-featured.is-focused .fast-ferry-label,.vessel-wrap-coastal.is-focused .coastal-ship-label{
+ border-width:2px;border-color:#15eff4;color:#fff;background:#041d2df5;
+ box-shadow:0 0 9px #00eaff99;font-size:12px
+}
+@keyframes vessel-focus-pulse{0%,100%{box-shadow:0 0 0 3px #001524d9,0 0 8px 2px #2bfaff80}
+ 50%{box-shadow:0 0 0 3px #001524d9,0 0 15px 6px #2bfaffcf}}
+@media(prefers-reduced-motion:reduce){.vessel-wrap.is-focused::after{animation:none}}
 </style>
 </head>
 <body>
@@ -1569,7 +1594,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-target.js?v=1"></script>
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
-<script src="app.js?v=227"></script>
+<script src="app.js?v=228"></script>
 <script src="police-status.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
 
