@@ -104,3 +104,19 @@ test('medical cross is integrated inside aircraft SVG and not a detached map mar
   assert.equal(icon.iconSize[0],34);
  }
 });
+
+test('air ambulances carry alternating blue strobes inside the aircraft SVG',()=>{
+ for(const p of [{flight:'BNOV',type:'BE20',track:245},{type:'S92',role:'ambulance',track:75}]){
+  const icon=state.planeIcon(p);
+  assert.match(icon.html,/medical-blue-beacons/);
+  assert.match(icon.html,/beacon-left/);
+  assert.match(icon.html,/beacon-right/);
+  assert.match(icon.html,/<\/g><\/svg>\s*<\/div>/);
+  assert.doesNotMatch(icon.html,/<span class="medical-blue-beacons"/);
+ }
+ assert.doesNotMatch(state.planeIcon({type:'B738',flight:'SAS123'}).html,/medical-blue-beacons/);
+ assert.doesNotMatch(state.planeIcon({type:'S92',role:'rescue'}).html,/medical-blue-beacons/);
+ assert.match(html,/@keyframes medical-strobe-left/);
+ assert.match(html,/@keyframes medical-strobe-right/);
+ assert.match(html, /prefers-reduced-motion:reduce/);
+});
