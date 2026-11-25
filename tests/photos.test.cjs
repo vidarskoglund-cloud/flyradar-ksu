@@ -85,3 +85,15 @@ test('search uses name plus ship and vessel synonyms and reads Commons categorie
  assert.match(shipSource,/cleanName\+'" vessel'/);
  assert.match(shipSource,/prop:'imageinfo\|categories'/);
 });
+
+test('LN-OQU user photos require exact registration or ICAO hex, never flight number alone',()=>{
+ assert.match(planeSource,/function isLnOquAircraft\(p\)/);
+ assert.match(planeSource,/hex==='478057'/);
+ assert.match(planeSource,/reg==='LN-OQU'/);
+ assert.doesNotMatch(planeSource,/flight==='HKS463'/);
+ assert.match(planeSource,/renderLnOquPhotos\(identity\)/);
+ assert.match(planeSource,/index=\(index\+1\)%5/);
+ assert.match(planeSource,/setInterval\(\(\)=>/);
+ assert.match(page,/aircraft-photos\.js\?v=6/);
+ assert.match(page,/\.user-aircraft-photo-strip/);
+});
