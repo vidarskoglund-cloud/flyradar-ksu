@@ -875,15 +875,27 @@ function helicopterIconCategory(p){
    return {id:'offshore',label:'Offshorehelikopter'};
  return {id:'general',label:'Helikopter'};
 }
+function militaryIconCategory(p){
+ if(specialFlightCategory(p)?.id!=='military')return null;
+ if(isHelicopter(p))return {id:'military-heli',label:'Militærhelikopter'};
+ const type=String(p?.type||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+ return ['F35','F16','F15','F18','FA18','EUFI','GRIP','F22'].includes(type)
+  ?{id:'military-fighter',label:'Militært kampfly'}
+  :{id:'military-fixed',label:'Militært fly'};
+}
 function planeIcon(p){
   const tr=getTrackDeg(p)??0;
   const heli=isHelicopter(p);
   const category=heli?helicopterIconCategory(p):null;
   const ambulance=!heli&&specialFlightCategory(p)?.id==='ambulance';
-  const airline=ambulance?null:aircraftAirlineIcon(p);
+  const military=['emergency','ambulance','rescue'].includes(category?.id)?null:militaryIconCategory(p);
+  const airline=ambulance||military?null:aircraftAirlineIcon(p);
+  // Broad rotor, distinct skids, tail and windshield at 34px map scale.
   const shape=heli
-     ? '<path class="heli-rotor" d="M3 12 Q16 10 29 12 L29 14.5 Q16 17 3 14.5 Z"/><path class="heli-body" d="M16 5 C20.2 5 21.8 9.6 20.5 14.5 L18.5 18.5 L17.3 26 H14.7 L13.5 18.5 L11.5 14.5 C10.2 9.6 11.8 5 16 5 Z"/><path d="M16 24 V29 M10.5 28 H21.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 10 Q16 8 19 10 M13 17 H19" fill="none" stroke="#10283b" stroke-width="1.2" stroke-linecap="round"/>'
-    : '<path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>';
+    ? '<path class="heli-skids" d="M10 15 V24 M22 15 V24 M8 24 H12 M20 24 H24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/><path class="heli-body" d="M16 5.5 C20.3 5.5 22 9.5 21.4 15.3 L19 20 L18 27 H14 L13 20 L10.6 15.3 C10 9.5 11.7 5.5 16 5.5 Z"/><path class="heli-rotor" d="M2 13 C8 10.9 24 10.9 30 13 L30 15 C24 16.1 8 16.1 2 15 Z"/><path class="heli-tail-rotor" d="M12 28 H20 M16 24 V31" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="heli-windshield" d="M12.6 10 Q16 7.8 19.4 10 L18.7 13.1 Q16 12 13.3 13.1 Z"/>'
+    : military?.id==='military-fighter'
+      ? '<path class="fighter-body" d="M16 1.2 L19 11.5 L27 17 L29.5 23.8 L19.5 21.2 L18.2 27 L22 29.2 L22 31 L16 28.6 L10 31 L10 29.2 L13.8 27 L12.5 21.2 L2.5 23.8 L5 17 L13 11.5 Z"/>'
+      : '<path d="M16 1.5 L18.8 11.2 L29 15.2 L29 18.1 L18.6 16.7 L18 25.2 L22.1 28.5 L22.1 30 L16 28.3 L9.9 30 L9.9 28.5 L14 25.2 L13.4 16.7 L3 18.1 L3 15.2 L13.2 11.2 Z"/>';
   // Integrated medical mark: a small, high-contrast emblem inside the aircraft,
   // rather than a separate cross floating below the map marker.
   const medical=(ambulance||category?.id==='ambulance')
@@ -894,10 +906,13 @@ function planeIcon(p){
   const beacons=(ambulance||category?.id==='ambulance')
     ? '<g class="medical-blue-beacons"><circle class="beacon-left" cx="7" cy="16" r="2.2"/><circle class="beacon-right" cx="25" cy="16" r="2.2"/></g>'
     : '';
+  const militaryMark=military
+    ? '<g class="military-insignia"><circle cx="16" cy="16" r="5"/><path d="M16 12.6 L17 14.8 L19.4 15.1 L17.6 16.8 L18 19.1 L16 18 L14 19.1 L14.4 16.8 L12.6 15.1 L15 14.8 Z"/></g>'
+    : '';
   return L.divIcon({
-    className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:'')+(ambulance?' medical-aircraft':''),
-    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:(ambulance?'Luftambulansefly':'Fly'))}">
-      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}</svg>
+    className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:'')+(ambulance?' medical-aircraft':'')+(military?' '+military.id:''),
+    html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:(ambulance?'Luftambulansefly':(military?military.label:'Fly')))}">
+      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}${militaryMark}</svg>
     </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
