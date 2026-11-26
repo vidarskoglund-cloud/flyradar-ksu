@@ -4084,7 +4084,7 @@ window.KsuPhotoCandidates=function(){
  const aisTime=(v)=>{
   const raw=String(v||'').trim().replace(' ','T');
   if(!raw)return NaN;
-  const iso=/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z';
+  const iso=/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z';
   return Date.parse(iso);
  };
  for(const p of planes){
