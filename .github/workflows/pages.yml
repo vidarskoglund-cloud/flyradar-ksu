@@ -31,8 +31,17 @@ jobs:
           url = "https://asrv.avinor.no/XmlFeed/v1.0?TimeFrom=1&TimeTo=8&airport=KSU&serviceType=E"
           req = urllib.request.Request(url, headers={"User-Agent":"Flyradar-KSU/1.0"})
           flights = []
-          with urllib.request.urlopen(req, timeout=20) as resp:
-              root = ET.fromstring(resp.read())
+          try:
+              with urllib.request.urlopen(req, timeout=12) as resp:
+                  root = ET.fromstring(resp.read())
+          except Exception as exc:
+              # Avinor outages must not block publishing independent UI fixes.
+              print("WARNING: Avinor feed unavailable; retaining existing schedule file:", exc)
+              os.makedirs("data", exist_ok=True)
+              if not os.path.isfile("data/avinor-ksu.json"):
+                  with open("data/avinor-ksu.json","w",encoding="utf-8") as f:
+                      json.dump({"generated_at": None, "flights": [], "status": "unavailable"}, f)
+              raise SystemExit(0)
           for node in root.findall(".//flight"):
               item = {"uniqueId": node.attrib.get("uniqueId")}
               for child in list(node):
