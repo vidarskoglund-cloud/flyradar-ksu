@@ -2088,19 +2088,8 @@ async function showOverflightRouteIntro(p){
     overflightShown.add(key);
     const from=fromResult.point,to=toResult.point;
     const flightKey=planeKey(p);
-    // Vis omtrentlige byområder tydelig; aldri presenter dem som flyplass-GPS.
-    for(const [result,airport,kind] of [[fromResult,airports[0],'departure'],
-       [toResult,airports[airports.length-1],'arrival']]){
-      if(!result.approximate)continue;
-      const cityName=result.label;
-      const code=airport.iata||airport.icao||airport.code||'BY';
-      const label='Omtrentlig byområde: '+cityName;
-      L.marker(result.point,{icon:airportIcon(code,cityName,kind),zIndexOffset:730})
-       .bindTooltip(label,{direction:'top'}).addTo(routeLayer);
-      L.polyline([result.point,[p.lat,p.lon]],{
-        weight:2,opacity:.65,dashArray:'6 8',interactive:false
-      }).addTo(routeLayer);
-    }
+    // Persistent route lines and airport markers are owned by drawRoute().
+    // This brief overview only changes viewport; it must not duplicate lines.
     const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const introAt=Date.now();
     overflightIntroUntil=introAt+OVERFLIGHT_ROUTE_HOLD_MS;
@@ -3603,37 +3592,63 @@ function airportCoords(a){
   const lon=+(a.lon??a.lng??a.longitude??a.position?.lon??a.position?.lng);
   return Number.isFinite(lat)&&Number.isFinite(lon)?[lat,lon]:null;
 }
+// Missing airport coordinates are resolved asynchronously for the selected
+// flight; a confirmed airport location always takes precedence over city context.
+let selectedRouteRevision=0;
+const KNOWN_ROUTE_AIRPORTS=Object.freeze({
+  // Airport points, not flight track fixes. Enable code-only HEL-DFW routes.
+  HEL:[60.3172,24.9633],
+  EFHK:[60.3172,24.9633],
+  DFW:[32.8998,-97.0403],
+  KDFW:[32.8998,-97.0403]
+});
+function routeAirportEndpoint(a){
+  const code=String(a?.iata||a?.icao||a?.code||'').trim().toUpperCase();
+  const known=KNOWN_ROUTE_AIRPORTS[code];
+  if(!airportCoords(a)&&known)return {point:known,approximate:false,label:airportLabel(a)};
+  return null;
+}
+function routeAirportPair(p){
+  const r=p?.routeData;
+  if(!r||r.plausible===false)return null;
+  const listed=Array.isArray(r._airports)?r._airports:[];
+  if(listed.length>=2&&validRouteAirport(listed[0])&&validRouteAirport(listed[listed.length-1]))
+    return [listed[0],listed[listed.length-1]];
+  // The detail card already accepts confirmed airport codes without _airports.
+  // Never synthesize a route from an inferred or unconfirmed destination.
+  const codes=String(r.airport_codes||'').toUpperCase().match(/^([A-Z]{3,4})[-_]([A-Z]{3,4})$/);
+  return codes?[{iata:codes[1]},{iata:codes[2]}]:null;
+}
 function drawRoute(p){
+  const revision=++selectedRouteRevision;
   routeLayer.clearLayers();
-  if(!p)return;
-  const r=p.routeData;
-  const aps=Array.isArray(r?._airports)?r._airports:[];
-  if(aps.length<2 || !validRouteAirport(aps[0]) || !validRouteAirport(aps[aps.length-1]))return;
-
-  const from=airportCoords(aps[0]);
-  const to=airportCoords(aps[aps.length-1]);
-  const plane=[p.lat,p.lon];
-
-  if(from){
-    const a=aps[0];
-    const code=a.iata||a.icao||a.code||'APT';
-    const place=a.city||a.name||'Avgangsflyplass';
-    L.polyline([from,plane],{weight:2,opacity:.65,dashArray:'6 8'}).addTo(routeLayer);
-    L.marker(from,{
-      icon:airportIcon(code,place,'departure'),
-      zIndexOffset:700
-    }).bindTooltip('Fra: '+airportLabel(a),{direction:'top'}).addTo(routeLayer);
-  }
-  if(to){
-    const a=aps[aps.length-1];
-    const code=a.iata||a.icao||a.code||'APT';
-    const place=a.city||a.name||'Ankomstflyplass';
-    L.polyline([plane,to],{weight:3,opacity:.9}).addTo(routeLayer);
-    L.marker(to,{
-      icon:airportIcon(code,place,'arrival'),
-      zIndexOffset:750
-    }).bindTooltip('Til: '+airportLabel(a),{direction:'top'}).addTo(routeLayer);
-  }
+  if(!p||!Number.isFinite(Number(p.lat))||!Number.isFinite(Number(p.lon)))return;
+  const airports=routeAirportPair(p);
+  if(!airports)return;
+  const flightIdentity=planeKey(p);
+  const initialLat=Number(p.lat),initialLon=Number(p.lon);
+  const endpoint=a=>routeAirportEndpoint(a)||overflightRoutePoint(a);
+  void Promise.all(airports.map(endpoint)).then(results=>{
+    if(revision!==selectedRouteRevision||!selected||planeKey(selected)!==flightIdentity)return;
+    const plane=[initialLat,initialLon];
+    const [departure,arrival]=results;
+    // Do not represent approximate geography as an exact airport or flown path.
+    for(const [result,airport,kind] of [
+      [departure,airports[0],'departure'],[arrival,airports[1],'arrival']
+    ]){
+      if(!result)continue;
+      const code=airport.iata||airport.icao||airport.code||'BY';
+      const name=result.approximate?'Omtrentlig byområde: '+result.label:airportLabel(airport);
+      const color=kind==='departure'?'#43d6e8':'#ffc465';
+      const points=kind==='departure'?[result.point,plane]:[plane,result.point];
+      L.polyline(points,{color,weight:3,opacity:.92,dashArray:'7 8',
+        interactive:false}).addTo(routeLayer);
+      L.marker(result.point,{icon:airportIcon(code,result.approximate?name:(airport.city||airport.name||'Flyplass'),kind),
+        zIndexOffset:kind==='departure'?700:750})
+        .bindTooltip((kind==='departure'?'Fra: ':'Til: ')+name,{direction:'top'})
+        .addTo(routeLayer);
+    }
+  }).catch(e=>console.warn('Kartlinje for flyrute kunne ikke tegnes',e));
 }
 function highlightSelectedAircraft(){
   const activeKey=selected?planeKey(selected):null;
