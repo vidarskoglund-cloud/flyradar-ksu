@@ -1797,6 +1797,40 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   top:calc(env(safe-area-inset-top,0px) + 7px)!important;
  }
 }
+
+/* Landscape mobile: keep the map full height and open target details on the right. */
+@media (pointer:coarse) and (orientation:landscape){
+ body.radar-immersive .nearest-panel{
+  position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 56px)!important;
+  bottom:auto!important;left:auto!important;
+  right:calc(env(safe-area-inset-right,0px) + 8px)!important;
+  width:min(290px,38vw)!important;max-width:38vw!important;
+  height:auto!important;min-height:0!important;max-height:calc(100dvh - 66px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  border:1px solid #34576f!important;border-radius:13px!important;
+  padding:0!important;overflow:hidden!important;grid-area:auto!important;
+ }
+ body.radar-immersive.immersive-sheet-open .nearest-panel{
+  width:min(430px,42vw)!important;max-width:42vw!important;
+  height:calc(100dvh - 66px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+  max-height:calc(100dvh - 66px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))!important;
+ }
+ body.radar-immersive .nearest-panel .immersive-sheet-handle{
+  padding:12px 12px 9px!important;min-height:50px!important;
+ }
+ body.radar-immersive .nearest-panel .immersive-sheet-grip{
+  top:5px!important;width:30px!important;left:calc(50% - 15px)!important;
+ }
+ body.radar-immersive .nearest-panel #immersive-sheet-name{font-size:13px!important}
+ body.radar-immersive .nearest-panel #immersive-sheet-facts{font-size:11px!important}
+ body.radar-immersive.immersive-sheet-open #immersive-sheet-content{
+  overflow-y:auto!important;min-height:0!important;
+  padding:6px 10px calc(9px + env(safe-area-inset-bottom,0px))!important;
+ }
+ body.radar-immersive #proximity-alert{
+  right:calc(min(430px,42vw) + 16px)!important;left:8px!important;
+  bottom:10px!important;max-width:none!important;
+ }
+}
 </style>
 </head>
 <body>
