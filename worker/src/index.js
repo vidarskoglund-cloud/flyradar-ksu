@@ -631,7 +631,7 @@ async function getSource(name, url) {
 // products: the former is measured, the latter is modelled.
 const WEATHER_STATION='ENKB';
 const WEATHER_CACHE_SECONDS=600;
-const WEATHER_USER_AGENT='Kristiansund-Trafikkradar/1.0 (https://vidarskoglund-cloud.github.io/flyradar-ksu/)';
+const WEATHER_USER_AGENT='Kristiansund-Trafikkradar/1.0 (https://vidarskoglund-cloud.github.io/trafikkradar-ksu/)';
 function numOrNull(value){
  if(value===null||value===undefined||value==='')return null;
  const n=Number(value);return Number.isFinite(n)?n:null;
@@ -736,7 +736,7 @@ export default {
             timeSpanType: "LastQuarter"
           });
           const response = await fetch("https://api.politiloggen.politiet.no/messagethreads?" + params, {
-            headers: { Accept: "application/json", "User-Agent": "KristiansundTrafikkradar/1.0 (+https://vidarskoglund-cloud.github.io/flyradar-ksu/)" },
+            headers: { Accept: "application/json", "User-Agent": "KristiansundTrafikkradar/1.0 (+https://vidarskoglund-cloud.github.io/trafikkradar-ksu/)" },
             signal: AbortSignal.timeout(9500)
           });
           if (!response.ok) throw new Error("Politiloggen HTTP " + response.status);
@@ -1797,7 +1797,7 @@ export default {
             title: "Fly innen 50 NM",
             body,
             tag: `flyradar-${key}`,
-            url: "https://vidarskoglund-cloud.github.io/flyradar-ksu/",
+            url: "https://vidarskoglund-cloud.github.io/trafikkradar-ksu/",
           }),
           options: { ttl: 120 },
         };
