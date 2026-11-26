@@ -297,8 +297,11 @@ window.loadSelectedAircraftPhoto=async function(plane,identity){
  if(!slot)return;
  const img=document.createElement('img');
  img.className='type-photo';img.loading='lazy';img.decoding='async';
+ img.style.cssText='display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain';
  img.alt=photo.exact?'Foto av fly '+reg:'Eksempelbilde av flytypen '+code;
- const wrap=document.createElement('div');wrap.className='type-photo-wrap';wrap.append(img);
+ const wrap=document.createElement('div');wrap.className='type-photo-wrap';
+ wrap.style.cssText='height:92px;max-height:92px;min-height:0;overflow:hidden;contain:layout paint';
+ wrap.append(img);
  const credit=document.createElement('small');credit.className='type-credit';
  const by=document.createElement('a');by.href=photo.source;by.target='_blank';by.rel='noopener noreferrer';by.textContent=photo.credit||'Fotograf';
  const licence=document.createElement('a');licence.href=photo.licenseUrl;licence.target='_blank';licence.rel='noopener noreferrer';licence.textContent=photo.license;
