@@ -238,52 +238,11 @@ async function lookup(reg){
  })();
  pending.set(reg,task);return task;
 }
-// User photographs from Kristiansund, 25 Nov 2026. The five cropped frames
-// share one small JPEG strip to keep the page lightweight and self-contained.
-// Match the physical aircraft (ICAO hex/registration), never only HKS463.
-const LN_OQU_PHOTO_STRIP='data:image/jpeg;base64,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';
-let localAircraftPhotoTimer=null;
-function isLnOquAircraft(p){
- const hex=String(p?.hex||'').trim().toLowerCase().replace(/^0x/,'');
- const reg=String(p?.reg||'').trim().toUpperCase();
- return hex==='478057'||(reg==='LN-OQU'&&(!hex||hex==='478057'));
-}
-function renderLnOquPhotos(identity){
- const slot=document.getElementById('aircraft-photo-slot');
- if(!slot||document.getElementById('type-info')?.dataset.photoIdentity!==identity)return false;
- const wrap=document.createElement('div');
- wrap.className='type-photo-wrap user-aircraft-photo-wrap';
- const frame=document.createElement('div');
- frame.className='user-aircraft-photo-strip';
- frame.setAttribute('role','img');
- frame.setAttribute('aria-label','Sikorsky S-92A LN-OQU ved innflyging i Kristiansund 25. november 2026');
- frame.style.backgroundImage='url("'+LN_OQU_PHOTO_STRIP+'")';
- const credit=document.createElement('small');
- credit.className='type-credit user-aircraft-photo-credit';
- let index=0;
- function show(){
-  frame.style.backgroundPosition=(index*25)+'% 50%';
-  credit.textContent='Foto: Vidar · Kristiansund 25.11.2026 · '+(index+1)+'/5';
- }
- wrap.append(frame);
- slot.replaceChildren(wrap,credit);
- const note=document.getElementById('aircraft-photo-note');
- if(note)note.textContent='Foto av LN-OQU · 5 bilder fra Kristiansund';
- show();
- localAircraftPhotoTimer=setInterval(()=>{
-  if(document.getElementById('type-info')?.dataset.photoIdentity!==identity){
-   clearInterval(localAircraftPhotoTimer);
-   localAircraftPhotoTimer=null;
-   return;
-  }
-  index=(index+1)%5;show();
- },5000);
- return true;
-}
 window.loadSelectedAircraftPhoto=async function(plane,identity){
+ // User-supplied LN-OQU photo files are now deployed on GitHub Pages.
+ // Prefer their exact-airframe gallery over Wikimedia/type illustrations.
  const localGalleryRequested=showLocalAircraftGallery(plane,identity);
- if(localAircraftPhotoTimer){clearInterval(localAircraftPhotoTimer);localAircraftPhotoTimer=null;}
- if(isLnOquAircraft(plane)&&renderLnOquPhotos(identity))return;
+ if(localGalleryRequested)return;
  const reg=String(plane?.reg||'').trim().toUpperCase();
  const code=String(plane?.type||'').trim().toUpperCase();
  const hasReg=/^[A-Z0-9]{1,3}-[A-Z0-9]{2,5}$/.test(reg);
