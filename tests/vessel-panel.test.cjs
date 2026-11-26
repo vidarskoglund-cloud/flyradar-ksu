@@ -57,5 +57,5 @@ test('selected ship focus marker persists on AIS updates and stays course indepe
  assert.match(html,/@media\(prefers-reduced-motion:reduce\)/);
  assert.match(html,/\.vessel-wrap-featured\.is-focused::after/);
  assert.match(html,/\.vessel-wrap-featured\.is-focused \.fast-ferry-label/);
- assert.match(html,/app\.js\?v=230/);
+ assert.match(html,/app\.js\?v=231/);
 });
