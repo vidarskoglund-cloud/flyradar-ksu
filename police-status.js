@@ -7,6 +7,13 @@ const REFRESH=5*60*1000;
 const list=document.getElementById('police-incidents');
 const stamp=document.getElementById('police-update');
 let incidents=[],lastGood=0,healthy=false;
+function isTrafficControl(i){return /trafikkkontroll|fartskontroll|hastighetskontroll/i.test(String(i.label||''));}
+function eventLabel(i){return String(i.label||categoryName(i.category)).slice(0,44);}
+function maxAge(i){return isTrafficControl(i)?2*3600000:i.active?6*3600000:3*3600000;}
+function policeUrl(i){
+ const id=String(i.id||'');
+ return /^[a-zA-Z0-9_-]{4,70}$/.test(id)?'https://www.politiet.no/politiloggen/hendelse/'+encodeURIComponent(id):'';
+}
 function clock(value){
  const t=Date.parse(value||'');
  return Number.isFinite(t)?new Intl.DateTimeFormat('nb-NO',
@@ -19,7 +26,8 @@ function categoryName(kind){
 function localTime(value){const t=Date.parse(value||'');return Number.isFinite(t)?t:0;}
 function recent(){
  const now=Date.now();
- return incidents.filter(i=>validCategory(i.category)&&now-localTime(i.updated_at)<24*3600000&&
+ return incidents.filter(i=>validCategory(i.category)&&
+  now-localTime(i.updated_at)>=0&&now-localTime(i.updated_at)<maxAge(i)&&
   localTime(i.updated_at)<=now+300000);
 }
 function render(){
@@ -38,25 +46,34 @@ function render(){
  for(const item of current.slice(0,2)){
   const row=document.createElement('div');row.className='police-row';
   const main=document.createElement('span');main.className='police-row-title';
-  main.textContent=categoryName(item.category)+' · '+String(item.area||'Kristiansund').slice(0,45);
+  const area=String(item.area||'Kristiansund').slice(0,45);
+  const link=policeUrl(item);
+  const content=eventLabel(item)+' · '+area;
+  if(link){
+   const anchor=document.createElement('a');
+   anchor.href=link;anchor.target='_blank';anchor.rel='noopener noreferrer';
+   anchor.textContent=content;
+   main.append(anchor);
+  }else main.textContent=content;
   const when=document.createElement('span');when.className='police-row-time';
   when.textContent=clock(item.updated_at);
   row.append(main,when);list.append(row);
  }
  const note=document.createElement('small');note.className='police-note';
- note.textContent='Publiserte meldinger – ikke bekreftet pågående. Omtrentlig plassering.';
+ note.textContent='Kilde: Politiloggen · ikke nødvendigvis pågående · område, ikke eksakt sted.';
  list.append(note);
 }
 window.KsuPoliceStatus={
  headlines(){
   if(!healthy)return [];
-  return recent().filter(item=>Date.now()-localTime(item.updated_at)<3*3600000)
+  return recent().filter(item=>!isTrafficControl(item)&&
+     Date.now()-localTime(item.updated_at)<(item.active?2*3600000:30*60000))
    .slice(0,2).map(item=>({
     level:item.category==='trafikk'?1.8:item.category==='brann'?2.2:3,
     category:'POLITILOGGEN',
-    message:categoryName(item.category)+' meldt: '+String(item.area||'Kristiansund').slice(0,45),
-    detail:'Politiet · offentlig melding · tidspunkt '+clock(item.updated_at)+
-      ' · status og nøyaktig sted ikke bekreftet'
+    message:eventLabel(item)+' · '+String(item.area||'Kristiansund').slice(0,45),
+    detail:'Politiloggen '+clock(item.updated_at)+
+      ' · kun område oppgitt · se meldingen hos politiet'
    }));
  }
 };
