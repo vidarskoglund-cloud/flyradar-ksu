@@ -84,7 +84,7 @@ function distanceKm(a,b,c,d){
 }
 const angular=(a,b)=>Math.abs((a-b+540)%360-180);
 function candidates(meta,observations){
- const range=observations.filter(o=>Number.isFinite(+o.lat)&&Number.isFinite(+o.lon)&&!o.stale);
+ const range=observations.filter(o=>o.lat!=null&&o.lon!=null&&Number.isFinite(+o.lat)&&Number.isFinite(+o.lon)&&!o.stale);
  return range.map(o=>{
   const br=bearing(meta.lat,meta.lon,+o.lat,+o.lon);
   return {...o,br,km:distanceKm(meta.lat,meta.lon,+o.lat,+o.lon),difference:angular(br,meta.heading)};
