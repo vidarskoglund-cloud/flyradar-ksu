@@ -87,17 +87,15 @@ test('search uses name plus ship and vessel synonyms and reads Commons categorie
  assert.match(shipSource,/prop:'imageinfo\|categories'/);
 });
 
-test('LN-OQU user photos require exact registration or ICAO hex, never flight number alone',()=>{
- assert.match(planeSource,/function isLnOquAircraft\(p\)/);
+test('LN-OQU gallery uses five committed image files instead of a placeholder strip',()=>{
+ assert.match(planeSource,/exactLocalAircraftGallery\(plane\)/);
  assert.match(planeSource,/hex==='478057'/);
  assert.match(planeSource,/reg==='LN-OQU'/);
  assert.doesNotMatch(planeSource,/flight==='HKS463'/);
- assert.match(planeSource,/renderLnOquPhotos\(identity\)/);
- assert.match(planeSource,/index=\(index\+1\)%5/);
- assert.match(planeSource,/setInterval\(\(\)=>/);
- const page=src('index.html');
- assert.match(page,/aircraft-photos\.js\?v=6/);
- assert.match(page,/\.user-aircraft-photo-strip/);
+ assert.match(planeSource,/if\(localGalleryRequested\)return;/);
+ assert.doesNotMatch(planeSource,/LN_OQU_PHOTO_STRIP/);
+ assert.doesNotMatch(planeSource,/renderLnOquPhotos/);
+ assert.match(html,/aircraft-photos\.js\?v=9/);
 });
 
 test('LN-OQU pictures use verified airframe identity, never the flight callsign',()=>{
@@ -109,5 +107,5 @@ test('LN-OQU pictures use verified airframe identity, never the flight callsign'
  assert.match(planeSource,/exactLocalAircraftGallery\(plane\)/);
  assert.match(planeSource,/if\(hex && hex!=='478057'\)return null/);
  assert.match(planeSource,/if\(reg && reg!=='LN-OQU'\)return null/);
- assert.match(html,/aircraft-photos\.js\?v=7/);
+ assert.match(html,/aircraft-photos\.js\?v=9/);
 });
