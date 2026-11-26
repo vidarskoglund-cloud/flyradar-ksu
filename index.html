@@ -1513,6 +1513,27 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 @keyframes vessel-focus-pulse{0%,100%{box-shadow:0 0 0 3px #001524d9,0 0 8px 2px #2bfaff80}
  50%{box-shadow:0 0 0 3px #001524d9,0 0 15px 6px #2bfaffcf}}
 @media(prefers-reduced-motion:reduce){.vessel-wrap.is-focused::after{animation:none}}
+
+/* iPhone/Safari safeguard: aircraft photos must never overflow the aircraft card. */
+#type-info,#type-info .type-info-inner,#aircraft-photo-slot{
+  min-width:0;max-width:100%;overflow:hidden;
+}
+#aircraft-photo-slot .type-photo-wrap{
+  display:block!important;position:relative!important;
+  width:100%!important;max-width:100%!important;
+  height:92px!important;max-height:92px!important;min-height:0!important;
+  overflow:hidden!important;contain:layout paint;
+}
+#aircraft-photo-slot .type-photo-wrap img.type-photo{
+  position:static!important;display:block!important;
+  width:100%!important;height:100%!important;
+  max-width:100%!important;max-height:100%!important;
+  object-fit:contain!important;object-position:center!important;
+}
+#aircraft-photo-slot .type-credit{
+  display:block;max-width:100%;overflow-wrap:anywhere;
+  font-size:10px;line-height:1.35;
+}
 </style>
 </head>
 <body>
@@ -1581,7 +1602,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </footer>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>window.addEventListener('error',e=>{const s=document.getElementById('status');if(s){s.textContent='JS-feil: '+e.message;s.className='err'}});</script>
-<script src="aircraft-photos.js?v=7"></script>
+<script src="aircraft-photos.js?v=8"></script>
 <script src="vessel-photos.js?v=13"></script>
 <script src="speedboat-schedule.js?v=5"></script>
 <script src="road-status.js?v=15"></script>
@@ -1595,7 +1616,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-target.js?v=1"></script>
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
-<script src="app.js?v=230"></script>
+<script src="app.js?v=231"></script>
 <script src="police-status.js?v=3"></script>
 <script src="traffic-headline.js?v=2"></script>
 
