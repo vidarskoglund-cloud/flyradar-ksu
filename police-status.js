@@ -9,7 +9,7 @@ const stamp=document.getElementById('police-update');
 let incidents=[],lastGood=0,healthy=false;
 function isTrafficControl(i){return /trafikkkontroll|fartskontroll|hastighetskontroll/i.test(String(i.label||''));}
 function eventLabel(i){return String(i.label||categoryName(i.category)).slice(0,44);}
-function maxAge(i){return isTrafficControl(i)?2*3600000:i.active?6*3600000:3*3600000;}
+function maxAge(i){return isTrafficControl(i)?30*60000:i.active?6*3600000:3*3600000;}
 function policeUrl(i){
  const id=String(i.id||'');
  return /^[a-zA-Z0-9_-]{4,70}$/.test(id)?'https://www.politiet.no/politiloggen/hendelse/'+encodeURIComponent(id):'';
