@@ -1549,6 +1549,20 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 #type-info .type-info-inner > span{font-size:11px;color:#b2c6d9;margin-top:2px}
 #type-info .type-info-inner > small{font-size:10px;color:#8eaac3;margin-top:4px}
 #type-info .type-credit{display:block!important;line-height:1.35!important;margin-top:5px}
+
+/* LN-OQU photos: full card width, balanced height, never overlap following sections. */
+#aircraft-photo-slot .type-photo-wrap.aircraft-local-gallery{
+  width:100%!important;max-width:100%!important;
+  height:auto!important;max-height:none!important;min-height:0!important;
+  aspect-ratio:16 / 9;position:relative!important;
+  overflow:hidden!important;contain:layout paint;
+}
+#aircraft-photo-slot .aircraft-local-gallery img.type-photo{
+  position:absolute!important;inset:0;
+  display:block!important;width:100%!important;height:100%!important;
+  max-width:100%!important;max-height:100%!important;
+  object-fit:cover!important;object-position:center!important;
+}
 </style>
 </head>
 <body>
