@@ -1389,6 +1389,7 @@ export default {
       const alt = Number(url.searchParams.get("alt"));
       const faScope = (url.searchParams.get("fa_scope") || "").toLowerCase();
       const speed = Number(url.searchParams.get("speed"));
+      const freeOnly = url.searchParams.get("free_only") === "1";
       // High-altitude, fast transit; exclude local approaches in the browser.
       // Server independently enforces altitude, speed and 50 NM radius.
       const overflight = faScope === "overflight" &&
@@ -1396,13 +1397,13 @@ export default {
         distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50 &&
         Number.isFinite(alt) && alt >= 25000 &&
         Number.isFinite(speed) && speed >= 300;
-      const allowFlightAware = overflight ||
+      const allowFlightAware = !freeOnly && (overflight ||
         faScope === "ksu" ||
         (faScope === "active50" && Number.isFinite(lat) && Number.isFinite(lon) &&
           distanceNm(KSU.lat, KSU.lon, lat, lon) <= 50) ||
         (faScope === "zone25" && Number.isFinite(lat) && Number.isFinite(lon) &&
           distanceNm(KSU.lat, KSU.lon, lat, lon) <= 25) ||
-        (faScope === "local" && localFlightAwareEligible(lat, lon, alt));
+        (faScope === "local" && localFlightAwareEligible(lat, lon, alt)));
 
       if (!callsign) {
         return new Response(JSON.stringify({ error: "Missing callsign" }), {
@@ -1421,7 +1422,7 @@ export default {
 
       // For a verified transit, ask FlightAware first (within the existing
       // server-side monthly budget), then the free source if necessary.
-      if (overflight) {
+      if (overflight && !freeOnly) {
         // Durable Object serializes reservations across all browsers/edge colos.
         const day=new Date().toISOString().slice(0,10);
         const stub=env.TRACK_STORE.get(env.TRACK_STORE.idFromName("ksu"));
@@ -1516,6 +1517,7 @@ export default {
         callsign,
         source,
         flightaware_allowed: allowFlightAware,
+        free_only: freeOnly,
         overflight,
         diagnostics: {
           adsb_lol_attempted: adsbLolAttempted,
@@ -1527,7 +1529,8 @@ export default {
         route: routeUsable(route) ? route : null,
       }), {
         status: 200,
-        headers: { ...corsHeaders(), "Cache-Control": "public, max-age=1800" },
+        headers: { ...corsHeaders(), "Cache-Control": routeUsable(route)
+          ? "public, max-age=1800" : "no-store" },
       });
     }
 
