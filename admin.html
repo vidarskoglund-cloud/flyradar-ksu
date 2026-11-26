@@ -88,6 +88,15 @@ footer{padding:20px;text-align:center;color:var(--muted);font-size:11px}
  </div>
  <p class="note">Grensen er en intern sikkerhetssperre, ikke en garanti for leverandørfaktura. Verifiser faktisk forbruk hos FlightAware ved behov.</p>
 </section>
+<details class="fold" id="offshore-fold">
+ <summary>Offshorehelikoptre · dekningsmåling (lokal test)</summary>
+ <div class="fold-content">
+  <p class="note">Registrerer helikoptre observert innen 25 NM fra KSU og følger samme ICAO-hex selv om flynummeret endres. Mottatte posisjoner og brudd markeres separat. Kun når trafikkradaren er åpen i denne nettleseren. Historikken lagres lokalt, ikke i Cloudflare.</p>
+  <div class="actions"><button id="offshore-refresh" type="button">Oppdater oversikt</button><button id="offshore-export" type="button">Eksporter offshorehistorikk (JSON)</button></div>
+  <p class="note" id="offshore-status" role="status">Leser lokale turer…</p>
+  <div class="wrap"><table><thead><tr><th>Helikopter</th><th>Flynummer</th><th>Maks avstand</th><th>Signaltap</th><th>Status</th></tr></thead><tbody id="offshore-rows"></tbody></table></div>
+ </div>
+</details>
 <details class="fold" id="diagnostics-fold">
  <summary>Feilsøking og datakilder</summary>
  <div class="fold-content">
@@ -144,4 +153,5 @@ footer{padding:20px;text-align:center;color:var(--muted);font-size:11px}
 <script src="flightaware-status.js?v=1"></script>
 <script src="analytics/owner-control.js?v=1"></script>
 <script src="admin-health.js?v=1"></script>
+<script src="offshore-admin.js?v=1"></script>
 </body></html>
