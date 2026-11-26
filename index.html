@@ -1534,6 +1534,21 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   display:block;max-width:100%;overflow-wrap:anywhere;
   font-size:10px;line-height:1.35;
 }
+
+/* Keep the aircraft description readable on narrow Safari screens. */
+#type-info .type-info-inner > strong,
+#type-info .type-info-inner > span,
+#type-info .type-info-inner > small{
+  display:block!important;position:static!important;
+  width:100%;max-width:100%;min-width:0;
+  clear:both;white-space:normal!important;
+  overflow-wrap:break-word;word-break:normal;
+  line-height:1.4!important;margin:0;
+}
+#type-info .type-info-inner > strong{font-size:13px;font-weight:700;margin-top:7px}
+#type-info .type-info-inner > span{font-size:11px;color:#b2c6d9;margin-top:2px}
+#type-info .type-info-inner > small{font-size:10px;color:#8eaac3;margin-top:4px}
+#type-info .type-credit{display:block!important;line-height:1.35!important;margin-top:5px}
 </style>
 </head>
 <body>
