@@ -1,113 +1,146 @@
 <!doctype html>
-<html lang="no"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#08111f">
-<meta name="application-name" content="Kristiansund Trafikkradar – Admin">
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#08111f">
+<meta name="application-name" content="Kristiansund Trafikkradar – Administrasjon">
 <meta name="apple-mobile-web-app-title" content="Trafikkradar Admin">
-<meta name="description" content="Administrasjon, status og diagnostikk for Kristiansund Trafikkradar">
+<meta name="description" content="Driftsoversikt, kildestatus og kostnadskontroll for Kristiansund Trafikkradar">
 <title>Kristiansund Trafikkradar – Administrasjon</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#08111f;color:#eaf2fb}
-*{box-sizing:border-box}body{margin:0}main{max-width:1150px;margin:auto;padding:20px}
-header{border-bottom:1px solid #29415a;padding:18px 20px;display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap}
-a{color:#76d8ff}h1{font-size:23px;margin:0}h2{font-size:18px;margin:0 0 12px}
-small,.muted{color:#9db2c7}section{margin:20px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}
-.card{border:1px solid #29415a;border-radius:12px;background:#101e30;padding:15px}.card strong{display:block;font-size:23px;margin:8px 0}.ok{color:#66e1a0}.bad{color:#ff9c9c}.warn{color:#f5c975}
-table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:10px;border-bottom:1px solid #29415a;text-align:left;vertical-align:top}
-.wrap{overflow-x:auto}button{background:#1a344b;border:1px solid #476a88;border-radius:9px;color:white;padding:10px 13px;cursor:pointer}
-.actions{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.note{line-height:1.5;color:#b5c8da}
-code{overflow-wrap:anywhere}.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-</style><style>
-.fa-usage{margin:0;background:#101e30;border:1px solid #29415a;border-radius:12px;padding:14px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
-.fa-usage div{min-width:0}.fa-usage span{display:block;color:#9db2c7;font-size:10px}.fa-usage b{font-size:16px;white-space:nowrap}
-.fa-usage .fa-ok{color:#66e1a0}.fa-usage .fa-warn{color:#f5c975}
-.fa-bar{grid-column:1/-1;height:6px;background:#172840;border-radius:99px;overflow:hidden}
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#08111f;color:#eaf2fb;--border:#29415a;--muted:#9db2c7;--panel:#101e30}
+*{box-sizing:border-box}body{margin:0}main{max-width:1100px;margin:auto;padding:14px 16px 35px}
+header{padding:17px max(16px,calc((100vw - 1068px)/2));background:#0b1726;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{margin:0;font-size:22px}h2{margin:0 0 12px;font-size:18px}h3{font-size:14px;margin:14px 0 8px}
+header small{display:block;color:var(--muted);margin-top:4px}
+a{color:#81dfff}small,.muted{color:var(--muted)}p{line-height:1.45}
+section{margin:16px 0}.card,.fold{border:1px solid var(--border);border-radius:13px;background:var(--panel);padding:15px}
+.grid,.status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.status-card{border:1px solid var(--border);background:#0d1b2e;border-radius:10px;padding:13px;display:grid;gap:6px;min-width:0}
+.status-card small{font-size:11px}.status-card strong{font-size:17px;line-height:1.3;overflow-wrap:anywhere}
+.status-card .detail{font-size:11px;color:var(--muted);line-height:1.4;overflow-wrap:anywhere}
+.ok{color:#66e1a0!important}.bad{color:#ff9c9c!important}.warn{color:#f5c975!important}
+.actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+button,select{font:inherit;color:#eaf2fb;background:#19344c;border:1px solid #476a88;border-radius:8px;padding:9px 12px;cursor:pointer}
+button:disabled{opacity:.55;cursor:wait}
+.note,.source-info{color:#b5c8da;font-size:12px;line-height:1.5}
+code{overflow-wrap:anywhere}
+.fold{padding:0;overflow:hidden}
+.fold>summary{padding:15px;cursor:pointer;font-size:16px;font-weight:700;list-style-position:inside}
+.fold>summary::marker{color:#81dfff}
+.fold>.fold-content{padding:0 15px 15px}
+.fold[open]>summary{border-bottom:1px solid var(--border);margin-bottom:13px}
+.grid .card strong{display:block;font-size:18px;margin:5px 0}
+.grid .card small{font-size:11px}
+.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:12px;white-space:normal}
+td,th{padding:9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.filters{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.filters label{display:flex;gap:7px;align-items:center}
+#sources .card{min-height:0}
+#inactive-sources{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px}
+#inactive-sources .card{padding:11px}
+.fa-usage{background:#0d1b2e;border:1px solid var(--border);border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.fa-usage div{min-width:0}.fa-usage span{display:block;color:var(--muted);font-size:10px}
+.fa-usage b{display:block;font-size:16px;margin-top:4px;overflow-wrap:anywhere}
+.fa-bar{grid-column:1/-1;height:7px;background:#172840;border-radius:99px;overflow:hidden}
 .fa-bar i{display:block;height:100%;width:0;background:#66e1a0;border-radius:99px}
-.fa-note{grid-column:1/-1;color:#9db2c7;font-size:11px}
-@media(max-width:650px){.fa-usage{grid-template-columns:repeat(2,minmax(0,1fr))}.fa-note,.fa-bar{grid-column:1/-1}}
-.data-flow{display:flex;align-items:stretch;gap:8px;flex-wrap:wrap;margin:12px 0}
-.data-step{border:1px solid #29415a;background:#101e30;border-radius:10px;padding:12px;flex:1 1 175px;min-width:0}
-.data-step b{display:block;font-size:14px;margin:4px 0}
-.data-step small{display:block;color:#9db2c7;line-height:1.45}
-.data-arrow{align-self:center;color:#76d8ff;font-size:20px}
-.source-active{border-color:#376b72}
-.source-secondary{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px}
-.source-secondary .card strong{font-size:17px}
-.source-secondary .card{min-height:110px}
-.source-info{color:#9db2c7;font-size:12px;line-height:1.5}
-@media(max-width:760px){.data-flow{flex-direction:column}.data-arrow{align-self:center;transform:rotate(90deg)}}
-</style></head>
-<body><header><div><h1>Kristiansund Trafikkradar · Administrasjon</h1><small>Status, diagnostikk og lokal historikk</small></div><a href="./">Tilbake til flykartet</a></header>
+.fa-note{grid-column:1/-1;font-size:11px;color:var(--muted)}
+#route25-stats{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+#route25-stats .card{padding:11px}
+#route25-stats strong{font-size:17px}
+#test-results td:last-child,#history td:last-child{overflow-wrap:anywhere}
+footer{padding:20px;text-align:center;color:var(--muted);font-size:11px}
+@media(max-width:640px){h1{font-size:19px}.status-grid,.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.fa-usage{grid-template-columns:repeat(2,minmax(0,1fr))}.fa-bar,.fa-note{grid-column:1/-1}.card,.fold>summary{padding:12px}.fold>.fold-content{padding:0 12px 12px}main{padding:12px}.status-card{padding:10px}.status-card strong{font-size:15px}}
+</style>
+</head>
+<body>
+<header>
+<div><h1>Kristiansund Trafikkradar · Administrasjon</h1><small>Driftsstatus og kostnadskontroll</small></div>
+<a href="./">Tilbake til trafikkradaren</a>
+</header>
 <main>
-<section class="card" id="visitor-analytics">
- <h2>Besøksstatistikk – andre brukere</h2>
- <p class="note">Samlet antall sidevisninger, besøk og omtrentlige unike besøkende vises i Cloudflare Web Analytics. Dette er uavhengig av fly- og AIS-Workeren, og ikke lokal trafikkhistorikk.</p>
- <p class="note">Cloudflare Web Analytics er nå konfigurert for <code>vidarskoglund-cloud.github.io</code>. Se besøks- og sidevisningstall i Cloudflare-panelet. Målingen må verifiseres etter GitHub Pages-publisering.</p>
- <div class="actions"><a href="https://dash.cloudflare.com/?to=/:account/analytics/web-analytics" target="_blank" rel="noopener noreferrer">Åpne Cloudflare Web Analytics</a><button id="analytics-own-toggle" type="button">Utelat mine besøk på denne enheten</button></div>
- <p class="note" id="analytics-own-status" role="status">Kontrollerer lokal innstilling …</p>
- <p class="note">Velg «Utelat» på alle enhetene/nettleserne du bruker til testing. Bare denne nettleseren påvirkes. Tallene som allerede er registrert blir ikke slettet retroaktivt. Unike besøkende er estimater, ikke en nøyaktig opptelling av personer.</p>
-</section>
-
-<section class="card" id="project-status">
- <h2>Prosjektstatus · Kristiansund Trafikkradar</h2>
- <p class="note"><strong>Sist dokumentert: 22.11.2026.</strong> Dette er status for utviklingsarbeidet, adskilt fra live-data og nettleserens lokale tellere nedenfor. Gjennomført i GitHub betyr ikke at produksjon er kontrollert i nettleser.</p>
- <div class="grid">
-  <div><small>SISTE IMPLEMENTERTE ENDRING</small><p><strong>PR #50 – vær ved Kvernberget og i byen</strong></p><p class="note">Ny værseksjon skiller faktiske METAR-målinger fra Kvernberget og meteorologiske prognoser for Kristiansund sentrum. GitHub-testene har bestått. Cloudflare Worker-ruten /weather må publiseres separat før værdata vises; inntil da viser nettsiden at data ikke er tilgjengelige.</p></div>
-  <div><small>TESTSTATUS</small><p><strong class="ok">Automatiske tester bestått</strong></p><p class="note">Kodesjekker og ny rutetest er kontrollert i GitHub. Praktisk test av publisert nettside og faktiske rutetreff er ikke bekreftet.</p></div>
-  <div><small>ÅPENT / NESTE STEG</small><p><strong>Kontroll med levende data</strong></p><p class="note">Verifiser Pages-versjon, Workerens gratis ruteoppslag, kostnadstelleren, skipsfoto og automatisk skipsvalg. Kjente feil i eldre bevegelsestester er ikke avklart.</p></div>
+<section class="card" aria-labelledby="operational-title">
+ <div class="actions" style="justify-content:space-between;margin-bottom:12px">
+  <h2 id="operational-title" style="margin:0">Driftsoversikt</h2>
+  <button id="check-services" type="button">Kontroller nå</button>
  </div>
- <p class="note">Nylig gjennomført: <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/50" target="_blank" rel="noopener noreferrer">#50 Vær Kvernberget</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/48" target="_blank" rel="noopener noreferrer">#48 Vei, AIS og ruter</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/47" target="_blank" rel="noopener noreferrer">#47 Flybilder og spesialtrafikk</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/46" target="_blank" rel="noopener noreferrer">#46 Entur-rettelse</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/45" target="_blank" rel="noopener noreferrer">#45 Hurtigbåttider</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/44" target="_blank" rel="noopener noreferrer">#44 Rutetekst</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/43" target="_blank" rel="noopener noreferrer">#43 Faktisk kartstatus</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/42" target="_blank" rel="noopener noreferrer">#42 Automatisk kartzoom</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/41" target="_blank" rel="noopener noreferrer">#41 Avinor-flytider</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/40" target="_blank" rel="noopener noreferrer">#40 Skjermtilpasning</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/39" target="_blank" rel="noopener noreferrer">#39 Kompakt layout</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/38" target="_blank" rel="noopener noreferrer">#38 Wikidata-informasjon</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/37" target="_blank" rel="noopener noreferrer">#37 Skipsbilder</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/36" target="_blank" rel="noopener noreferrer">#36 Skipsbevegelse og budsjett</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/35" target="_blank" rel="noopener noreferrer">#35 Datakilder og flyt</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/33" target="_blank" rel="noopener noreferrer">#33 Rutetest</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/32" target="_blank" rel="noopener noreferrer">#32 Flystatus og kartknapp</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/pull/31" target="_blank" rel="noopener noreferrer">#31 Skipskort og foto</a></p>
- <p><a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/blob/main/START-HER.md" target="_blank" rel="noopener noreferrer">Full status, historikk og videre arbeid i START-HER.md</a> · <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/issues" target="_blank" rel="noopener noreferrer">GitHub-oppgaver</a></p>
- <small class="muted">Prosjektstatusen oppdateres ved dokumenterte kodeendringer; den er ikke en automatisk sanntidslogg. For nyeste verifiserte status, åpne START-HER.md.</small>
-</section>
-<p class="note">Statusen er basert på oppslag som denne nettleseren har registrert. Den viser ikke alle besøkendes trafikk eller Cloudflare-serverlogger. Historikk lagres lokalt i nettleseren og kan eksporteres.</p>
-<div class="actions"><button id="refresh">Oppdater visning</button><button id="json">Eksporter JSON</button><button id="csv">Eksporter CSV</button><button id="clear">Slett lokal historikk</button><small id="stamp"></small></div>
-<section id="source-priority">
- <h2>Datakilder og prioritering</h2>
- <p class="note">Flyposisjoner, ruteoppslag og AIS er ulike datastrømmer. En kilde som står som «Ikke brukt», er ikke nødvendigvis ute av drift. Tallene nedenfor gjelder registreringer i denne nettleseren.</p>
- <h3>1. Flyposisjoner – aktiv kilde</h3>
- <div id="sources" class="grid"></div>
- <h3>2. Ruteoppslag – egen tjeneste</h3>
- <div class="source-secondary">
-  <div class="card"><small>GRATIS FØRST</small><strong>adsb.lol via Cloudflare Worker</strong><p class="source-info">Automatisk rutetest for identifiserte fly innen 25 NM. Maksimalt 120 forsøk per dato og ett hvert 15. sekund i samme nettleser. Treff og feil telles separat nedenfor.</p></div>
-  <div class="card"><small>BETALT RESERVE – IKKE I 25 NM-TESTEN</small><strong>FlightAware</strong><p class="source-info">Bare kvalifiserte øvrige ruteoppslag kan bruke betalt fallback. Worker har egen intern sikkerhetsgrense på 4,50 USD per måned. Se kostnadskontrollen nedenfor.</p></div>
+ <p class="note" id="service-stamp" role="status">Ingen kontroll gjennomført ennå.</p>
+ <div class="status-grid">
+  <div class="status-card"><small>FLYDATA · ADS-B</small><strong id="live-planes">Ikke kontrollert</strong><span class="detail" id="live-planes-detail">Kontrollerer faktisk svar fra Workerens flyendepunkt.</span></div>
+  <div class="status-card"><small>AIS · FARTØY</small><strong id="live-ais">Ikke kontrollert</strong><span class="detail" id="live-ais-detail">Kontrollerer faktisk svar fra Workerens AIS-endepunkt.</span></div>
+  <div class="status-card"><small>NETTSIDE · GITHUB PAGES</small><strong id="live-pages">Ikke kontrollert</strong><span class="detail" id="live-pages-detail">Kontrollerer tilgjengelighet fra denne nettleseren, ikke GitHub Actions.</span></div>
+  <div class="status-card"><small>CLOUDFLARE WORKER</small><strong id="live-worker">Ikke kontrollert</strong><span class="detail" id="live-worker-detail">Kontrollerer /health. Dette beviser ikke at datakildene virker.</span></div>
  </div>
- <h3>3. Flyposisjonskilder som ikke brukes nå</h3>
- <div id="inactive-sources" class="source-secondary"></div>
- <h3>Slik flyter dataene</h3>
- <div class="data-flow" aria-label="Flyt for posisjoner">
-  <div class="data-step"><small>AKTIV POSISJONSKILDE</small><b>adsb.fi via lokal server</b><small>Leverer flyposisjoner</small></div>
-  <div class="data-arrow" aria-hidden="true">→</div>
-  <div class="data-step"><small>NETTSIDEN</small><b>Kristiansund Trafikkradar</b><small>Viser fly på kartet, avstander og nærhetsvarsler</small></div>
-  <div class="data-arrow" aria-hidden="true">→</div>
-  <div class="data-step"><small>INNEN 25 NM MED FLYNUMMER</small><b>Gratis ruteoppslag</b><small>Worker → adsb.lol. Finner og viser rute når den finnes, uten betalt fallback i piloten</small></div>
- </div>
- <p class="source-info">AIS for fartøy hentes også via Cloudflare Worker, men er uavhengig av flyposisjonene. Avinor leverer rutetider for KSU. At Worker står «ikke brukt» i historikken nedenfor, gjelder bare Worker som posisjonskilde for fly – ikke rute- eller fartøyfunksjonene.</p>
+ <p class="note">Tjenestekontrollene er øyeblikksbilder, ikke kontinuerlig overvåking. Ingen fly eller fartøy i resultatet betyr ikke nødvendigvis feil.</p>
 </section>
-<section><h2>FlightAware – oppslag og forbruk (separat budsjett)</h2><section class="fa-usage" id="fa-usage">
-  <div><span>FLIGHTAWARE</span><b id="fa-state" class="fa-ok">Aktiv</b></div>
+<section class="card" aria-labelledby="cost-title">
+ <h2 id="cost-title">FlightAware · kostnadskontroll</h2>
+ <div class="fa-usage" id="fa-usage">
+  <div><span>STATUS</span><b id="fa-state" class="warn">Ukjent</b></div>
   <div><span>OPPSLAG</span><b id="fa-calls">–</b></div>
   <div><span>ESTIMERT</span><b id="fa-spent">–</b></div>
   <div><span>FAKTISK</span><b id="fa-actual">–</b></div>
-  <div><span>GRENSE</span><b id="fa-budget">–</b></div>
+  <div><span>INTERN GRENSE</span><b id="fa-budget">$4.50</b></div>
   <div class="fa-bar"><i id="fa-progress"></i></div>
-  <div class="fa-note" id="fa-note">Henter FlightAware-bruk…</div>
-</section></section>
-<section><h2>Rutetest 25 NM – gratisoppslag</h2>
-<div class="grid" id="route25-stats">
-  <div class="card"><small>FORSØK I DAG (DENNE NETTLESEREN)</small><strong id="route25-attempts">–</strong></div>
-  <div class="card"><small>RUTER FUNNET</small><strong id="route25-found">–</strong></div>
-  <div class="card"><small>INGEN RUTE / FEIL</small><strong id="route25-unresolved">–</strong></div>
-  <div class="card"><small>BETALTE OPPSLAG I TESTEN</small><strong id="route25-paid">0</strong></div>
-  <div class="card"><small>TESTENS ESTIMERTE API-KOSTNAD</small><strong id="route25-cost">USD 0,00</strong></div>
-</div>
-<p class="muted">Når et fly med registrert flynummer er innen 25 NM fra KSU, forsøker denne nettleseren et gratis ruteoppslag via Cloudflare Worker og adsb.lol. Hvert flynummer forsøkes høyst én gang per UTC-dato i denne nettleseren, med minst 15 sekunder mellom nye forsøk og maksimalt 120 forsøk per UTC-dato. Allerede mellomlagrede ruter slås ikke opp på nytt. 25 NM-testen tillater ikke betalte FlightAware-oppslag. Tallene for testen lagres bare i denne nettleseren og er ikke samlet statistikk for alle brukere. FlightAware-feltet over gjelder andre, kvalifiserte ruteoppslag og viser Workers estimerte reserveringer og eventuelt leverandørrapportert forbruk. Worker-koden har en intern sperre på 4,50 USD per måned for disse betalte oppslagene, men faktisk forbruk kan være forsinket eller avvike. Målet om under 5 USD er derfor ikke en garanti for totalregningen, og den aktive Worker-versjonen må kontrolleres separat.</p>
+  <div class="fa-note" id="fa-note">Henter rapportert forbruk…</div>
+ </div>
+ <p class="note">Grensen er en intern sikkerhetssperre, ikke en garanti for leverandørfaktura. Verifiser faktisk forbruk hos FlightAware ved behov.</p>
 </section>
-<section><h2>Driftsdiagnostikk · lokale målinger</h2><div class="grid" id="metrics"></div></section>
-<section class="card"><h2>Feilsøking av adsb.fi</h2><div id="diagnosis" class="note"></div><p class="note">Offisielt oppslag: <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener">adsb.fi v3 · KSU 75 NM</a>. Åpning av lenken er en manuell test og bruker et API-oppslag.</p></section>
-<section class="card"><h2>API-diagnose · manuell test</h2>
-<p class="note">Tester Worker og direkte adsb.fi fra denne nettleseren. Testen utføres kun når du trykker på knappen. En blokkert nettleserforespørsel kan ikke alltid avsløre HTTP-status.</p>
-<div class="actions"><button id="test-api">Test datakildene nå</button><small id="test-state">Ikke testet</small></div>
-<div class="wrap"><table><thead><tr><th>Kilde</th><th>Resultat</th><th>HTTP</th><th>Responstid</th><th>Detaljer</th></tr></thead><tbody id="test-results"><tr><td colspan="5">Ingen manuell test ennå</td></tr></tbody></table></div>
-</section>
-<section class="card"><h2>Historikk</h2><div class="filters"><label>Hendelser <select id="filter"><option value="all">Alle</option><option value="changes">Bare endringer/feil</option></select></label><label>Vis <select id="limit"><option>50</option><option>100</option><option>250</option><option>1000</option></select></label></div><div class="wrap"><table><thead><tr><th>Tid</th><th>Worker</th><th>adsb.lol</th><th>adsb.fi</th><th>Airplanes.live</th><th>Fly</th><th>Merknad</th></tr></thead><tbody id="history"></tbody></table></div></section>
-<section class="card"><h2>Hva vi bør overvåke</h2><p class="note">Andel vellykkede oppslag per kilde, tid siden siste vellykkede oppslag, feilårsak, antall fly per oppslag, og om adsb.fi gir flere fly enn adsb.lol. Det siste krever separat telling per kilde i Worker for en sikker sammenligning.</p></section>
-</main><script src="admin.js?v=4"></script><script src="flightaware-status.js?v=1"></script><script src="analytics/owner-control.js?v=1"></script></body></html>
+<details class="fold" id="diagnostics-fold">
+ <summary>Feilsøking og datakilder</summary>
+ <div class="fold-content">
+  <p class="note">Kontrollene nedenfor er manuelle eller målt lokalt i denne nettleseren. Andre brukeres historikk og Cloudflare-serverlogger vises ikke.</p>
+  <section><h3>Manuell API-test</h3>
+   <p class="note">Tester fly-Worker og direkte adsb.fi. Nettleserblokkering kan gi feil uten at tjenesten er nede.</p>
+   <div class="actions"><button id="test-api" type="button">Test datakildene nå</button><small id="test-state">Ikke testet</small></div>
+   <div class="wrap"><table><thead><tr><th>Kilde</th><th>Resultat</th><th>HTTP</th><th>Responstid</th><th>Detaljer</th></tr></thead><tbody id="test-results"><tr><td colspan="5">Ingen manuell test ennå</td></tr></tbody></table></div>
+  </section>
+  <section><h3>Aktiv flyposisjonskilde · lokal måling</h3><div class="grid" id="sources"></div></section>
+  <section><h3>Lokale driftsmålinger</h3><div class="grid" id="metrics"></div></section>
+  <section><h3>adsb.fi-feilsøking</h3><div class="note" id="diagnosis"></div><p class="note">Direkte <a href="https://opendata.adsb.fi/api/v3/lat/63.1118/lon/7.8245/dist/75" target="_blank" rel="noopener noreferrer">API-test for KSU (75 NM)</a> gir et ekstra oppslag.</p></section>
+  <details><summary>Historiske, ikke aktive posisjonskilder</summary><div id="inactive-sources"></div></details>
+  <section><h3>Gratis ruteoppslag · 25 NM</h3><div class="grid" id="route25-stats">
+    <div class="card"><small>FORSØK · DENNE NETTLESEREN</small><strong id="route25-attempts">–</strong></div>
+    <div class="card"><small>RUTER FUNNET</small><strong id="route25-found">–</strong></div>
+    <div class="card"><small>INGEN RUTE / FEIL</small><strong id="route25-unresolved">–</strong></div>
+    <div class="card"><small>BETALTE OPPSLAG</small><strong id="route25-paid">0</strong></div>
+    <div class="card"><small>ESTIMERT KOSTNAD</small><strong id="route25-cost">USD 0,00</strong></div>
+   </div><p class="note">Tallene er hentet fra denne nettleseren og er ikke samlet statistikk for hele tjenesten.</p></section>
+ </div>
+</details>
+<details class="fold" id="analytics-fold">
+ <summary>Besøksstatistikk</summary>
+ <div class="fold-content" id="visitor-analytics">
+  <p class="note">Besøk og sidevisninger kontrolleres i Cloudflare Web Analytics. Denne siden leser ikke globale besøkstall selv.</p>
+  <div class="actions"><a href="https://dash.cloudflare.com/?to=/:account/analytics/web-analytics" target="_blank" rel="noopener noreferrer">Åpne Cloudflare Web Analytics</a><button id="analytics-own-toggle" type="button">Utelat mine besøk på denne enheten</button></div>
+  <p class="note" id="analytics-own-status" role="status">Kontrollerer lokal innstilling…</p>
+  <p class="note">Valget gjelder bare denne nettleseren og sletter ikke allerede registrerte besøk.</p>
+ </div>
+</details>
+<details class="fold" id="history-fold">
+ <summary>Lokal historikk og eksport</summary>
+ <div class="fold-content">
+  <p class="note">Denne historikken er lagret i nettleseren og er ikke en sentral driftslogg. Eksport endrer ikke kildene.</p>
+  <div class="actions">
+    <button id="refresh" type="button">Oppdater lokal visning</button>
+    <button id="json" type="button">Eksporter JSON</button>
+    <button id="csv" type="button">Eksporter CSV</button>
+    <button id="clear" type="button">Slett lokal historikk</button>
+    <small id="stamp"></small>
+  </div>
+  <div class="filters" style="margin-top:12px">
+   <label>Hendelser <select id="filter"><option value="all">Alle</option><option value="changes">Bare endringer/feil</option></select></label>
+   <label>Vis <select id="limit"><option>50</option><option>100</option><option>250</option><option>1000</option></select></label>
+  </div>
+  <div class="wrap"><table><thead><tr><th>Tid</th><th>Worker</th><th>adsb.lol</th><th>adsb.fi</th><th>Airplanes.live</th><th>Fly</th><th>Merknad</th></tr></thead><tbody id="history"></tbody></table></div>
+ </div>
+</details>
+<section class="note">Prosjektstatus og utviklingshistorikk er bevart i <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/blob/main/START-HER.md" target="_blank" rel="noopener noreferrer">START-HER.md</a>, <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/issues" target="_blank" rel="noopener noreferrer">GitHub-oppgaver</a> og <a href="https://github.com/vidarskoglund-cloud/trafikkradar-ksu/actions" target="_blank" rel="noopener noreferrer">GitHub Actions</a>. Administrasjonssiden er offentlig tilgjengelig, uten innlogging.</section>
+</main>
+<footer>Kristiansund Trafikkradar · offentlig driftsinformasjon uten administratorpålogging</footer>
+<script src="admin.js?v=5"></script>
+<script src="flightaware-status.js?v=1"></script>
+<script src="analytics/owner-control.js?v=1"></script>
+<script src="admin-health.js?v=1"></script>
+</body></html>
