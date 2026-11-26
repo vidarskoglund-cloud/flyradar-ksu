@@ -18,7 +18,7 @@ function render(){
  const pos=sourceStats('adsb.fi','adsbFi');
  $('sources').innerHTML=card('adsb.fi · flyposisjoner',pos.v,
    (pos.seen?'Vellykket '+pos.good+'/'+pos.seen+' registrerte oppslag · Sist OK: '+pos.lastOk:'Ingen målte oppslag i denne nettleseren')+
-   ' · Direkte posisjonskilde via lokal Flyradar-server · oppdatering hvert 15. sekund',
+   ' · Flyposisjoner slik de er registrert i denne nettleseren; oppdateringsintervall er ikke kontrollert her',
    pos.v==='OK'?'ok':pos.v==='feil'?'bad':'warn');
  const inactive=[
    ['Cloudflare Worker','worker','Ikke brukt til flyposisjoner nå. Brukes separat til gratis ruteoppslag og AIS.'],
@@ -49,8 +49,8 @@ function render(){
 }
 function download(name,type,data){const blob=new Blob([data],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 $('refresh').onclick=render;$('filter').onchange=render;$('limit').onchange=render;
-$('json').onclick=()=>download('flyradar-ksu-status.json','application/json',JSON.stringify(records(),null,2));
-$('csv').onclick=()=>{const rows=records();const keys=['at','event','worker','adsbLol','adsbFi','airplanesLive','aircraft','source','fiDirectError','fiRetryAt'];const quote=x=>'"'+String(x??'').replace(/"/g,'""')+'"';download('flyradar-ksu-status.csv','text/csv;charset=utf-8','\uFEFF'+[keys.join(';'),...rows.map(r=>keys.map(k=>quote(r[k])).join(';'))].join('\r\n'))};
+$('json').onclick=()=>download('trafikkradar-ksu-status.json','application/json',JSON.stringify(records(),null,2));
+$('csv').onclick=()=>{const rows=records();const keys=['at','event','worker','adsbLol','adsbFi','airplanesLive','aircraft','source','fiDirectError','fiRetryAt'];const quote=x=>'"'+String(x??'').replace(/"/g,'""')+'"';download('trafikkradar-ksu-status.csv','text/csv;charset=utf-8','\uFEFF'+[keys.join(';'),...rows.map(r=>keys.map(k=>quote(r[k])).join(';'))].join('\r\n'))};
 $('clear').onclick=()=>{if(confirm('Slette all lokal statushistorikk for denne nettleseren?')){localStorage.removeItem(KEY);render()}};
 render();setInterval(render,30000);
 
