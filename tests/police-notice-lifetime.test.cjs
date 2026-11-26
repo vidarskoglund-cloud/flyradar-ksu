@@ -27,3 +27,12 @@ test('traffic checks use independent Oslo clock expiry guard',()=>{
  assert.match(source,/trafficControlAgeOk\(i,now\)/);
  assert.match(source,/clockNow-event\+1440/);
 });
+
+test('actual Norwegian spelling Trafikkontroll triggers the short expiry',()=>{
+ const m=source.match(/function isTrafficControl\(i\)\{return (\/.*?\/)\.test/);
+ assert.ok(m,'traffic-control classifier present');
+ const rx=Function('return '+m[1])();
+ assert.equal(rx.test('Trafikkontroll'),true);
+ assert.equal(rx.test('trafikkkontroll'),true);
+ assert.equal(rx.test('Trafikkmelding'),false);
+});
