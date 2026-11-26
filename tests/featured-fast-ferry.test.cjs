@@ -45,7 +45,7 @@ test('ordinary vessels use visible bow, deck and hull instead of triangular arro
 test('feature style is separate from generic markers and labels do not rotate',()=>{
  assert.match(html,/\.vessel-wrap-featured \.fast-ferry-label/);
  assert.match(html,/pointer-events:none/);
- assert.match(html,/app\.js\?v=228/);
+ assert.match(html,/app\.js\?v=229/);
  assert.match(app,/querySelector\('\.vessel-marker'\)/);
 });
 
