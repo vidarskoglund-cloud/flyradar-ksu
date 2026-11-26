@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'../police-status.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../police-status-20261126.js'),'utf8');
 const worker=fs.readFileSync(path.join(__dirname,'../worker/src/index.js'),'utf8');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 test('police controls are short-lived and not prominent for speed checks',()=>{
@@ -12,7 +12,7 @@ test('police controls are short-lived and not prominent for speed checks',()=>{
  assert.match(source,/isTrafficControl\(i\)\?30\*60000/);
  assert.match(source,/policeUrl\(item\)/);
  assert.match(source,/noopener noreferrer/);
- assert.match(html,/police-status\.js\?v=4/);
+ assert.match(html,/police-status-20261126\.js/);
 });
 test('only generic categories from public messages; no made-up coordinates',()=>{
  assert.match(worker,/const classification=/);
