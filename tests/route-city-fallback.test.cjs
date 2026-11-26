@@ -33,7 +33,7 @@ test('airport position remains preferred; city estimates always visibly labelled
  assert.match(app,/if\(!fromResult\|\|!toResult\)return/);
  assert.match(app,/overflightIntroPending\.add\(key\)/);
  assert.match(html,/route-city-fallback\.js\?v=1/);
- assert.ok(html.indexOf('route-city-fallback.js?v=1')<html.indexOf('app.js?v=223'));
+ assert.ok(html.indexOf('route-city-fallback.js?v=1')<html.search(/app\.js\?v=\d+/));
  assert.match(worker,/country_code: ap\.country_code \|\| ap\.country_iso_code \|\|/);
 });
 test('geocoding is free, cacheable and respects map manual override',()=>{
