@@ -2129,8 +2129,11 @@ async function enrichRoute(p){
   }
   if(!canLookupRoute(p))return;
   const scope=routeLookupScope(p);
+  const prior=routeAttempts.get(key);
+  // After a paid-eligible attempt, retries must use only the free route source.
+  const freeRetry=Boolean(prior && prior.scope!=='pilot25');
   routeRequests.add(key);
-  routeAttempts.set(key,{scope,at:Date.now()});
+  routeAttempts.set(key,{scope,at:Date.now(),freeOnly:freeRetry});
   p.routeLookupState='trying';
   p.routeLookupSource='';
   try{
@@ -2141,6 +2144,7 @@ async function enrichRoute(p){
     if(Number.isFinite(Number(p.alt)))u.searchParams.set('alt',Number(p.alt));
     if(Number.isFinite(Number(p.gs)))u.searchParams.set('speed',Number(p.gs));
     if(scope)u.searchParams.set('fa_scope',scope);
+    if(freeRetry)u.searchParams.set('free_only','1');
     const resp=await fetch(u,{cache:'no-store',credentials:'omit',signal:AbortSignal.timeout(12000)});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
     const j=await resp.json();
@@ -2165,6 +2169,15 @@ async function enrichRoute(p){
   }finally{
     routeRequests.delete(key);
   }
+}
+// Retry missed routes every five minutes with free access only.
+function queueMissedRouteRetry(now=Date.now()){
+ const p=selected;
+ if(!p?.flight||p.signalLost||p.routeData)return;
+ const key=flightRouteKey(p),last=routeAttempts.get(key);
+ if(!last||last.scope==='pilot25'||!routeLookupScope(p)||
+    now-last.at<5*60*1000||!canLookupRoute(p,now))return;
+ void enrichRoute(p);
 }
 // Pilot: one free-only route lookup per distinct flight/date within 25 NM.
 // Scope "pilot25-free" is deliberately not whitelisted for FlightAware in Worker.
@@ -3568,6 +3581,7 @@ async function refresh(){
     // The explicit 25 NM pilot runs one FREE lookup per flight/day, no paid fallback.
     queueAutomaticKsuRouteLookup(planes);
     queueOverflightRouteLookup();
+    queueMissedRouteRetry();
     void runFreeRoutePilot25(planes);
   }catch(e){
     if($('proximity-alert'))$('proximity-alert').hidden=true;
