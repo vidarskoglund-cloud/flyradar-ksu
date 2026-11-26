@@ -1578,6 +1578,34 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 .photo-match strong{font-size:13px}
 .photo-match small{display:block}
 @media(max-width:700px){.photo-id-fields{grid-template-columns:minmax(0,1fr)}}
+
+/* Mobile: police notices follow flights, speedboat and road traffic, not the live aircraft card. */
+@media(max-width:899px){
+ .police-side.mobile-police-position{
+  display:block!important;margin-top:12px;background:#0f1d30;
+  border:1px solid #284059;border-radius:13px;padding:12px;
+ }
+ .police-side.mobile-police-position h3{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:8px;flex-wrap:wrap;font-size:14px;line-height:1.3;
+  margin:0 0 8px;color:#d2e7f5;
+ }
+ .police-side.mobile-police-position h3 small{
+  font-size:10px;color:#9ab3c8;font-weight:400;
+ }
+ .police-side.mobile-police-position .police-row{
+  display:flex;align-items:baseline;gap:8px;padding:9px 0;
+  border-top:1px solid #24394e;font-size:12px;
+ }
+ .police-side.mobile-police-position .police-row-title{
+  min-width:0;overflow:visible;white-space:normal;line-height:1.35;
+ }
+ .police-side.mobile-police-position .police-row-time{flex:0 0 auto;font-size:11px}
+ .police-side.mobile-police-position .police-note,
+ .police-side.mobile-police-position .police-empty{
+  display:block;font-size:11px;line-height:1.45;color:#9ab3c8;
+ }
+}
 </style>
 </head>
 <body>
@@ -1711,4 +1739,28 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 
 <script src="analytics/config.js?v=2"></script>
 <script src="analytics/beacon.js?v=2"></script>
+
+<script>
+/* Keep one live police panel with its existing IDs and event listeners.
+   On narrow screens, display it below the road-traffic schedule;
+   on desktop, keep its original place in the right-hand information panel. */
+(function(){
+ const police=document.querySelector('.nearest-panel .police-side');
+ const road=document.getElementById('mobile-road');
+ const desktopAnchor=document.querySelector('.nearest-panel .weather-side');
+ if(!police||!road||!desktopAnchor)return;
+ const media=window.matchMedia('(max-width:899px)');
+ function place(){
+  if(media.matches){
+   road.insertAdjacentElement('afterend',police);
+   police.classList.add('mobile-police-position');
+  }else{
+   desktopAnchor.insertAdjacentElement('beforebegin',police);
+   police.classList.remove('mobile-police-position');
+  }
+ }
+ place();
+ media.addEventListener?.('change',place);
+})();
+</script>
 </body></html>
