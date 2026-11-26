@@ -764,7 +764,18 @@ export default {
             if (!id || !/^[a-zA-Z0-9_-]{4,70}$/.test(id)) continue;
             const area = String(row?.area || "Kristiansund").replace(/[<>]/g,"").trim().slice(0,75);
             const active = row?.isActive === true;
-            records.set(id, { id, category:kind, label:rawCategory.slice(0,30),
+            // Only a generic public event type is used; never re-publish
+            // narrative/person details or guess a road from a broad area.
+            const messages=Array.isArray(row?.messages)?row.messages:[];
+            const publicText=messages.map(m=>String(m?.text||m?.message||m?.content||'')).join(' ').slice(0,900);
+            const classification=/fartskontroll|trafikkontroll|laserkontroll|hastighetskontroll/i.test(publicText)
+              ? 'Trafikkontroll'
+              : /trafikkulykke|kollisjon|utforkjøring/i.test(publicText)
+                ? 'Trafikkulykke'
+                : kind==='brann'?'Brannmelding':kind==='redning'?'Redningsmelding':'Trafikkmelding';
+            // Per the official feed, we only have textual area labels.
+            // Never fabricate latitude/longitude from place names.
+            records.set(id, { id, category:kind, label:classification,
               area, updated_at:new Date(timestamp).toISOString(), active });
           }
           if (!body.hasMoreResults || !body.messageThreads.length) break;
