@@ -3597,6 +3597,7 @@ async function refresh(){
     planes=preserveKsuLastKnown(planes);
     lastGoodPlanes=planes.map(p=>({...p}));
     if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
+    window.KsuOffshoreCoverage?.observe(planes);
     // Only verified KSU flights and strong observed approaches receive automatic route lookup.
     check50NmNotifications(planes);
     if(proximityCrossings(planes).length)playProximityTone();
