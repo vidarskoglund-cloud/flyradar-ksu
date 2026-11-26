@@ -9,10 +9,10 @@ test('police controls are short-lived and not prominent for speed checks',()=>{
  assert.match(source,/isTrafficControl\(item\)/);
  assert.match(source,/!isTrafficControl\(item\)/);
  assert.match(source,/30\*60000/);
- assert.match(source,/isTrafficControl\(i\)\?2\*3600000/);
+ assert.match(source,/isTrafficControl\(i\)\?30\*60000/);
  assert.match(source,/policeUrl\(item\)/);
  assert.match(source,/noopener noreferrer/);
- assert.match(html,/police-status\.js\?v=3/);
+ assert.match(html,/police-status\.js\?v=4/);
 });
 test('only generic categories from public messages; no made-up coordinates',()=>{
  assert.match(worker,/const classification=/);
