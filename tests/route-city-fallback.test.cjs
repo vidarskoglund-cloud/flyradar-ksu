@@ -42,3 +42,19 @@ test('geocoding is free, cacheable and respects map manual override',()=>{
  assert.match(app,/Date\.now\(\)<manualMapUntil/);
  assert.match(worker,/FLIGHTAWARE_MONTHLY_BUDGET_USD = 4\.50/);
 });
+
+test('confirmed code-only FIN19 HEL to DFW renders endpoints without _airports',()=>{
+ assert.match(app,/function routeAirportPair\(p\)/);
+ assert.match(app,/KNOWN_ROUTE_AIRPORTS/);
+ assert.match(app,/HEL:\[60\.3172,24\.9633\]/);
+ assert.match(app,/DFW:\[32\.8998,-97\.0403\]/);
+ assert.match(app,/routeAirportEndpoint\(a\)\|\|overflightRoutePoint\(a\)/);
+});
+test('route drawing preserves manual zoom and avoids stale async endpoints',()=>{
+ assert.match(app,/selectedRouteRevision/);
+ assert.match(app,/revision!==selectedRouteRevision/);
+ assert.match(app,/planeKey\(selected\)!==flightIdentity/);
+ assert.match(app,/routeLayer\.clearLayers\(\)/);
+ assert.match(app,/dashArray:'7 8'/);
+ assert.match(app,/Omtrentlig byområde:/);
+});
