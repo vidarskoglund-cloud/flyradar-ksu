@@ -1563,6 +1563,21 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   max-width:100%!important;max-height:100%!important;
   object-fit:cover!important;object-position:center!important;
 }
+
+/* Opt-in private photo/EXIF matching panel: no map or radar overlays. */
+.photo-identify-panel{padding:10px;border:1px solid #284059;border-radius:11px}
+.photo-identify-panel summary{font-weight:700;cursor:pointer}
+.photo-id-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.photo-id-fields label,.photo-id-fields small,#photo-id-results,.photo-id-actions{grid-column:1/-1}
+.photo-id-fields label{font-size:12px;color:#b9cbdf}
+.photo-id-fields input{min-width:0;width:100%}
+.photo-id-fields #photo-id-file{grid-column:1/-1;padding:9px;height:auto}
+.photo-id-actions{display:flex;flex-wrap:wrap;gap:8px}
+.photo-id-fields small{font-size:11px;line-height:1.4;color:#9fb5c9}
+.photo-match{border-top:1px solid #294359;padding:8px 0;display:grid;gap:3px}
+.photo-match strong{font-size:13px}
+.photo-match small{display:block}
+@media(max-width:700px){.photo-id-fields{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -1604,6 +1619,23 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </section>
 <section class="schedule weather-regular"><h2>Vær · Kristiansund</h2><div id="weather-regular" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></section>
 
+<details id="photo-identify" class="settings-panel photo-identify-panel" style="margin-top:12px">
+<summary>Identifiser fly eller båt fra bilde (test)</summary>
+<p class="muted">Velg et originalt JPEG-bilde. EXIF, GPS og kompassretning leses kun på denne enheten. Ingen bilder eller posisjoner lastes opp eller lagres.</p>
+<div class="photo-id-fields">
+<label for="photo-id-file">Originalbilde (JPEG, maks 20 MB)</label>
+<input id="photo-id-file" type="file" accept=".jpg,.jpeg,image/jpeg">
+<label for="photo-id-lat">Fotografens breddegrad</label>
+<input id="photo-id-lat" inputmode="decimal" placeholder="63.111800">
+<label for="photo-id-lon">Fotografens lengdegrad</label>
+<input id="photo-id-lon" inputmode="decimal" placeholder="7.824500">
+<label for="photo-id-bearing">Kameraretning (0–359° fra nord)</label>
+<input id="photo-id-bearing" type="number" min="0" max="359.9" step="0.1" placeholder="For eksempel 75">
+<div class="photo-id-actions"><button id="photo-id-compare" type="button">Finn mulige treff</button><button id="photo-id-clear" type="button">Fjern bildet</button></div>
+<small id="photo-id-status" role="status">Ingen foto valgt. Ingenting lagres eller sendes til serveren.</small>
+<div id="photo-id-results" aria-live="polite"></div>
+<small>Første versjon sammenligner bare bilder tatt omtrent samtidig med gjeldende AIS/ADS-B-data. Historiske spor og identifikasjon av eldre bilder er ikke etablert. Treffer er forslag, ikke bekreftelser.</small>
+</div></details>
 <details class="settings-panel" style="margin-top:12px"><summary>Varsler og lyd</summary>
 
 <div class="settings-grid">
@@ -1646,6 +1678,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
 <script src="app.js?v=231"></script>
+<script src="photo-identify.js?v=1"></script>
 <script src="police-status-v6.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
 
