@@ -1936,7 +1936,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
 <script src="offshore-coverage.js?v=1"></script>
-<script src="app.js?v=234"></script>
+<script src="app.js?v=235"></script>
 <script src="photo-identify.js?v=2"></script>
 <script src="police-status-v6.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
@@ -1953,6 +1953,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   try{window.map?.invalidateSize?.({pan:false});}catch(_e){}
   // The map variable is lexical in app.js: a resize event also triggers Leaflet layout.
   window.dispatchEvent(new Event('resize'));
+  // Let Leaflet finish layout before moving the selected target out of the panel.
+  requestAnimationFrame(()=>window.KsuEnsureSelectedVisible?.());
  }
  function apply(enabled){
   document.body.classList.toggle('radar-immersive',enabled);
