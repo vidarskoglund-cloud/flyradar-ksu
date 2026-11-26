@@ -1606,6 +1606,19 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   display:block;font-size:11px;line-height:1.45;color:#9ab3c8;
  }
 }
+
+/* Dimension-based schematic instead of an arbitrary generic ship photograph. */
+#vessel-photo-fallback .vessel-dimension-illustration{
+ width:100%;max-width:100%;display:grid;gap:2px;padding:6px 2px;
+ border-radius:8px;background:#12273b;
+}
+#vessel-photo-fallback .vessel-dimension-illustration svg{
+ display:block;width:100%;height:auto;max-height:190px;
+}
+#vessel-photo-fallback .vessel-dimension-illustration small{
+ display:block;text-align:center;color:#9ab3c8;font-size:10px;
+ line-height:1.35;
+}
 </style>
 </head>
 <body>
@@ -1705,7 +1718,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-target.js?v=1"></script>
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
-<script src="app.js?v=232"></script>
+<script src="app.js?v=233"></script>
 <script src="photo-identify.js?v=2"></script>
 <script src="police-status-v6.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
