@@ -1,9 +1,10 @@
 {
-  "name": "Flyradar KSU",
-  "short_name": "Flyradar",
+  "name": "Kristiansund Trafikkradar",
+  "short_name": "Trafikkradar KSU",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#08111f",
   "theme_color": "#08111f",
-  "description": "Live flytrafikk rundt Kristiansund/Kvernberget"
+  "description": "Fly, skip, rutetider og trafikk i Kristiansund og på Nordmøre",
+  "id": "./"
 }
