@@ -2613,8 +2613,8 @@ function aircraftPhotoMarkup(p,illustration){
  const filename=encodeURIComponent(photo.file.replace(/ /g,'_'));
  const source='https://commons.wikimedia.org/wiki/File:'+filename;
  const src='https://commons.wikimedia.org/wiki/Special:FilePath/'+filename+'?width=640';
- return '<div class="type-photo-wrap">'+
-  '<img class="type-photo" src="'+src+'" alt="'+(photo.exact?'Fotografi av fly '+escapeVesselText(reg):'Fotografi av flytypen '+escapeVesselText(code))+'" loading="lazy" decoding="async" '+
+ return '<div class="type-photo-wrap" style="height:92px;max-height:92px;min-height:0;overflow:hidden;contain:layout paint;">'+
+  '<img class="type-photo" style="display:block;width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;" src="'+src+'" alt="'+(photo.exact?'Fotografi av fly '+escapeVesselText(reg):'Fotografi av flytypen '+escapeVesselText(code))+'" loading="lazy" decoding="async" '+
   'onerror="this.hidden=true;this.nextElementSibling.hidden=false">'+
   '<div class="type-photo-fallback" hidden>'+illustration+'</div></div>'+
   '<small class="type-credit">Foto: <a href="'+source+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.credit)+'</a> · '+(photo.licenseUrl?'<a href="'+photo.licenseUrl+'" target="_blank" rel="noopener noreferrer">'+escapeVesselText(photo.license)+'</a>':escapeVesselText(photo.license))+' · Wikimedia Commons</small>';
