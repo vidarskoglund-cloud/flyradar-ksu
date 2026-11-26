@@ -26,3 +26,10 @@ test('FlightAware first for validated overflight, otherwise fallback only after 
  assert.match(src,/FLIGHTAWARE_MONTHLY_BUDGET_USD = 4\.50/);
  assert.match(src,/actualCost \+ FLIGHTAWARE_QUERY_COST_USD > FLIGHTAWARE_MONTHLY_BUDGET_USD/);
 });
+
+test('free-only retries bypass paid FlightAware and failed responses are not cached',()=>{
+ assert.match(route,/const freeOnly = url\.searchParams\.get\("free_only"\) === "1"/);
+ assert.match(route,/const allowFlightAware = !freeOnly && \(overflight \|\|/);
+ assert.match(route,/if \(overflight && !freeOnly\)/);
+ assert.match(route,/Cache-Control": routeUsable\(route\)/);
+});
