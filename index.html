@@ -1678,6 +1678,93 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  #type-info #vessel-photo-slot > .type-photo-wrap[hidden],
  #type-info #vessel-photo-fallback[hidden]{display:none!important}
 }
+
+/* Mobile immersive radar v2: true map canvas and a single two-stage bottom sheet.
+   Overrides older split-grid immersive rules; normal and desktop modes unchanged. */
+.immersive-sheet-handle{display:none}
+@media (pointer:coarse), (max-width:699px){
+ body.radar-immersive{
+  position:fixed!important;inset:0!important;width:100%!important;
+  height:100dvh!important;overflow:hidden!important;
+ }
+ body.radar-immersive main{
+  display:block!important;position:fixed!important;inset:0!important;
+  width:100%!important;height:100dvh!important;
+  padding:0!important;margin:0!important;overflow:hidden!important;
+ }
+ body.radar-immersive #map{
+  display:block!important;position:absolute!important;inset:0!important;
+  width:100%!important;height:100dvh!important;min-height:0!important;
+  max-height:none!important;border:0!important;border-radius:0!important;
+ }
+ body.radar-immersive #mobile-radar-toggle{
+  position:fixed!important;right:calc(env(safe-area-inset-right,0px) + 12px)!important;
+  top:calc(env(safe-area-inset-top,0px) + 10px)!important;
+  height:37px!important;min-height:37px!important;
+  padding:0 11px!important;font-size:12px!important;
+  z-index:10030!important;
+ }
+ body.radar-immersive .nearest-panel{
+  display:flex!important;flex-direction:column!important;
+  position:fixed!important;left:0!important;right:0!important;
+  top:auto!important;bottom:0!important;
+  width:100%!important;height:auto!important;min-height:0!important;
+  max-height:calc(66dvh - env(safe-area-inset-top,0px))!important;
+  padding:0!important;margin:0!important;overflow:hidden!important;
+  border:1px solid #34576f!important;border-bottom:0!important;border-radius:16px 16px 0 0!important;
+  background:#0d1d30f2!important;box-shadow:0 -4px 22px #0009!important;
+  z-index:10010!important;grid-area:auto!important;
+  transition:max-height .18s ease!important;
+ }
+ body.radar-immersive .nearest-panel .immersive-sheet-handle{
+  display:block!important;flex:none!important;position:relative!important;
+  width:100%!important;min-height:66px!important;max-height:none!important;
+  border:0!important;border-radius:0!important;
+  background:#0d1d30!important;color:#e8f6fe!important;
+  padding:17px 18px calc(10px + env(safe-area-inset-bottom,0px))!important;
+  box-shadow:none!important;text-align:left!important;cursor:pointer!important;
+ }
+ body.radar-immersive .immersive-sheet-grip{
+  position:absolute;top:6px;left:calc(50% - 20px);
+  width:40px;height:4px;background:#6c92aa;border-radius:6px;
+ }
+ body.radar-immersive .immersive-sheet-line{display:flex;gap:12px;align-items:center;min-width:0}
+ body.radar-immersive #immersive-sheet-name{
+  flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-size:15px!important;
+ }
+ body.radar-immersive #immersive-sheet-facts{
+  flex:0 1 auto;font-size:12px;color:#a9d4e6;
+  text-align:right;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ }
+ body.radar-immersive .immersive-sheet-chevron{font-size:20px;color:#9bc8dc;line-height:1;flex:none}
+ body.radar-immersive:not(.immersive-sheet-open) #immersive-sheet-content{display:none!important}
+ body.radar-immersive.immersive-sheet-open .nearest-panel{
+  max-height:min(68dvh,calc(100dvh - 90px))!important;
+ }
+ body.radar-immersive.immersive-sheet-open .nearest-panel .immersive-sheet-handle{
+  padding-bottom:9px!important;min-height:51px!important;
+ }
+ body.radar-immersive.immersive-sheet-open .immersive-sheet-chevron{transform:rotate(180deg)}
+ body.radar-immersive #immersive-sheet-content{
+  display:block!important;flex:1 1 auto!important;min-height:0!important;
+  overflow-y:auto!important;overscroll-behavior:contain;
+  padding:8px 12px calc(14px + env(safe-area-inset-bottom,0px))!important;
+ }
+ body.radar-immersive #immersive-sheet-content .mobile-target-card{
+  display:block!important;padding:0!important;margin:0!important;
+  background:transparent!important;border:0!important;box-shadow:none!important;
+ }
+ body.radar-immersive .nearest-panel .fs-schedule,
+ body.radar-immersive .nearest-panel .speedboat-side,
+ body.radar-immersive .nearest-panel .road-status-side,
+ body.radar-immersive .nearest-panel .police-side,
+ body.radar-immersive .nearest-panel .weather-side{display:none!important}
+ body.radar-immersive #proximity-alert{
+  bottom:calc(78px + env(safe-area-inset-bottom,0px))!important;
+  max-width:calc(100% - 22px)!important;
+ }
+}
 </style>
 </head>
 <body>
@@ -1698,7 +1785,12 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   <div><b id="fs-updated">–</b><span>oppdatert</span></div>
   <div class="fs-aircraft" id="fs-aircraft"><b>Ingen fly</b><span>–</span></div>
 </div>
-<section class="schedule nearest-panel"><div class="mobile-target-card"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div></div><section class="fs-schedule sidebar-fold always-visible"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></section>
+<section class="schedule nearest-panel">
+<button id="immersive-sheet-handle" class="immersive-sheet-handle" type="button" aria-expanded="false" aria-controls="immersive-sheet-content" aria-label="Vis detaljer for valgt fly eller fartøy">
+ <span class="immersive-sheet-grip" aria-hidden="true"></span>
+ <span class="immersive-sheet-line"><strong id="immersive-sheet-name">Velg fly eller fartøy</strong><span id="immersive-sheet-facts">Trykk for detaljer</span><span class="immersive-sheet-chevron" aria-hidden="true">⌃</span></span>
+</button>
+<div id="immersive-sheet-content"><div class="mobile-target-card"><h2 id="aircraft-panel-title">Fly i området</h2><div id="cards" class="cards"></div><div id="type-info"></div></div></div><section class="fs-schedule sidebar-fold always-visible"><h3>Flyavganger og ankomster · KSU</h3><div id="avinor-list-side"></div></section>
 <section class="speedboat-side sidebar-fold always-visible"><h3>Hurtigbåt · Kristiansund</h3><div id="speedboat-list-side" aria-live="polite"><div class="schedule-empty">Henter rutetider fra Entur…</div></div>
 <small class="speedboat-credit">AtB rute 800 · <a href="https://entur.no/" target="_blank" rel="noopener noreferrer">Entur</a></small></section>
 <section class="road-status-side always-visible">
@@ -1798,12 +1890,44 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
  }
  function apply(enabled){
   document.body.classList.toggle('radar-immersive',enabled);
-  button.textContent=enabled?'Avslutt fullskjerm':'Fullskjerm';
+  if(!enabled){document.body.classList.remove('immersive-sheet-open');const h=document.getElementById('immersive-sheet-handle');h?.setAttribute('aria-expanded','false');}
+  button.textContent=enabled?'Lukk kart':'Fullskjerm';
   button.setAttribute('aria-pressed',String(enabled));
   button.setAttribute('aria-label',enabled?'Avslutt radarmodus':'Vis radar i fullskjerm');
   if(enabled)document.activeElement?.blur?.();
   requestAnimationFrame(()=>{resizeMap();setTimeout(resizeMap,200);});
  }
+
+ const sheetHandle=document.getElementById('immersive-sheet-handle');
+ const sheetName=document.getElementById('immersive-sheet-name');
+ const sheetFacts=document.getElementById('immersive-sheet-facts');
+ const typeInfo=document.getElementById('type-info');
+ const cards=document.getElementById('cards');
+ function syncSheet(){
+  const vessel=document.getElementById('vessel-detail-name');
+  if(vessel){
+   sheetName.textContent=vessel.textContent||'Fartøy';
+   const speed=document.querySelector('[data-vessel-speed]')?.textContent||'–';
+   const course=document.querySelector('[data-vessel-course]')?.textContent||'–';
+   sheetFacts.textContent=speed+' · '+course;
+  }else{
+   const title=cards?.querySelector('.aircraft-title .call')?.textContent;
+   sheetName.textContent=title||'Fly og fartøy';
+   const metrics=[...cards?.querySelectorAll('.aircraft-metrics b')||[]];
+   sheetFacts.textContent=metrics.length>=3?metrics[1].textContent+' · '+metrics[2].textContent:'Trykk for detaljer';
+  }
+ }
+ sheetHandle?.addEventListener('click',()=>{
+  if(!state())return;
+  const opened=document.body.classList.toggle('immersive-sheet-open');
+  sheetHandle.setAttribute('aria-expanded',String(opened));
+  sheetHandle.setAttribute('aria-label',opened?'Skjul detaljer':'Vis detaljer for valgt fly eller fartøy');
+  requestAnimationFrame(resizeMap);
+ });
+ for(const el of [typeInfo,cards]){
+  if(el)new MutationObserver(syncSheet).observe(el,{childList:true,subtree:true,characterData:true});
+ }
+ syncSheet();
  button.addEventListener('click',()=>apply(!state()));
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&state())apply(false)});
  window.addEventListener('orientationchange',()=>setTimeout(resizeMap,250));
