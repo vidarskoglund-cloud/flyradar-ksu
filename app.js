@@ -2684,6 +2684,31 @@ function formatAisTime(value){
  }).format(date);
  return datePart+' kl. '+timePart;
 }
+/* Generic overhead dimension sketch when no verified vessel photo exists.
+   Scaled length-to-beam proportions come from AIS; actual hull shape is unknown. */
+function vesselDimensionIllustration(v){
+ const length=Number(v?.length),width=Number(v?.width);
+ if(!Number.isFinite(length)||!Number.isFinite(width)||
+    length<5||length>500||width<2||width>120||width>length)return typeIllustration('vessel');
+ const fmt=x=>Number.isInteger(x)?String(x):x.toFixed(1);
+ const hullLength=400,hullWidth=hullLength*width/length;
+ const x1=90,x2=x1+hullLength,y=100,half=hullWidth/2;
+ const points=[
+  [x1,y],[x1+16,y-half*.88],[x1+55,y-half],
+  [x2-65,y-half],[x2-14,y-half*.67],[x2,y],
+  [x2-14,y+half*.67],[x2-65,y+half],
+  [x1+55,y+half],[x1+16,y+half*.88]
+ ].map(pair=>pair.map(n=>n.toFixed(2)).join(',')).join(' ');
+ return '<div class="vessel-dimension-illustration" aria-label="Skjematisk skipsillustrasjon sett ovenfra, lengde '+fmt(length)+' meter, bredde '+fmt(width)+' meter">'+
+ '<svg viewBox="0 0 580 205" role="img" aria-label="Omtrentlig grunnform, proporsjonert etter lengde og bredde">'+
+ '<path d="M90 43 V36 H490 V43 M90 36 V43 M490 36 V43" stroke="#8ba8bb" fill="none" stroke-width="1.6"/>'+
+ '<text x="290" y="25" font-size="16" fill="#d9edf5" text-anchor="middle">'+fmt(length)+' m lengde</text>'+
+ '<polygon points="'+points+'" fill="#5ba2c4" fill-opacity=".8" stroke="#a4d8ec" stroke-width="2"/>'+
+ '<path d="M90 100 H490" stroke="#d3e9f3" stroke-dasharray="5 7" stroke-opacity=".5"/>'+
+ '<path d="M524 '+(y-half).toFixed(2)+' H538 V'+(y+half).toFixed(2)+' H524" fill="none" stroke="#8ba8bb" stroke-width="1.6"/>'+
+ '<text x="545" y="100" font-size="12" fill="#d9edf5" text-anchor="middle" transform="rotate(90 545 100)">'+fmt(width)+' m</text>'+
+ '</svg><small>Skjematisk ovenfra · lengde/bredde i riktig forhold · form ikke bekreftet</small></div>';
+}
 function vesselTypeCard(v){
  const title=v.name||('MMSI '+(v.mmsi||'ukjent'));
  const category=v.category==='hurtigrute'?'Hurtigruten/Havila':v.category==='hurtigbat'?'Hurtigbåt':v.category==='mulig_hurtigbat'?'Mulig hurtigbåt':vesselKind(v);
@@ -2694,7 +2719,7 @@ function vesselTypeCard(v){
  '<div class="vessel-detail-head"><strong id="vessel-detail-name">'+escapeVesselText(title)+'</strong><span>'+escapeVesselText(category)+'</span></div>'+ 
  '<small id="vessel-motion-note">'+escapeVesselText(vesselMovementContext(v).detail)+'</small>'+
  '<div class="vessel-detail-metrics"><div><small>FART</small><b data-vessel-speed>'+escapeVesselText(speed)+'</b></div><div><small>KURS</small><b data-vessel-course>'+escapeVesselText(course)+'</b></div></div>'+
- '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+typeIllustration('vessel')+'</div>'+
+ '<div id="vessel-photo-slot"></div><div id="vessel-photo-fallback">'+vesselDimensionIllustration(v)+'</div>'+
  '<small id="vessel-photo-note" role="status">Søker etter skipsfoto · AIS fra Kystverket</small>'+
  '<div class="vessel-detail-fields">'+fields.filter(([,value])=>value!==undefined&&value!==null&&value!=='').map(([name,value])=>'<span data-vessel-field="'+escapeVesselText(name)+'">'+escapeVesselText(name)+': '+escapeVesselText(value)+'</span>').join('')+'</div>'+ 
  '</section>';
