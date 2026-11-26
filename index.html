@@ -1765,6 +1765,38 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   max-width:calc(100% - 22px)!important;
  }
 }
+
+/* Immersive bottom sheet v3: preserve at least half the map on phones,
+   including landscape. Expanded details scroll inside the sheet. */
+@media (pointer:coarse), (max-width:699px){
+ body.radar-immersive.immersive-sheet-open .nearest-panel{
+  height:min(46dvh,430px)!important;
+  max-height:min(46dvh,430px)!important;
+ }
+ body.radar-immersive .nearest-panel .immersive-sheet-handle{
+  padding-left:14px!important;padding-right:14px!important;
+  padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))!important;
+ }
+ body.radar-immersive.immersive-sheet-open .nearest-panel .immersive-sheet-handle{
+  padding-bottom:8px!important;
+ }
+}
+@media (pointer:coarse) and (orientation:landscape){
+ body.radar-immersive.immersive-sheet-open .nearest-panel{
+  height:42dvh!important;max-height:42dvh!important;
+ }
+ body.radar-immersive .nearest-panel .immersive-sheet-handle{
+  padding-top:13px!important;
+  padding-bottom:6px!important;
+  min-height:47px!important;
+ }
+ body.radar-immersive.immersive-sheet-open #immersive-sheet-content{
+  padding:3px 10px calc(6px + env(safe-area-inset-bottom,0px))!important;
+ }
+ body.radar-immersive #mobile-radar-toggle{
+  top:calc(env(safe-area-inset-top,0px) + 7px)!important;
+ }
+}
 </style>
 </head>
 <body>
@@ -1917,6 +1949,24 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
    sheetFacts.textContent=metrics.length>=3?metrics[1].textContent+' · '+metrics[2].textContent:'Trykk for detaljer';
   }
  }
+
+ // Simple downward swipe closes the expanded sheet, without hijacking scrolling
+ // inside the detail content or map gestures.
+ let handleStartY=null;
+ sheetHandle?.addEventListener('touchstart',event=>{
+  handleStartY=event.touches.length===1?event.touches[0].clientY:null;
+ },{passive:true});
+ sheetHandle?.addEventListener('touchend',event=>{
+  if(handleStartY===null||!state())return;
+  const delta=event.changedTouches[0].clientY-handleStartY;
+  handleStartY=null;
+  if(Math.abs(delta)<35)return;
+  event.preventDefault();
+  const opened=delta<0;
+  document.body.classList.toggle('immersive-sheet-open',opened);
+  sheetHandle.setAttribute('aria-expanded',String(opened));
+  sheetHandle.setAttribute('aria-label',opened?'Skjul detaljer':'Vis detaljer for valgt fly eller fartøy');
+ },{passive:false});
  sheetHandle?.addEventListener('click',()=>{
   if(!state())return;
   const opened=document.body.classList.toggle('immersive-sheet-open');
