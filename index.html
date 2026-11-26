@@ -1513,6 +1513,16 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 @keyframes vessel-focus-pulse{0%,100%{box-shadow:0 0 0 3px #001524d9,0 0 8px 2px #2bfaff80}
  50%{box-shadow:0 0 0 3px #001524d9,0 0 15px 6px #2bfaffcf}}
 @media(prefers-reduced-motion:reduce){.vessel-wrap.is-focused::after{animation:none}}
+/* Garmin MapShare is an explicit local-only optional layer, never loaded automatically. */
+.garmin-private-panel{padding:10px;border:1px solid #655b83;border-radius:10px;background:#181c2c}
+.garmin-private-panel summary{cursor:pointer;font-weight:700}
+.garmin-private-controls{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;margin-top:10px}
+.garmin-private-controls label,.garmin-private-controls small{grid-column:1/-1;font-size:12px;color:#c8d0e2}
+.garmin-private-controls input[type=url],.garmin-private-controls input[type=file]{grid-column:1/-1;width:100%;min-width:0}
+.garmin-private-controls input[type=file]{padding:7px}
+.garmin-private-controls .garmin-check{display:flex;align-items:center;gap:8px}
+.garmin-private-controls input[type=checkbox]{min-height:0;width:18px;height:18px}
+@media(max-width:700px){.garmin-private-controls{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -1554,6 +1564,18 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 </section>
 <section class="schedule weather-regular"><h2>Vær · Kristiansund</h2><div id="weather-regular" class="weather-widget" aria-live="polite">Henter vær fra Kvernberget og MET…</div></section>
 
+<details class="settings-panel garmin-private-panel" style="margin-top:12px"><summary>Garmin inReach · privat sporingslag</summary>
+<p class="muted">Importerer Garmin MapShare KML direkte i denne nettleseren. Posisjoner sendes ikke til GitHub, Cloudflare Worker eller andre brukere av Flyradar KSU.</p>
+<div class="garmin-private-controls">
+<label for="garmin-mapshare-url">MapShare-lenke (ikke lagret)</label>
+<input id="garmin-mapshare-url" type="url" placeholder="https://share.garmin.com/..." autocomplete="off" spellcheck="false">
+<button id="garmin-open" type="button">Åpne MapShare</button>
+<label for="garmin-kml-file">Velg nedlastet KML-fil (maks 3 MB)</label>
+<input id="garmin-kml-file" type="file" accept=".kml,application/vnd.google-earth.kml+xml,application/xml,text/xml">
+<label class="garmin-check"><input id="garmin-show" type="checkbox" disabled> Vis importert inReach-spor på kartet</label>
+<button id="garmin-clear" type="button">Fjern private spor</button>
+<small id="garmin-status" role="status">Ingen inReach-data importert. Spor vises bare på denne enheten til du lukker eller oppdaterer siden.</small>
+</div></details>
 <details class="settings-panel" style="margin-top:12px"><summary>Varsler og lyd</summary>
 
 <div class="settings-grid">
@@ -1596,6 +1618,7 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
 <script src="app.js?v=230"></script>
+<script src="garmin-private.js?v=1"></script>
 <script src="police-status.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
 
