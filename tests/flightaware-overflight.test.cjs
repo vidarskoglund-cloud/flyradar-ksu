@@ -48,3 +48,10 @@ test('automatic paid lookup is scoped to the selected plane',()=>{
  assert.match(app,/autoOverflightLookups\.has\(key\)/);
  assert.match(app,/queueOverflightRouteLookup\(\);/);
 });
+test('missing flight route retries after five minutes using free source',()=>{
+ assert.match(app,/function queueMissedRouteRetry\(now=Date\.now\(\)\)/);
+ assert.match(app,/now-last\.at<5\*60\*1000/);
+ assert.match(app,/queueMissedRouteRetry\(\);/);
+ assert.match(app,/const freeRetry=Boolean\(prior && prior\.scope!=='pilot25'\)/);
+ assert.match(app,/if\(freeRetry\)u\.searchParams\.set\('free_only','1'\)/);
+});
