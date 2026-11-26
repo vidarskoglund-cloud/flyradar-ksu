@@ -4080,13 +4080,22 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').cat
 window.KsuPhotoCandidates=function(){
  const finite=x=>Number.isFinite(Number(x));
  const items=[];
+ const fresh=(t)=>Number.isFinite(t)&&Math.abs(Date.now()-t)<=5*60*1000;
+ const aisTime=(v)=>{
+  const raw=String(v||'').trim().replace(' ','T');
+  if(!raw)return NaN;
+  const iso=/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z';
+  return Date.parse(iso);
+ };
  for(const p of planes){
-  if(p.signalLost||!finite(p.lat)||!finite(p.lon))continue;
+  if(p.signalLost||p.lat==null||p.lon==null||!finite(p.lat)||!finite(p.lon)||
+     !fresh(Number(p.positionAt)))continue;
   items.push({kind:'plane',name:String(p.reg||p.flight||p.hex||'Ukjent fly').slice(0,70),
-   lat:Number(p.lat),lon:Number(p.lon),stale:Boolean(p.signalLost)});
+   lat:Number(p.lat),lon:Number(p.lon),stale:false});
  }
  for(const v of vessels){
-  if(!finite(v.lat)||!finite(v.lon))continue;
+  if(v.lat==null||v.lon==null||!finite(v.lat)||!finite(v.lon)||
+     !fresh(aisTime(v.msgtime)))continue;
   items.push({kind:'ship',name:String(v.name||v.mmsi||'Ukjent fartøy').slice(0,70),
    lat:Number(v.lat),lon:Number(v.lon),stale:false});
  }
