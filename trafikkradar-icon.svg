@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Kristiansund Trafikkradar">
+<rect width="180" height="180" rx="36" fill="#0d1b2e"/>
+<circle cx="90" cy="90" r="62" fill="none" stroke="#4d9dbc" stroke-width="5"/>
+<circle cx="90" cy="90" r="38" fill="none" stroke="#27516c" stroke-width="2"/>
+<path d="M90 28V152M28 90H152" stroke="#264861" stroke-width="3"/>
+<path d="M90 90L133 46" stroke="#68e6ce" stroke-width="10" stroke-linecap="round"/>
+<circle cx="90" cy="90" r="10" fill="#e1f5f8"/>
+<path d="M113 114L135 108L130 122Z" fill="#79d2e6"/>
+</svg>
