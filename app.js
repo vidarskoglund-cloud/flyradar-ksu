@@ -4074,3 +4074,21 @@ document.addEventListener('fullscreenchange',()=>{
 });
 if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
 
+
+// Explicit read-only snapshot for opt-in local photo identification.
+// Only current, publicly observed positions are exposed; never store photo GPS.
+window.KsuPhotoCandidates=function(){
+ const finite=x=>Number.isFinite(Number(x));
+ const items=[];
+ for(const p of planes){
+  if(p.signalLost||!finite(p.lat)||!finite(p.lon))continue;
+  items.push({kind:'plane',name:String(p.reg||p.flight||p.hex||'Ukjent fly').slice(0,70),
+   lat:Number(p.lat),lon:Number(p.lon),stale:Boolean(p.signalLost)});
+ }
+ for(const v of vessels){
+  if(!finite(v.lat)||!finite(v.lon))continue;
+  items.push({kind:'ship',name:String(v.name||v.mmsi||'Ukjent fartøy').slice(0,70),
+   lat:Number(v.lat),lon:Number(v.lon),stale:false});
+ }
+ return {at:Date.now(),items};
+};
