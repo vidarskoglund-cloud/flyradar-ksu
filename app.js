@@ -1686,6 +1686,47 @@ function idleAircraftGlimpse(list,now){
  return {key:'glimt:'+smartPlaneIdentity(p),rank:0.5,d:ksuDistanceNm(p),
    points:[[mapAreas.city.lat,mapAreas.city.lon],[p.lat,p.lon]],maxZoom:9};
 }
+// Keep the selected live target in the unobstructed portion of immersive map.
+// Pan only when hidden/near the covered edge; leave ordinary map focus intact.
+let immersiveVisibilityPending=false;
+function ensureImmersiveTargetVisible(){
+ if(!document.body.classList.contains('radar-immersive'))return;
+ const panel=document.querySelector('.nearest-panel');
+ const mapElement=map.getContainer();
+ if(!panel||!mapElement)return;
+ const vessel=selectedVesselTypeKey?vessels.find(v=>vesselKey(v)===selectedVesselTypeKey):null;
+ const target=vessel||selected;
+ if(!target||target.signalLost||target.lat==null||target.lon==null)return;
+ const lat=Number(target.lat),lon=Number(target.lon);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+ const rect=mapElement.getBoundingClientRect(),cover=panel.getBoundingClientRect();
+ const vertical=window.matchMedia('(orientation: landscape)').matches;
+ const margin=40;
+ let left=margin,top=margin,right=rect.width-margin,bottom=rect.height-margin;
+ if(vertical){
+  // A narrow right-side strip is reserved for the collapsed/expanded panel.
+  right=Math.min(right,cover.left-rect.left-margin);
+ }else{
+  bottom=Math.min(bottom,cover.top-rect.top-margin);
+ }
+ if(right-left<100||bottom-top<100)return;
+ const point=map.latLngToContainerPoint([lat,lon]);
+ // Do not recenter within the safe area: avoids jitter on every update.
+ const destX=Math.max(left,Math.min(right,point.x));
+ const destY=Math.max(top,Math.min(bottom,point.y));
+ const dx=point.x-destX,dy=point.y-destY;
+ if(Math.abs(dx)<3&&Math.abs(dy)<3)return;
+ map.panBy([dx,dy],{animate:false});
+}
+function queueImmersiveTargetVisibility(){
+ if(immersiveVisibilityPending)return;
+ immersiveVisibilityPending=true;
+ requestAnimationFrame(()=>{
+  immersiveVisibilityPending=false;
+  ensureImmersiveTargetVisible();
+ });
+}
+window.KsuEnsureSelectedVisible=queueImmersiveTargetVisibility;
 function fitMap(list,s){
   const now=Date.now();
   if(now<manualMapUntil)return;
@@ -2902,6 +2943,7 @@ async function loadVessels(){
     autoSelectHarborVessel();
     if(selectedVesselTypeKey)updateTypeCard(selected);
     fitMap(planes,settings());
+    queueImmersiveTargetVisibility();
     const el=document.getElementById('vessel-live-status');
     if(el)el.textContent=vessels.length
       ?vessels.length+' fartøy registrert · AIS fra Kystverket'
@@ -3880,6 +3922,7 @@ function render(autoFit=false){
   autoSelectHarborVessel();
   if(autoFit) fitMap(list,s);
   updateMapFocusStatus();
+  queueImmersiveTargetVisibility();
 }
 function toggleDisplay(){
   display=!display;
