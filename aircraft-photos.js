@@ -37,7 +37,7 @@ function showLocalAircraftGallery(plane,identity){
  img.className='type-photo';img.decoding='async';img.loading='eager';
  const credit=document.createElement('small');credit.className='type-credit';
  function updatePhotoCredit(){
-  const newer=/IMG_136[234]\\.webp$/.test(images[index]);
+  const newer=/IMG_136[234]\.webp$/.test(images[index]);
   const date=newer?'27.11.2026':'25.11.2026';
   img.alt='LN-OQU · fotografert ved Kristiansund '+(newer?'27. november':'25. november')+' 2026';
   credit.textContent='Foto: lokalt fotografert · LN-OQU (ICAO 478057) · '+date;
