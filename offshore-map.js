@@ -107,9 +107,22 @@ function render(p){
    .bindTooltip('Mulig plattformnærhet: '+near.name+' · landing ikke bekreftet')
    .addTo(layer);
  }
+ // Coverage is measured from actual received fixes, not interpolated positions.
+ const farthest=fixes.reduce((best,f)=>{
+  const d=distanceNm(63.1118,7.8245,Number(f.lat),Number(f.lon));
+  return !best||d>best.nm?{fix:f,nm:d}:best;
+ },null);
+ if(farthest){
+  L.circleMarker([Number(farthest.fix.lat),Number(farthest.fix.lon)],{
+   radius:8,color:'#ffb43c',fillColor:'#472000',weight:3,fillOpacity:.75
+  }).bindTooltip('Lengste registrerte dekning fra Kvernberget: '+farthest.nm.toFixed(1)+' NM',
+    {direction:'top'}).addTo(layer);
+ }
+ const lastAt=fixes.length?Number(fixes[fixes.length-1].t):0;
+ const ageMin=lastAt?Math.max(0,Math.floor((Date.now()-lastAt)/60000)):null;
  const count=fixes.length;
  const detail=near?' · Nær '+near.name+' (ikke bekreftet landing)':'';
- statusText.textContent=count+' posisjoner · '+gaps+' dekningsbrudd'+detail;
+ statusText.textContent=count+' posisjoner · maks '+(farthest?farthest.nm.toFixed(1)+' NM':'ukjent')+' fra KSU · siste mottak '+(ageMin===null?'ukjent':ageMin+' min siden')+' · '+gaps+' brudd'+detail;
  latestSummary=statusText.textContent;
 }
 window.KsuOffshoreMap={render,summary:()=>latestSummary};
