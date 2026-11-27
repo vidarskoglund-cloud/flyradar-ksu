@@ -929,7 +929,7 @@ function planeIcon(p){
   return L.divIcon({
     className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:'')+(ambulance?' medical-aircraft':'')+(military?' '+military.id:''),
     html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:(ambulance?'Luftambulansefly':(military?military.label:'Fly')))}">
-      ${heli?helicopterBadge:`<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}${militaryMark}</svg>`}
+      ${heli&&['offshore','general'].includes(category?.id)?helicopterBadge:`<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}${militaryMark}</svg>`}
     </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
