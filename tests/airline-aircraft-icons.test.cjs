@@ -63,7 +63,8 @@ test('helicopter category precedence and rotor silhouette',()=>{
  ]){
   const icon=state.planeIcon(p);
   assert.match(icon.className,new RegExp('heli-'+category));
-  assert.match(icon.html,/heli-rotor/);
+  if(category==='offshore'||category==='general')assert.match(icon.html,/helicopter-badge/);
+  else assert.match(icon.html,/heli-rotor/);
  }
 });
 
