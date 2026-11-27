@@ -91,6 +91,15 @@ function render(p){
   segment.push(f);
  }
  drawSegment(segment);
+ if(fixes.length){
+  const first=fixes[0],last=fixes[fixes.length-1];
+  L.circleMarker([Number(first.lat),Number(first.lon)],{
+   radius:5,color:'#fff',fillColor:'#f59e40',fillOpacity:1,weight:2
+  }).bindTooltip('Første registrerte posisjon for turen').addTo(layer);
+  L.circleMarker([Number(last.lat),Number(last.lon)],{
+   radius:7,color:'#fff',fillColor:'#ff963c',fillOpacity:1,weight:2
+  }).bindTooltip('Siste registrerte posisjon for turen').addTo(layer);
+ }
  const near=nearInstallation(trip);
  if(near){
   L.circleMarker([near.lat,near.lon],{radius:11,color:'#cdb1ff',weight:3,
