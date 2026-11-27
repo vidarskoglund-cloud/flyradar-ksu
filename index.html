@@ -1831,6 +1831,12 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
   bottom:10px!important;max-width:none!important;
  }
 }
+/* Approved overhead helicopter badge: overrides legacy side-view fills and selection background. */
+.plane-wrap .plane-marker.helicopter{background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 0 3px #04dceacc)}
+.plane-wrap .plane-marker.helicopter svg.helicopter-badge,
+.plane-wrap.is-selected .plane-marker.helicopter svg.helicopter-badge{display:block;width:34px;height:34px;overflow:visible;fill:none;stroke:none}
+.plane-wrap .plane-marker.helicopter svg.helicopter-badge path{stroke-width:initial}
+.plane-wrap.is-selected .plane-marker.helicopter{filter:drop-shadow(0 0 5px #00eaf0)!important}
 </style>
 </head>
 <body>
@@ -1949,8 +1955,8 @@ body.display-on details,body.display-on footer{display:none}.fa-usage{grid-templ
 <script src="map/focus-motion-decision.js?v=1"></script>
 <script src="aircraft/auto-route-eligibility.js?v=1"></script>
 <script src="offshore-coverage.js?v=1"></script>
-<script src="app.js?v=236"></script>
-<script src="offshore-map.js?v=1"></script>
+<script src="app.js?v=237"></script>
+<script src="offshore-map.js?v=2"></script>
 <script src="photo-identify.js?v=2"></script>
 <script src="police-status-v6.js?v=2"></script>
 <script src="traffic-headline.js?v=2"></script>
