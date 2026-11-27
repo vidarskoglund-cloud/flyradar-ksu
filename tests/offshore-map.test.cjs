@@ -24,7 +24,7 @@ test('selected helicopter overlay is independent from aircraft and AIS map layer
  assert.match(app,/KsuOffshoreMap\?\.render\(selected\)/);
  assert.match(app,/KsuOffshoreMap\?\.render\(null\)/);
  assert.match(html,/offshore-map\.js\?v=1/);
- assert.ok(html.indexOf('offshore-map.js?v=1')>html.indexOf('app.js?v=236'));
+ assert.ok(html.indexOf('offshore-map.js?v=2')>html.indexOf('app.js?v=237'));
  assert.doesNotMatch(overlay,/\bfetch\s*\(/);
  assert.doesNotMatch(overlay,/\blocalStorage\.setItem\b/);
 });
