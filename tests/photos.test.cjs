@@ -87,7 +87,7 @@ test('search uses name plus ship and vessel synonyms and reads Commons categorie
  assert.match(shipSource,/prop:'imageinfo\|categories'/);
 });
 
-test('LN-OQU gallery uses five committed image files instead of a placeholder strip',()=>{
+test('LN-OQU gallery uses eight committed images including the three new photographs',()=>{
  assert.match(planeSource,/exactLocalAircraftGallery\(plane\)/);
  assert.match(planeSource,/hex==='478057'/);
  assert.match(planeSource,/reg==='LN-OQU'/);
