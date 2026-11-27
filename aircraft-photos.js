@@ -3,14 +3,17 @@
 
 /* User-confirmed aircraft identity: photographed at Kristiansund, 25 Nov 2026.
    Never key these photos to flight HKS463: callsigns can move between airframes.
-   Image files are intentionally separate from code and may be uploaded later. */
+   Photographs are matched by registration/ICAO and stored in the repo. */
 const LOCAL_AIRCRAFT_GALLERIES=Object.freeze({
  '478057':{reg:'LN-OQU',files:[
   'images/aircraft/LN-OQU/IMG_1315.webp',
   'images/aircraft/LN-OQU/IMG_1316.webp',
   'images/aircraft/LN-OQU/IMG_1317.webp',
   'images/aircraft/LN-OQU/IMG_1318.webp',
-  'images/aircraft/LN-OQU/IMG_1320.webp'
+  'images/aircraft/LN-OQU/IMG_1320.webp',
+  'images/aircraft/LN-OQU/IMG_1362.webp',
+  'images/aircraft/LN-OQU/IMG_1363.webp',
+  'images/aircraft/LN-OQU/IMG_1364.webp'
  ]}
 });
 const localAircraftSlideTimers=new WeakMap();
@@ -32,9 +35,13 @@ function showLocalAircraftGallery(plane,identity){
  const wrap=document.createElement('div');wrap.className='type-photo-wrap aircraft-local-gallery';
  const img=document.createElement('img');
  img.className='type-photo';img.decoding='async';img.loading='eager';
- img.alt='LN-OQU · fotografert ved Kristiansund 25. november 2026';
  const credit=document.createElement('small');credit.className='type-credit';
- credit.textContent='Foto: lokalt fotografert · LN-OQU (ICAO 478057) · 25.11.2026';
+ function updatePhotoCredit(){
+  const newer=/IMG_136[234]\\.webp$/.test(images[index]);
+  const date=newer?'27.11.2026':'25.11.2026';
+  img.alt='LN-OQU · fotografert ved Kristiansund '+(newer?'27. november':'25. november')+' 2026';
+  credit.textContent='Foto: lokalt fotografert · LN-OQU (ICAO 478057) · '+date;
+ }
  wrap.append(img);
  let index=0,hasLoaded=false,stopped=false,timer=null;
  const active=()=>document.getElementById('type-info')?.dataset.photoIdentity===identity;
@@ -42,6 +49,7 @@ function showLocalAircraftGallery(plane,identity){
  function next(){
   if(stopped||!active()){stop();return;}
   index=(index+1)%images.length;
+  updatePhotoCredit();
   img.src=images[index];
  }
  img.addEventListener('load',()=>{
@@ -64,6 +72,7 @@ function showLocalAircraftGallery(plane,identity){
  });
  // Avoid stale timer on a card refresh.
  localAircraftSlideTimers.get(slot)?.();
+ updatePhotoCredit();
  img.src=images[0];
  return true;
 }
