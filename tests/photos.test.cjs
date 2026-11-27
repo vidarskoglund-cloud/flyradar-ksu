@@ -95,7 +95,7 @@ test('LN-OQU gallery uses eight committed images including the three new photogr
  assert.match(planeSource,/if\(localGalleryRequested\)return;/);
  assert.doesNotMatch(planeSource,/LN_OQU_PHOTO_STRIP/);
  assert.doesNotMatch(planeSource,/renderLnOquPhotos/);
- assert.match(html,/aircraft-photos\.js\?v=9/);
+ assert.match(html,/aircraft-photos\.js\?v=10/);
 });
 
 test('LN-OQU pictures use verified airframe identity, never the flight callsign',()=>{
@@ -103,9 +103,12 @@ test('LN-OQU pictures use verified airframe identity, never the flight callsign'
  assert.match(planeSource,/'478057':\{reg:'LN-OQU'/);
  assert.match(planeSource,/IMG_1315\.webp/);
  assert.match(planeSource,/IMG_1320\.webp/);
+ assert.match(planeSource,/IMG_1362\.webp/);
+ assert.match(planeSource,/IMG_1363\.webp/);
+ assert.match(planeSource,/IMG_1364\.webp/);
  assert.match(planeSource,/setInterval\(next,5500\)/);
  assert.match(planeSource,/exactLocalAircraftGallery\(plane\)/);
  assert.match(planeSource,/if\(hex && hex!=='478057'\)return null/);
  assert.match(planeSource,/if\(reg && reg!=='LN-OQU'\)return null/);
- assert.match(html,/aircraft-photos\.js\?v=9/);
+ assert.match(html,/aircraft-photos\.js\?v=10/);
 });
