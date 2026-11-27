@@ -909,10 +909,27 @@ function planeIcon(p){
   const militaryMark=military
     ? '<g class="military-insignia"><circle cx="16" cy="16" r="5"/><path d="M16 12.6 L17 14.8 L19.4 15.1 L17.6 16.8 L18 19.1 L16 18 L14 19.1 L14.4 16.8 L12.6 15.1 L15 14.8 Z"/></g>'
     : '';
+  // Approved overhead helicopter badge: cyan rim, navy disc and white rotor silhouette.
+  // SVG is resolution independent, keeps the current true-heading rotation.
+  const helicopterBadge='<svg class="helicopter-badge" viewBox="0 0 40 40" aria-hidden="true" focusable="false">'+
+    '<circle class="badge-glow" cx="20" cy="20" r="18.5" fill="#00eaf0" opacity=".24"/>'+
+    '<circle cx="20" cy="20" r="17.5" fill="#00f1f4"/>'+
+    '<circle cx="20" cy="20" r="15.4" fill="#052247"/>'+
+    '<path d="M19 7.6 Q20 6.2 21 7.6 L22 10.8 L22 22 L21.2 29 L20.8 32.2 H19.2 L18.8 29 L18 22 L18 10.8 Z" fill="#fff"/>'+
+    '<path d="M17.7 10.5 Q20 7.9 22.3 10.5 L22.5 13.5 L17.5 13.5 Z" fill="#fff"/>'+
+    '<path d="M19.9 10.5 V13.1" stroke="#052247" stroke-width=".75"/>'+
+    '<path d="M20 19 L10 9.2 Q8.9 8.3 8.2 9.3 Q7.7 10.2 8.7 11.1 L18.8 21.2 Z" fill="#fff"/>'+
+    '<path d="M20 19 L30 9.2 Q31.1 8.3 31.8 9.3 Q32.3 10.2 31.3 11.1 L21.2 21.2 Z" fill="#fff"/>'+
+    '<path d="M20 20 L10 30.8 Q8.9 31.7 8.2 30.7 Q7.7 29.8 8.7 28.9 L18.8 18.8 Z" fill="#fff"/>'+
+    '<path d="M20 20 L30 30.8 Q31.1 31.7 31.8 30.7 Q32.3 29.8 31.3 28.9 L21.2 18.8 Z" fill="#fff"/>'+
+    '<path d="M13.9 17.5 V23 M26.1 17.5 V23" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>'+
+    '<circle cx="20" cy="20" r="2.9" fill="#052247" stroke="#fff" stroke-width="1.6"/>'+
+    '<path d="M16.8 32 H23.2" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>'+
+    '</svg>';
   return L.divIcon({
     className:'plane-wrap'+(airline?' airline-known '+airline.css:'')+(category?' heli-'+category.id:'')+(ambulance?' medical-aircraft':'')+(military?' '+military.id:''),
     html:`<div class="plane-marker ${heli?'helicopter':''} ${localRelevant(p)?'local':''} ${p.signalLost&&p.ksuFlight?'ksu-stale':''}" style="transform:rotate(${tr}deg)" title="${airline?airline.name:(category?category.label:(ambulance?'Luftambulansefly':(military?military.label:'Fly')))}">
-      <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}${militaryMark}</svg>
+      ${heli?helicopterBadge:`<svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">${shape}${medical}${beacons}${militaryMark}</svg>`}
     </div>${airline?'<span class="airline-marker-label" aria-hidden="true">'+airline.code+'</span>':''}`,
     iconSize:[34,34],iconAnchor:[17,17]
   });
