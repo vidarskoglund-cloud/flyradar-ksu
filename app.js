@@ -3002,6 +3002,7 @@ async function loadOffshore(){
         .bindPopup('<b>'+name+'</b><br>'+[kind,p.fclStatus].filter(Boolean).join(' · ')+'<br>'+dNm.toFixed(0)+' NM fra KSU')
         .addTo(offshoreLayer);
     });
+    window.KsuOffshoreMap?.render(selected);
   }catch(e){}
 }
 async function loadAvinor(){
@@ -3757,6 +3758,7 @@ function select(p,lookupRoute=true){
   if(lookupRoute && p.flight && !p.routeData && canLookupRoute(p) && (!specialService(p)||p.ksuFlight)) setTimeout(()=>enrichRoute(p),0);
   drawRoute(p);
   drawTrackAndPrediction(p);
+  window.KsuOffshoreMap?.render(p);
   $('hcall').textContent=p.flight||p.reg||p.hex||'Ukjent';
   $('hmeta').textContent=([p.operator,p.reg,p.type,p.desc].filter(Boolean).join(' · ')||p.hex)+(p.source?' · Kilde: '+p.source:'');
   $('hroute').textContent=displayRoute(p);
@@ -3917,6 +3919,7 @@ function render(autoFit=false){
     $('cards').innerHTML='';
     updateTypeCard(null);
     routeLayer.clearLayers();
+    window.KsuOffshoreMap?.render(null);
   }
   // Keep detail selection synchronized with the latest aircraft priority, not only the 30s AIS poll.
   autoSelectHarborVessel();
