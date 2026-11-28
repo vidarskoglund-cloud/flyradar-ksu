@@ -1617,6 +1617,7 @@ function smartMapCandidate(list){
         :[[63.1118,7.8245],[p.lat,p.lon]],
       maxZoom:groundLike?16:
         finalApproach?(d<=1?16:d<=2.5?15:14):
+        arrival&&d<=15?(d<=2.5?15:d<=5?14:d<=8?13:12):
         rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
         rank>=3.5?(d<=8?12:d<=25?10:9):
         rank>=3?(d<=10?12:10):7
@@ -1798,12 +1799,17 @@ function fitMap(list,s){
     const object=target.points[target.points.length-1];
     if(Number.isFinite(Number(object[0]))&&Number.isFinite(Number(object[1]))){
       bounds.extend(city);
-      // A little extra space beyond the object biases the framing toward it.
-      // The tracked position remains real; this virtual point is only a viewport aid.
-      bounds.extend([
-        Number(object[0])+0.45*(Number(object[0])-city[0]),
-        Number(object[1])+0.45*(Number(object[1])-city[1])
-      ]);
+      // On close KSU approaches, omit the extra virtual padding that kept
+      // the map unnecessarily zoomed out toward Molde.
+      const closeKsuArrival=target.key?.startsWith('fly:')&&
+        target.d<=15&&list.some(p=>smartPlaneIdentity(p)===target.key&&confirmedKsuArrival(p));
+      if(!closeKsuArrival){
+        // For more distant targets, modestly bias the framing toward them.
+        bounds.extend([
+          Number(object[0])+0.45*(Number(object[0])-city[0]),
+          Number(object[1])+0.45*(Number(object[1])-city[1])
+        ]);
+      }
     }
   }
   const maxZoom=target?target.maxZoom:10;
