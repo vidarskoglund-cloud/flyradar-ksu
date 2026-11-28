@@ -2934,7 +2934,9 @@ function renderVesselGuides(){
 // Optional overview of slow/stationary vessels in inner Kristiansund harbour.
 let showStationaryHarborVessels=false;
 function shouldShowVesselOnMap(v){
- const speed=Number(v?.speed);
+ const rawSpeed=v?.speed;
+ if(rawSpeed===null||rawSpeed===undefined||rawSpeed==='')return true;
+ const speed=Number(rawSpeed);
  if(!Number.isFinite(speed)||speed>=1.5)return true;
  const lat=Number(v?.lat),lon=Number(v?.lon);
  if(!Number.isFinite(lat)||!Number.isFinite(lon))return false;
