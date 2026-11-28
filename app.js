@@ -2469,7 +2469,7 @@ function vesselIcon(v){
   const fastFerryName=featuredFastFerryName(v);
   if(isSundbatenAngvik(v)){
     // Quiet, always-on Sundbat symbol, without a prominent animated halo.
-    const ship='<svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#70cbd0" stroke="#e4ffff" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#c2e6e7" stroke="#e4ffff" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#1c6273"/><path d="M19 7 H21 V11 H19 Z" fill="#e4ffff"/></svg>';
+    const ship='<svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#f5b942" stroke="#fff6d7" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#ffdf90" stroke="#fff6d7" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#704719"/><path d="M19 7 H21 V11 H19 Z" fill="#fff6d7"/></svg>';
     return L.divIcon({
       className:'vessel-wrap vessel-wrap-sundbat',
       html:`<div class="vessel-marker sundbat-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="sundbat-label">Sundbåten</span>`,
