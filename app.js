@@ -2657,7 +2657,7 @@ function observeHarbourDepartures(items,now=Date.now()){
    harbourRestStates.delete(key);continue;
   }
   const raw=String(v.msgtime||'').trim().replace(' ','T');
-  const timestamp=Date.parse(/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z');
+  const timestamp=Date.parse(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(raw)?raw:raw+'Z');
   if(!Number.isFinite(timestamp)||now-timestamp>120000||timestamp>now+120000)continue;
   let state=harbourRestStates.get(key);
   if(!state){
