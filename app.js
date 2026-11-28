@@ -2931,10 +2931,29 @@ function renderVesselGuides(){
     }).addTo(vesselGuideLayer);
   }
 }
+// Optional overview of slow/stationary vessels in inner Kristiansund harbour.
+let showStationaryHarborVessels=false;
+function shouldShowVesselOnMap(v){
+ const speed=Number(v?.speed);
+ if(!Number.isFinite(speed)||speed>=1.5)return true;
+ const lat=Number(v?.lat),lon=Number(v?.lon);
+ if(!Number.isFinite(lat)||!Number.isFinite(lon))return false;
+ const nearHarbor=nm(dist(lat,lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]))<=VESSEL_HARBOR_CORE_NM;
+ return nearHarbor&&showStationaryHarborVessels;
+}
+function setStationaryHarborVessels(enabled){
+ showStationaryHarborVessels=Boolean(enabled);
+ renderVessels();
+}
+const stationaryHarborToggle=document.getElementById('show-stationary-harbor');
+if(stationaryHarborToggle){
+ stationaryHarborToggle.checked=false;
+ stationaryHarborToggle.addEventListener('change',()=>setStationaryHarborVessels(stationaryHarborToggle.checked));
+}
 function renderVessels(){
  const seen=new Set();
  for(const v of vessels){
-  if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon)))continue;
+  if(!Number.isFinite(Number(v.lat))||!Number.isFinite(Number(v.lon))||!shouldShowVesselOnMap(v))continue;
   const key=vesselKey(v);
   if(!key)continue;
   seen.add(key);
