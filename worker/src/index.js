@@ -103,8 +103,15 @@ function recentAisFix(msgtime,now=Date.now()){
   return Number.isFinite(ms)&&ms<=now+120000&&now-ms<=20*60*1000;
 }
 function includeVesselInRadar(v,now=Date.now()){
-  const speed=Number(v.speed),d=Number(v.distanceNm);
+  const speed=v.speed===null||v.speed===undefined||v.speed===""?NaN:Number(v.speed);
+  const d=Number(v.distanceNm);
   if(!Number.isFinite(d))return false;
+  // All slow targets in the inner harbour are secondary and require fresh AIS.
+  // No additional upstream request; they are already in the current GeoJSON.
+  if(Number.isFinite(speed)&&speed>=0&&speed<1.5&&d<=25&&
+      Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon))&&
+      distanceNm(63.1115,7.7600,Number(v.lat),Number(v.lon))<=2.2&&
+      recentAisFix(v.msgtime,now))return true;
   if(Number.isFinite(speed)&&speed>=1)
     return d<=25||(Boolean(v.category)&&d<=110);
   const identified=kystekspressenIdentity(v);
@@ -1326,7 +1333,7 @@ export default {
         if (!data) throw lastAisError || new Error("AIS upstream unavailable");
         const rows = Array.isArray(data?.features) ? data.features : (Array.isArray(data) ? data : []);
         const vessels = [];
-        let parsedCount = 0, within25 = 0, withSpeed25 = 0;
+        let parsedCount = 0, within25 = 0, withSpeed25 = 0, slowHarbourCount=0;
         // Single traversal: normalize once and calculate distance once.
         // Do not classify/allocate full vessel objects for targets beyond 110 NM.
         for (const feature of rows) {
@@ -1350,7 +1357,15 @@ export default {
           const category = coastal ? "hurtigrute" : observed ? "hurtigbat" : fastNamed ? "hurtigbat" : fastRoute ? "mulig_hurtigbat" : "";
           const row = { ...v, distanceNm: distanceNmFromKsu, category,
             kystekspressen: known ? { name: known.name, route: known.route, status: known.status } : null };
-          if (includeVesselInRadar(row)) vessels.push(row);
+          if (includeVesselInRadar(row)) {
+            const slowHarbour = row.speed!==null && row.speed!=="" &&
+              Number.isFinite(Number(row.speed)) && Number(row.speed)<1.5 &&
+              distanceNm(63.1115,7.7600,row.lat,row.lon)<=2.2;
+            if (!slowHarbour || slowHarbourCount<60 || String(row.mmsi)==="257982900") {
+              vessels.push(row);
+              if(slowHarbour)slowHarbourCount++;
+            }
+          }
         }
         vessels.sort((a, b) => a.distanceNm - b.distanceNm);
         const diagnostic = {
