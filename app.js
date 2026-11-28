@@ -2460,11 +2460,22 @@ function featuredFastFerryName(v){
  return Object.values(FEATURED_FAST_FERRIES).includes(name)?name:'';
 }
 function featuredFastFerry(v){return Boolean(featuredFastFerryName(v));}
+// Sundbaten Angvik is identified by its verified AIS MMSI, not name alone.
+function isSundbatenAngvik(v){return String(v?.mmsi??'').trim()==='257982900';}
 function vesselIcon(v){
   const tr=vesselHeading(v);
   const selected=vesselKey(v)===selectedVesselTypeKey?' selected':'';
   const focused=selected?' is-focused':'';
   const fastFerryName=featuredFastFerryName(v);
+  if(isSundbatenAngvik(v)){
+    // Quiet, always-on Sundbat symbol, without a prominent animated halo.
+    const ship='<svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#70cbd0" stroke="#e4ffff" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#c2e6e7" stroke="#e4ffff" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#1c6273"/><path d="M19 7 H21 V11 H19 Z" fill="#e4ffff"/></svg>';
+    return L.divIcon({
+      className:'vessel-wrap vessel-wrap-sundbat',
+      html:`<div class="vessel-marker sundbat-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="sundbat-label">Sundbåten</span>`,
+      iconSize:[34,34],iconAnchor:[17,17]
+    });
+  }
   if(fastFerryName){
     // The vessel rotates with its AIS heading; the name remains horizontal.
     const ship='<svg viewBox="0 0 52 52" width="30" height="30" aria-hidden="true" focusable="false"><path d="M26 3 L37 19 L35 37 L26 46 L17 37 L15 19 Z" fill="#00bcd4" stroke="#fff" stroke-width="2.7" stroke-linejoin="round"/><path d="M26 14 L31 24 L29 34 L23 34 L21 24 Z" fill="#083149" stroke="#e8fcff" stroke-width="1.3"/><path d="M26 4 V13" stroke="#e8fcff" stroke-width="2"/></svg>';
@@ -2633,6 +2644,7 @@ function updateVesselMotionHistory(items){
 // Frequent local ferry movements are useful on the map but not a reason
 // to repeatedly take focus from less routine traffic.
 function routineLocalFerry(v){
+ if(isSundbatenAngvik(v))return true;
  const mmsi=String(v?.mmsi||'').trim(),imo=String(v?.imo||'').trim();
  const name=String(v?.name||'').trim().toUpperCase();
  return mmsi==='257087420'||imo==='9855393'||name==='TUSTNA';
@@ -2934,6 +2946,7 @@ function renderVesselGuides(){
 // Optional overview of slow/stationary vessels in inner Kristiansund harbour.
 let showStationaryHarborVessels=false;
 function shouldShowVesselOnMap(v){
+ if(isSundbatenAngvik(v))return true; // Always show while present in AIS.
  const rawSpeed=v?.speed;
  if(rawSpeed===null||rawSpeed===undefined||rawSpeed==='')return true;
  const speed=Number(rawSpeed);
