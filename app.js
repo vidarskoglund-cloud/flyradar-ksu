@@ -1791,6 +1791,21 @@ function fitMap(list,s){
   const bounds=target
     ?L.latLngBounds(target.points)
     :areaBounds(mapAreas.city.lat,mapAreas.city.lon,22);
+  // Keep Kristiansund in view while placing the followed object closer
+  // to the map center instead of midway between the city and the object.
+  if(target&&Array.isArray(target.points)&&target.points.length){
+    const city=kristiansundPoint();
+    const object=target.points[target.points.length-1];
+    if(Number.isFinite(Number(object[0]))&&Number.isFinite(Number(object[1]))){
+      bounds.extend(city);
+      // A little extra space beyond the object biases the framing toward it.
+      // The tracked position remains real; this virtual point is only a viewport aid.
+      bounds.extend([
+        Number(object[0])+0.45*(Number(object[0])-city[0]),
+        Number(object[1])+0.45*(Number(object[1])-city[1])
+      ]);
+    }
+  }
   const maxZoom=target?target.maxZoom:10;
   const padding=target?[65,65]:[28,28];
   // Keep the aircraft shown in the detail panel visible too. If it is outside
@@ -1811,8 +1826,7 @@ function fitMap(list,s){
   const wantedZoom=Math.min(maxZoom,map.getBoundsZoom(bounds,false,L.point(padding[0]*2,padding[1]*2)));
   const inside=map.getBounds().pad(-0.08);
   const focusedOutside=Boolean(focusedPoint&&!inside.contains(focusedPoint));
-  const pointsVisible=target?target.points.every(pos=>inside.contains(pos)):
-    inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
+  const pointsVisible=inside.contains(bounds.getNorthEast())&&inside.contains(bounds.getSouthWest());
   // Keep the same close-enough and movement-cooldown rules in a pure helper.
   if(!shouldMoveMapFocus({
     pointsVisible,focusedOutside,currentZoom:map.getZoom(),wantedZoom,
