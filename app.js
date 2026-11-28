@@ -1613,9 +1613,9 @@ function smartMapCandidate(list){
     choices.push({
       key,rank,d,
       points:closeGround
-        ?[[p.lat-0.002,p.lon-0.003],[p.lat+0.002,p.lon+0.003]]
+        ?[[p.lat-0.0008,p.lon-0.0015],[p.lat+0.0008,p.lon+0.0015]]
         :[[63.1118,7.8245],[p.lat,p.lon]],
-      maxZoom:groundLike?16:
+      maxZoom:groundLike?17:
         finalApproach?(d<=1?16:d<=2.5?15:14):
         arrival&&d<=15?(d<=2.5?16:d<=5?14:d<=8?13:12):
         rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
@@ -1814,7 +1814,11 @@ function fitMap(list,s){
     }
   }
   const maxZoom=target?target.maxZoom:10;
-  const padding=target?[65,65]:[28,28];
+  // Taxiing arrivals need a close-up of the aircraft rather than generous
+  // framing around the entire airport; keep ordinary margins elsewhere.
+  const groundKsuTarget=Boolean(target?.key?.startsWith('fly:')&&target.d<=2&&
+    list.some(p=>smartPlaneIdentity(p)===target.key&&isGroundOrTaxi(p)));
+  const padding=groundKsuTarget?[28,28]:target?[65,65]:[28,28];
   // Keep the aircraft shown in the detail panel visible too. If it is outside
   // the current focus bounds, zoom OUT to include both it and the local view.
   // Never override the two-minute pause after manual map interactions.
@@ -1838,7 +1842,7 @@ function fitMap(list,s){
   if(!shouldMoveMapFocus({
     pointsVisible,focusedOutside,currentZoom:map.getZoom(),wantedZoom,
     target,targetChanged,now,lastMoveAt:smartMapLastMoveAt,
-    cooldownMs:SMART_MAP_MOVE_COOLDOWN_MS
+    cooldownMs:groundKsuTarget?6500:SMART_MAP_MOVE_COOLDOWN_MS
   }))return;
   const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   autoMapTransition=true;
