@@ -2491,7 +2491,7 @@ function vesselIcon(v){
     const ship=`<svg viewBox="0 0 40 40" width="${size}" height="${size}" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#f5b942" stroke="#fff6d7" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#ffdf90" stroke="#fff6d7" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#704719"/><path d="M19 7 H21 V11 H19 Z" fill="#fff6d7"/></svg>`;
     return L.divIcon({
       className:'vessel-wrap vessel-wrap-sundbat',
-      html:`<div class="vessel-marker sundbat-marker${selected}" style="width:${size}px;height:${size}px;transform:rotate(${tr}deg)">${ship}</div><span class="sundbat-label">Sundbåten</span>`,
+      html:`<div class="vessel-marker sundbat-marker${selected}" style="width:${size}px;height:${size}px;transform:rotate(0deg)">${ship}</div><span class="sundbat-label">Sundbåten</span>`,
       iconSize:[size,size],iconAnchor:[size/2,size/2]
     });
   }
@@ -2559,7 +2559,8 @@ function vesselMotionFrame(now=Date.now()){
   const turn=((entry.to.heading-entry.from.heading+540)%360)-180;
   const angle=(entry.from.heading+turn*t+360)%360;
   const icon=marker.getElement()?.querySelector('.vessel-marker');
-  if(icon)icon.style.transform='rotate('+angle+'deg)';
+  // Sundbaten symbol stays north-up; only its AIS position moves.
+  if(icon)icon.style.transform='rotate('+(key==='257982900'?0:angle)+'deg)';
   if(fraction>=1)vesselAnimation.delete(key);
  }
 }
