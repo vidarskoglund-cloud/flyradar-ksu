@@ -5,7 +5,7 @@
 if(typeof L==='undefined'||typeof map==='undefined'||!window.KsuOffshoreCoverage)return;
 const GAPS_MS=90*1000,PLATFORM_NEAR_NM=2.5;
 const layer=L.layerGroup().addTo(map);
-let visible=true,current=null,latestSummary='';
+let current=null,latestSummary='';
 const distanceNm=(a,b,c,d)=>{
  const rad=Math.PI/180;
  const x=Math.sin((c-a)*rad/2)**2+Math.cos(a*rad)*Math.cos(c*rad)*Math.sin((d-b)*rad/2)**2;
@@ -41,24 +41,8 @@ function nearInstallation(trip){
  }
  return best;
 }
-const statusText=document.createElement('span');
-const control=L.control({position:'topright'});
-control.onAdd=function(){
- const box=L.DomUtil.create('div','offshore-tracking-control leaflet-bar');
- box.style.cssText='max-width:250px;background:#0d2035f2;color:#e9f6ff;padding:8px 10px;border:1px solid #55738e;border-radius:8px;box-shadow:0 2px 9px #0018;font:12px system-ui;line-height:1.4';
- const label=document.createElement('label');
- label.style.cssText='display:flex;align-items:center;gap:7px;font-weight:700;cursor:pointer';
- const input=document.createElement('input');input.type='checkbox';input.checked=true;
- input.setAttribute('aria-label','Vis registrert offshorehelikopterspor');
- input.style.cssText='width:16px;height:16px;min-height:0';
- label.append(input,document.createTextNode('Offshorehelikopter · spor'));
- statusText.style.cssText='display:block;color:#9dc9de;font-size:11px;margin-top:4px';
- box.append(label,statusText);
- input.addEventListener('change',()=>{visible=input.checked;render(current);});
- L.DomEvent.disableClickPropagation(box);L.DomEvent.disableScrollPropagation(box);
- return box;
-};
-control.addTo(map);
+// Keep flight track status internally without rendering a map checkbox or message.
+const statusText={textContent:''};
 function drawSegment(fixes){
  if(fixes.length<2)return;
  L.polyline(fixes.map(f=>[Number(f.lat),Number(f.lon)]),{
@@ -69,7 +53,7 @@ function drawSegment(fixes){
 function render(p){
  current=p||null;
  layer.clearLayers();
- if(!p||!visible){statusText.textContent=visible?'Velg et helikopter for å se turen.':'Sporing skjult';return;}
+ if(!p){statusText.textContent='Velg et helikopter for å se turen.';return;}
  const hex=String(p.hex||'').toLowerCase();
  const trip=latestTrip(hex);
  if(!trip){statusText.textContent='Ingen lokal offshore-tur registrert for valgt fly.';return;}
