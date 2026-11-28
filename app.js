@@ -1771,6 +1771,18 @@ function fitMap(list,s){
     overflightIntroUntil=0;
   }
   const candidates=smartMapCandidate(list);
+  // Short automatic close-up for confirmed harbour movement, below urgent aircraft.
+  const event=harbourMovementEvent;
+  if(event&&now<event.focusUntil&&
+     !candidates.some(x=>x.key.startsWith('fly:')&&x.rank>=3.5)){
+   const v=vessels.find(v=>vesselKey(v)===event.key);
+   if(v&&Number.isFinite(Number(v.lat))&&Number.isFinite(Number(v.lon))){
+    const lat=Number(v.lat),lon=Number(v.lon);
+    candidates.unshift({key:'bat:'+event.key,rank:3.4,d:0,
+      points:[[lat-0.002,lon-0.004],[lat+0.002,lon+0.004]],
+      maxZoom:15,harbourDeparture:true});
+   }
+  }
   const best=candidates[0]||null;
   // Local aircraft and important vessel operations take priority. During
   // ordinary boat traffic, allow a brief distant-aircraft glimpse occasionally.
@@ -2632,6 +2644,49 @@ function persistVesselTracks(){
   }catch(e){console.warn('Kunne ikke lagre AIS-spor:',e);}
 }
 loadStoredVesselTracks();
+// Confirm departures with fresh AIS fixes after five minutes of recorded rest.
+const HARBOUR_REST_MS=300000,HARBOUR_EVENT_MS=90000,HARBOUR_FOCUS_MS=45000;
+const harbourRestStates=new Map(),harbourRecentAlerts=new Map();
+let harbourMovementEvent=null;
+function observeHarbourDepartures(items,now=Date.now()){
+ for(const v of items||[]){
+  const key=vesselKey(v),lat=Number(v.lat),lon=Number(v.lon);
+  const speed=v.speed==null||v.speed===''?NaN:Number(v.speed);
+  if(!key||!Number.isFinite(lat)||!Number.isFinite(lon)||!Number.isFinite(speed))continue;
+  if(nm(dist(lat,lon,...VESSEL_HARBOR_CENTER))>VESSEL_HARBOR_CORE_NM){
+   harbourRestStates.delete(key);continue;
+  }
+  const raw=String(v.msgtime||'').trim().replace(' ','T');
+  const timestamp=Date.parse(/(?:Z|[+-]\\d{2}:?\\d{2})$/i.test(raw)?raw:raw+'Z');
+  if(!Number.isFinite(timestamp)||now-timestamp>120000||timestamp>now+120000)continue;
+  let state=harbourRestStates.get(key);
+  if(!state){
+   harbourRestStates.set(key,{restSince:speed<0.5?now:0,restPos:[lat,lon],
+      lastFixAt:timestamp,departures:0,lastLat:lat,lastLon:lon});
+   continue;
+  }
+  if(timestamp<=state.lastFixAt)continue;
+  const moved=nm(dist(lat,lon,state.lastLat,state.lastLon));
+  state.lastFixAt=timestamp;state.lastLat=lat;state.lastLon=lon;
+  if(speed<0.5){
+   if(!state.restSince||nm(dist(lat,lon,...state.restPos))>0.04){
+    state.restSince=now;state.restPos=[lat,lon];
+   }
+   state.departures=0;
+  }else if(speed>=1.5&&state.restSince&&now-state.restSince>=HARBOUR_REST_MS&&
+    nm(dist(lat,lon,...state.restPos))>=0.035&&moved>=0.01){
+   state.departures++;
+   if(state.departures>=2&&now-(harbourRecentAlerts.get(key)||0)>900000){
+    harbourRecentAlerts.set(key,now);
+    harbourMovementEvent={key,name:String(v.name||'Fartøy').slice(0,65),
+      at:now,expires:now+HARBOUR_EVENT_MS,focusUntil:now+HARBOUR_FOCUS_MS};
+    state.restSince=0;state.departures=0;
+   }
+  }else if(speed>=1.5){state.departures=0;}
+ }
+ for(const [key,state] of harbourRestStates)if(now-state.lastFixAt>1800000)harbourRestStates.delete(key);
+ for(const [key,at] of harbourRecentAlerts)if(now-at>900000)harbourRecentAlerts.delete(key);
+}
 function updateVesselMotionHistory(items){
   const now=Date.now(), seen=new Set();
   for(const v of items||[]){
@@ -3055,6 +3110,7 @@ async function loadVessels(){
     lastSuccessfulAisAt=Date.now();
     lastAisRefreshError='';
     updateVesselMotionHistory(vessels);
+    observeHarbourDepartures(vessels);
     renderVessels();
     autoSelectHarborVessel();
     if(selectedVesselTypeKey)updateTypeCard(selected);
@@ -4251,7 +4307,12 @@ window.KsuHeadlineData=()=>{
    return {level:4,category:'BÅTTRAFIKK',message:(v.name||'Fartøy')+' nærmer seg havneområdet',
      detail:'Bevegelse registrert i AIS · havneanløp ikke bekreftet'};
   }).filter(Boolean).slice(0,2);
- return [...aircraft,...pilotEncounterHeadlines(),...ship];
+ const event=harbourMovementEvent;
+ const harbourNews=event&&Date.now()<event.expires
+  ?[{level:2,category:'BÅTTRAFIKK',
+      message:event.name+' har begynt å bevege seg i havnen',
+      detail:'AIS: bekreftet bevegelse etter minst 5 minutter i ro'}]:[];
+ return [...aircraft,...harbourNews,...pilotEncounterHeadlines(),...ship];
 };
 document.addEventListener('fullscreenchange',()=>{
   setTimeout(()=>{
