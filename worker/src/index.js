@@ -1658,6 +1658,26 @@ export default {
       );
     }
 
+    // Read-only shared flight tracks. Does not call an ADS-B provider.
+    if (request.method === "GET" && url.pathname === "/tracks") {
+      if (!env.TRACK_STORE) return new Response(JSON.stringify({ ok: false, tracks: {} }), {
+        status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" }
+      });
+      try {
+        const id = env.TRACK_STORE.idFromName("ksu");
+        const response = await env.TRACK_STORE.get(id).fetch("https://track-store/tracks");
+        if (!response.ok) throw new Error("Track store unavailable");
+        const body = await response.json();
+        return new Response(JSON.stringify({ ok: true, tracks: body?.tracks || {} }), {
+          headers: { ...corsHeaders(), "Cache-Control": "public, max-age=15" }
+        });
+      } catch (_) {
+        return new Response(JSON.stringify({ ok: false, tracks: {} }), {
+          status: 503, headers: { ...corsHeaders(), "Cache-Control": "no-store" }
+        });
+      }
+    }
+
     if (url.pathname !== "/" && url.pathname !== "/aircraft") {
       return new Response(
         JSON.stringify({ error: "Not found" }),
