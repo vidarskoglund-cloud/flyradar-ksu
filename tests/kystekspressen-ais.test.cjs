@@ -7,7 +7,7 @@ const worker=fs.readFileSync(path.join(__dirname,'../worker/src/index.js'),'utf8
 const start=worker.indexOf('const KYSTEKSPRESSEN_VESSELS =');
 const end=worker.indexOf('function relevantPassengerVessel(v)',start);
 assert.ok(start>=0&&end>start);
-const ctx=vm.createContext({Date,Number,String,Object,Boolean});
+const ctx=vm.createContext({Date,Number,String,Object,Boolean,distanceNm:(lat,lon,y,x)=>Math.hypot(lat-y,lon-x)*60});
 vm.runInContext(worker.slice(start,end),ctx);
 const identify=v=>vm.runInContext('kystekspressenIdentity('+JSON.stringify(v)+')',ctx);
 const include=(v,now)=>vm.runInContext('includeVesselInRadar('+JSON.stringify(v)+','+now+')',ctx);
@@ -32,11 +32,17 @@ test('observed route-800 ships may remain at quay with fresh AIS and within 110 
   assert.equal(include({mmsi,speed:0,distanceNm:90,msgtime:new Date(now+10*60000).toISOString()},now),false);
  }
 });
-test('unverified, planned or ordinary stationary vessels never activate quay exception',()=>{
+test('ordinary stationary vessels outside inner harbour do not activate quay exception',()=>{
  for(const mmsi of ['257151900','257781000','257605000','999999999']){
   assert.equal(include({mmsi,speed:0,distanceNm:10,msgtime:fresh},now),false);
  }
  assert.equal(include({mmsi:'999999999',name:'EKSPRESSEN',speed:0,distanceNm:10,msgtime:fresh},now),false);
+});
+test('fresh stationary harbour AIS is included without changing moving-vessel filtering',()=>{
+ assert.equal(include({mmsi:'999999999',speed:0,lat:63.1115,lon:7.7600,distanceNm:3,msgtime:fresh},now),true);
+ assert.equal(include({mmsi:'257982900',speed:0,lat:63.1115,lon:7.7600,distanceNm:3,msgtime:fresh},now),true);
+ assert.equal(include({mmsi:'999999999',speed:0,lat:63.1115,lon:7.7600,distanceNm:3,msgtime:stale},now),false);
+ assert.equal(include({mmsi:'999999999',speed:0,lat:63.5,lon:8.1,distanceNm:20,msgtime:fresh},now),false);
 });
 test('moving-vessel distance and category filtering remains unchanged',()=>{
  assert.equal(include({speed:8,distanceNm:12},now),true);
