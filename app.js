@@ -1617,7 +1617,7 @@ function smartMapCandidate(list){
         :[[63.1118,7.8245],[p.lat,p.lon]],
       maxZoom:groundLike?16:
         finalApproach?(d<=1?16:d<=2.5?15:14):
-        arrival&&d<=15?(d<=2.5?15:d<=5?14:d<=8?13:12):
+        arrival&&d<=15?(d<=2.5?16:d<=5?14:d<=8?13:12):
         rank>=5?(d<=8?12:d<=25?10:d<=50?9:7):
         rank>=3.5?(d<=8?12:d<=25?10:9):
         rank>=3?(d<=10?12:10):7
@@ -1792,19 +1792,20 @@ function fitMap(list,s){
   const bounds=target
     ?L.latLngBounds(target.points)
     :areaBounds(mapAreas.city.lat,mapAreas.city.lon,22);
-  // Keep Kristiansund in view while placing the followed object closer
-  // to the map center instead of midway between the city and the object.
-  if(target&&Array.isArray(target.points)&&target.points.length){
+  // During the last 3 NM of a confirmed KSU arrival, focus on the aircraft
+  // and runway. Forcing the entire city into view otherwise prevents a close
+  // final-approach zoom, even when maxZoom permits it.
+  const finalKsuArrival=Boolean(target?.key?.startsWith('fly:')&&target.d<=3&&
+    list.some(p=>smartPlaneIdentity(p)===target.key&&confirmedKsuArrival(p)));
+  // Outside short final, preserve Kristiansund and bias the object toward center.
+  if(target&&Array.isArray(target.points)&&target.points.length&&!finalKsuArrival){
     const city=kristiansundPoint();
     const object=target.points[target.points.length-1];
     if(Number.isFinite(Number(object[0]))&&Number.isFinite(Number(object[1]))){
       bounds.extend(city);
-      // On close KSU approaches, omit the extra virtual padding that kept
-      // the map unnecessarily zoomed out toward Molde.
       const closeKsuArrival=target.key?.startsWith('fly:')&&
         target.d<=15&&list.some(p=>smartPlaneIdentity(p)===target.key&&confirmedKsuArrival(p));
       if(!closeKsuArrival){
-        // For more distant targets, modestly bias the framing toward them.
         bounds.extend([
           Number(object[0])+0.45*(Number(object[0])-city[0]),
           Number(object[1])+0.45*(Number(object[1])-city[1])
