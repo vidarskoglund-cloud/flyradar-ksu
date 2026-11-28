@@ -2462,26 +2462,37 @@ function featuredFastFerryName(v){
 function featuredFastFerry(v){return Boolean(featuredFastFerryName(v));}
 // Sundbaten Angvik is identified by its verified AIS MMSI, not name alone.
 function isSundbatenAngvik(v){return String(v?.mmsi??'').trim()==='257982900';}
+// Scale a vessel's map symbol from its reported AIS length at close zoom.
+// Estimated visual footprint only: AIS gives length, not an exact hull outline.
+function vesselMapIconPixels(v,base,viewbox=32,shapeLength=26){
+ const length=Number(v?.length),lat=Number(v?.lat);
+ if(map.getZoom()<16||!Number.isFinite(length)||length<5||length>400||
+    !Number.isFinite(lat)||Math.abs(lat)>85)return base;
+ const metresPerPixel=156543.03392*Math.cos(lat*Math.PI/180)/Math.pow(2,map.getZoom());
+ const visualPx=length/metresPerPixel;
+ return Math.round(Math.max(base,Math.min(150,visualPx*viewbox/shapeLength)));
+}
 function vesselIcon(v){
   const tr=vesselHeading(v);
   const selected=vesselKey(v)===selectedVesselTypeKey?' selected':'';
   const focused=selected?' is-focused':'';
   const fastFerryName=featuredFastFerryName(v);
   if(slowHarborVessel(v)){
-    const ship='<svg viewBox="0 0 32 32" width="19" height="19" aria-hidden="true" focusable="false"><path d="M16 3 L22 11 L22 24 L16 29 L10 24 L10 11 Z" fill="#b6c4cf" stroke="#344c5b" stroke-width="2"/><path d="M13 12 H19 V23 H13 Z" fill="#6c8694"/></svg>';
+    const size=vesselMapIconPixels(v,24);
+    const ship=`<svg viewBox="0 0 32 32" width="${size}" height="${size}" aria-hidden="true" focusable="false"><path d="M16 3 L22 11 L22 24 L16 29 L10 24 L10 11 Z" fill="#b6c4cf" stroke="#344c5b" stroke-width="2"/><path d="M13 12 H19 V23 H13 Z" fill="#6c8694"/></svg>`;
     return L.divIcon({
       className:'vessel-wrap vessel-wrap-stationary',
-      html:`<div class="vessel-marker slow-vessel-marker" style="transform:rotate(${tr}deg)">${ship}</div>`,
-      iconSize:[24,24],iconAnchor:[12,12]
+      html:`<div class="vessel-marker slow-vessel-marker" style="width:${size}px;height:${size}px;transform:rotate(${tr}deg)">${ship}</div>`,
+      iconSize:[size,size],iconAnchor:[size/2,size/2]
     });
   }
   if(isSundbatenAngvik(v)){
-    // Quiet, always-on Sundbat symbol, without a prominent animated halo.
-    const ship='<svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#f5b942" stroke="#fff6d7" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#ffdf90" stroke="#fff6d7" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#704719"/><path d="M19 7 H21 V11 H19 Z" fill="#fff6d7"/></svg>';
+    const size=vesselMapIconPixels(v,34,40,26);
+    const ship=`<svg viewBox="0 0 40 40" width="${size}" height="${size}" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#f5b942" stroke="#fff6d7" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#ffdf90" stroke="#fff6d7" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#704719"/><path d="M19 7 H21 V11 H19 Z" fill="#fff6d7"/></svg>`;
     return L.divIcon({
       className:'vessel-wrap vessel-wrap-sundbat',
-      html:`<div class="vessel-marker sundbat-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="sundbat-label">Sundbåten</span>`,
-      iconSize:[34,34],iconAnchor:[17,17]
+      html:`<div class="vessel-marker sundbat-marker${selected}" style="width:${size}px;height:${size}px;transform:rotate(${tr}deg)">${ship}</div><span class="sundbat-label">Sundbåten</span>`,
+      iconSize:[size,size],iconAnchor:[size/2,size/2]
     });
   }
   if(fastFerryName){
@@ -2515,13 +2526,14 @@ function vesselIcon(v){
     :kind==='passenger'
     ? '<path class="hull" d="M16 1.5 L23 9.5 L23.5 24.5 L20 30 H12 L8.5 24.5 L9 9.5 Z"/><rect class="cabin" x="11.8" y="12" width="8.4" height="12" rx="1.7"/><path class="bow" d="M13 9 L16 5.3 L19 9 Z"/>'
     : '<path class="hull" d="M16 1 L22 10 L22 23.5 L19.2 29 H12.8 L10 23.5 L10 10 Z"/><path class="cabin" d="M12.5 13 H19.5 V23 H12.5 Z"/><path class="bow" d="M13.4 10 L16 6 L18.6 10 Z"/>';
-  const ship='<svg class="vessel-shape" viewBox="0 0 32 32" aria-hidden="true" focusable="false">'+hull+'</svg>';
+  const size=vesselMapIconPixels(v,32);
+  const ship='<svg class="vessel-shape" viewBox="0 0 32 32" width="'+size+'" height="'+size+'" aria-hidden="true" focusable="false">'+hull+'</svg>';
   const rawName=String(v?.name||('MMSI '+(v?.mmsi||'ukjent'))).trim();
   const safeName=rawName.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   return L.divIcon({
     className:'vessel-wrap vessel-wrap-'+kind+focused,
-    html:`<div class="vessel-marker${selected}" style="transform:rotate(${tr}deg)">${ship}</div><span class="vessel-focus-label" aria-hidden="true">${safeName}</span>`,
-    iconSize:[32,32],iconAnchor:[16,16]
+    html:`<div class="vessel-marker${selected}" style="width:${size}px;height:${size}px;transform:rotate(${tr}deg)">${ship}</div><span class="vessel-focus-label" aria-hidden="true">${safeName}</span>`,
+    iconSize:[size,size],iconAnchor:[size/2,size/2]
   });
 }
 function vesselKind(v){
@@ -2979,7 +2991,12 @@ function renderVessels(){
   let marker=vesselMarkers.get(key);
   const name=v.name||('MMSI '+(v.mmsi||'ukjent'));
   if(marker){
-   // Reuse the DOM marker instead of deleting it at every AIS refresh.
+   // Rebuild the symbol only if the zoom-scaled size actually changes.
+   // Do not recreate markers or request more AIS positions.
+   const nextIcon=vesselIcon(v);
+   const previousSize=marker.options.icon?.options?.iconSize?.[0];
+   const nextSize=nextIcon.options.iconSize?.[0];
+   if(previousSize!==nextSize)marker.setIcon(nextIcon);
    scheduleVesselMotion(marker,key,v);
    marker.setTooltipContent('Fartøy: '+escapeVesselText(name));
    const focusLabel=marker.getElement()?.querySelector('.vessel-focus-label');
