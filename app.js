@@ -1880,10 +1880,50 @@ function fitMap(list,s){
   if(reduced)map.fitBounds(bounds,opts);
   else map.flyToBounds(bounds,opts);
 }
-// Brukerens zoom og panorering skal overstyre automatisk fokus i to minutter.
+// User map gestures take precedence for two minutes after the LAST gesture.
+// Touch events are needed because Leaflet may not emit zoomstart/dragstart
+// while an automatic flyToBounds transition is already in progress.
+function holdManualMapControl(){
+ const until=Date.now()+SMART_MAP_MANUAL_MS;
+ manualMapUntil=until;
+ overflightIntroUntil=0;
+ idleViewStartedAt=null;
+ idleViewPhase=-1;
+ updateMapFocusStatus();
+}
 map.on('zoomstart',()=>{
-  if(!autoMapTransition){overflightIntroUntil=0;manualMapUntil=Date.now()+SMART_MAP_MANUAL_MS;updateMapFocusStatus();}
+ if(!autoMapTransition)holdManualMapControl();
 });
+const gestureSurface=map.getContainer();
+let touchOrigin=null,lastTouchHoldAt=0;
+gestureSurface.addEventListener('touchstart',event=>{
+ const touches=event.touches;
+ if(touches.length>=2){
+  touchOrigin=null;
+  holdManualMapControl();
+  lastTouchHoldAt=Date.now();
+  if(autoMapTransition)map.stop();
+ }else if(touches.length===1){
+  touchOrigin={x:touches[0].clientX,y:touches[0].clientY};
+ }
+},{passive:true});
+gestureSurface.addEventListener('touchmove',event=>{
+ const touches=event.touches;
+ const multi=touches.length>=2;
+ const singleMoved=touches.length===1&&touchOrigin&&
+  Math.hypot(touches[0].clientX-touchOrigin.x,touches[0].clientY-touchOrigin.y)>=7;
+ if(!multi&&!singleMoved)return;
+ if(autoMapTransition)map.stop();
+ const now=Date.now();
+ if(now-lastTouchHoldAt>=500){
+  holdManualMapControl();
+  lastTouchHoldAt=now;
+ }
+},{passive:true});
+gestureSurface.addEventListener('touchend',event=>{
+ if(event.touches.length===0)touchOrigin=null;
+},{passive:true});
+gestureSurface.addEventListener('touchcancel',()=>{touchOrigin=null;},{passive:true});
 function airportLabel(a){
   if(!a)return'';
   const code=a.iata||a.icao||a.code||'';
