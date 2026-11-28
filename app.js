@@ -2467,6 +2467,14 @@ function vesselIcon(v){
   const selected=vesselKey(v)===selectedVesselTypeKey?' selected':'';
   const focused=selected?' is-focused':'';
   const fastFerryName=featuredFastFerryName(v);
+  if(slowHarborVessel(v)){
+    const ship='<svg viewBox="0 0 32 32" width="19" height="19" aria-hidden="true" focusable="false"><path d="M16 3 L22 11 L22 24 L16 29 L10 24 L10 11 Z" fill="#b6c4cf" stroke="#344c5b" stroke-width="2"/><path d="M13 12 H19 V23 H13 Z" fill="#6c8694"/></svg>';
+    return L.divIcon({
+      className:'vessel-wrap vessel-wrap-stationary',
+      html:`<div class="vessel-marker slow-vessel-marker" style="transform:rotate(${tr}deg)">${ship}</div>`,
+      iconSize:[24,24],iconAnchor:[12,12]
+    });
+  }
   if(isSundbatenAngvik(v)){
     // Quiet, always-on Sundbat symbol, without a prominent animated halo.
     const ship='<svg viewBox="0 0 40 40" width="26" height="26" aria-hidden="true" focusable="false"><path d="M7 15 H33 L29 28 Q20 33 11 28 Z" fill="#f5b942" stroke="#fff6d7" stroke-width="1.7"/><path d="M12 11 H28 V18 H12 Z" fill="#ffdf90" stroke="#fff6d7" stroke-width="1.2"/><path d="M15 13 H19 V17 H15 Z M21 13 H25 V17 H21 Z" fill="#704719"/><path d="M19 7 H21 V11 H19 Z" fill="#fff6d7"/></svg>';
@@ -2943,27 +2951,23 @@ function renderVesselGuides(){
     }).addTo(vesselGuideLayer);
   }
 }
-// Optional overview of slow/stationary vessels in inner Kristiansund harbour.
-let showStationaryHarborVessels=false;
+// Slow vessels are secondary context, visible only when zoomed into the inner harbour.
+const STATIONARY_HARBOR_MIN_ZOOM=13;
+function slowHarborVessel(v){
+ if(isSundbatenAngvik(v))return false;
+ const speed=v?.speed===null||v?.speed===undefined||v?.speed===''?NaN:Number(v.speed);
+ const lat=Number(v?.lat),lon=Number(v?.lon);
+ return Number.isFinite(speed)&&speed>=0&&speed<1.5&&
+  Number.isFinite(lat)&&Number.isFinite(lon)&&
+  nm(dist(lat,lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]))<=VESSEL_HARBOR_CORE_NM;
+}
 function shouldShowVesselOnMap(v){
- if(isSundbatenAngvik(v))return true; // Always show while present in AIS.
+ if(isSundbatenAngvik(v))return true;
+ if(slowHarborVessel(v))return map.getZoom()>=STATIONARY_HARBOR_MIN_ZOOM;
  const rawSpeed=v?.speed;
  if(rawSpeed===null||rawSpeed===undefined||rawSpeed==='')return true;
  const speed=Number(rawSpeed);
- if(!Number.isFinite(speed)||speed>=1.5)return true;
- const lat=Number(v?.lat),lon=Number(v?.lon);
- if(!Number.isFinite(lat)||!Number.isFinite(lon))return false;
- const nearHarbor=nm(dist(lat,lon,VESSEL_HARBOR_CENTER[0],VESSEL_HARBOR_CENTER[1]))<=VESSEL_HARBOR_CORE_NM;
- return nearHarbor&&showStationaryHarborVessels;
-}
-function setStationaryHarborVessels(enabled){
- showStationaryHarborVessels=Boolean(enabled);
- renderVessels();
-}
-const stationaryHarborToggle=document.getElementById('show-stationary-harbor');
-if(stationaryHarborToggle){
- stationaryHarborToggle.checked=false;
- stationaryHarborToggle.addEventListener('change',()=>setStationaryHarborVessels(stationaryHarborToggle.checked));
+ return !Number.isFinite(speed)||speed>=1.5;
 }
 function renderVessels(){
  const seen=new Set();
@@ -3013,6 +3017,8 @@ function renderVessels(){
  syncVesselSelectionMarkers();
  renderVesselGuides();
 }
+// Repaint from the existing AIS snapshot on zoom, without any new network request.
+map.on('zoomend',renderVessels);
 let lastSuccessfulAisAt=0;
 let lastAisRefreshError='';
 async function loadVessels(){
