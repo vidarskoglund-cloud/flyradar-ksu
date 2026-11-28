@@ -944,6 +944,22 @@ function rememberAircraftRoute(p,r){
   saveConfirmedRoute(p,r);
 }
 
+// Shared trails are optional: current aircraft positions always remain direct.
+let sharedTrackLastFetchAt=0,sharedTrackSnapshot=null;
+async function readSharedTracks(){
+  const now=Date.now();
+  if(now-sharedTrackLastFetchAt<60000)return sharedTrackSnapshot;
+  sharedTrackLastFetchAt=now;
+  try{
+    const result=await fetch('https://flyradar-ksu.vidar-skoglund.workers.dev/tracks',
+      {cache:'no-store',signal:AbortSignal.timeout(5000)});
+    if(!result.ok)return sharedTrackSnapshot;
+    const data=await result.json();
+    if(data?.ok===true&&data.tracks&&typeof data.tracks==='object')
+      sharedTrackSnapshot=data.tracks;
+  }catch(_){ /* Shared history is optional; do not interrupt direct ADS-B. */ }
+  return sharedTrackSnapshot;
+}
 function ingestSharedTracks(shared){
   if(!shared||typeof shared!=='object')return false;
   const cutoff=Date.now()-TRACK_KEEP_MS;
@@ -3660,7 +3676,7 @@ async function refresh(){
     const direct=await rescueAdsbFi(s);
     if(!Array.isArray(direct))throw new Error('Direkte adsb.fi v3 feilet: '+(fiRescueError||'venter på nytt forsøk'));
     const merged=direct.map(a=>({...a,_source:'adsb.fi v3 (direkte)'}));
-    const sharedTracks=null;
+    const sharedTracks=await readSharedTracks();
     sourceState.adsb='ikke brukt';
     sourceState.apl='ikke brukt';
     sourceState.fi='OK';
@@ -3681,7 +3697,8 @@ async function refresh(){
     attachAvinorMatches();
     planes=preserveKsuLastKnown(planes);
     lastGoodPlanes=planes.map(p=>({...p}));
-    if(!ingestSharedTracks(sharedTracks))updateTrackHistory(planes);
+    updateTrackHistory(planes);
+    ingestSharedTracks(sharedTracks);
     window.KsuOffshoreCoverage?.observe(planes);
     // Only verified KSU flights and strong observed approaches receive automatic route lookup.
     check50NmNotifications(planes);
